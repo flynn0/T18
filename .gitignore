@@ -53,3 +53,24 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino
+*.bin
+*.elf
+
+# Node / Cloudflare Workers
+node_modules/
+.wrangler/
+dist/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

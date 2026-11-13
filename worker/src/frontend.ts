@@ -1,0 +1,650 @@
+export function renderDashboardHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wi-Fi Fleet Telemetry | kreier/wifi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/></svg>" />
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #38bdf8;
+      --primary-dim: rgba(56, 189, 248, 0.15);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #818cf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+    .brand svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--primary);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-tag {
+      font-size: 0.75rem;
+      background: var(--primary-dim);
+      color: var(--primary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    select, button {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 0.45rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus, button:hover {
+      border-color: var(--primary);
+    }
+    button.primary-btn {
+      background: var(--primary);
+      color: #0f172a;
+      font-weight: 600;
+      border: none;
+    }
+    button.primary-btn:hover {
+      background: #0ea5e9;
+    }
+    main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .station-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .station-info h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .station-info p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 0.75rem;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .metrics-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .metric-box {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .metric-val {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+      color: var(--text-main);
+    }
+    .metric-val span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 0.2rem;
+    }
+    .latency-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .pill {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 0.4rem;
+      padding: 0.3rem 0.55rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .pill-val {
+      font-weight: 700;
+    }
+    .pill-val.fast { color: var(--success); }
+    .pill-val.med { color: var(--warning); }
+    .pill-val.slow { color: var(--danger); }
+
+    /* Chart Section */
+    .chart-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    canvas {
+      width: 100% !important;
+      height: 260px !important;
+    }
+
+    /* Table Section */
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th {
+      padding: 0.75rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .rssi-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .rssi-bar {
+      width: 60px;
+      height: 6px;
+      background: #1f293d;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .rssi-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: auto;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="brand">
+      <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      <div>
+        <span class="brand-title">WIFI Monitor</span>
+        <span class="brand-tag">v0.1.0</span>
+      </div>
+    </a>
+    <div class="header-controls">
+      <select id="stationSelect" onchange="switchStation(this.value)">
+        <option value="">Loading stations...</option>
+      </select>
+      <button onclick="refreshData()">↻ Refresh</button>
+      <button class="primary-btn" onclick="exportData('json')">Export JSON</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Station Header & Health -->
+    <div class="station-banner">
+      <div class="station-info">
+        <h2 id="stTitle">Station: Loading...</h2>
+        <p id="stDesc">Fetching telemetry data...</p>
+      </div>
+      <div id="stStatusBadge" class="status-badge online">
+        <span class="pulse-dot"></span>
+        <span id="stStatusText">Checking</span>
+      </div>
+    </div>
+
+    <!-- Active Monitored Networks Cards -->
+    <div id="networksContainer" class="grid-cards">
+      <!-- Populated via JavaScript -->
+    </div>
+
+    <!-- Historical Trends (Chart) -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">24-Hour Network Latency Trends</h3>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">10-Minute Polling Cadence</span>
+      </div>
+      <canvas id="trendChart"></canvas>
+    </div>
+
+    <!-- Surrounding 2.4 GHz Scan Survey Table -->
+    <div class="table-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">Surrounding 2.4 GHz Spectrum Survey</h3>
+        <span id="surveyCountBadge" style="font-size: 0.8rem; color: var(--primary);">0 APs Detected</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>SSID</th>
+            <th>BSSID</th>
+            <th>Signal (RSSI)</th>
+            <th>Quality</th>
+            <th>Channel</th>
+            <th>Phy Mode</th>
+            <th>Security</th>
+            <th>Band</th>
+          </tr>
+        </thead>
+        <tbody id="surveyTableBody">
+          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No Wi-Fi scan data available yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    <p>Powered by Cloudflare Workers & D1 | <a href="https://github.com/kreier/wifi" target="_blank">kreier/wifi v0.1.0</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    let currentStationId = "";
+    let chartInstance = null;
+
+    async function loadStations() {
+      try {
+        const res = await fetch("/api/stations");
+        const data = await res.json();
+        const select = document.getElementById("stationSelect");
+        select.innerHTML = "";
+
+        if (!data.stations || data.stations.length === 0) {
+          select.innerHTML = "<option value=''>No stations found</option>";
+          document.getElementById("stTitle").innerText = "No Stations Registered";
+          document.getElementById("stDesc").innerText = "Provision an ESP32 via captive portal to begin monitoring.";
+          return;
+        }
+
+        data.stations.forEach(st => {
+          const opt = document.createElement("option");
+          opt.value = st.station_id;
+          opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
+          select.appendChild(opt);
+        });
+
+        currentStationId = data.stations[0].station_id;
+        loadStationDetails(currentStationId);
+      } catch (err) {
+        console.error("Failed to load stations:", err);
+      }
+    }
+
+    function switchStation(id) {
+      if (!id) return;
+      currentStationId = id;
+      loadStationDetails(id);
+    }
+
+    function refreshData() {
+      if (currentStationId) {
+        loadStationDetails(currentStationId);
+      }
+    }
+
+    function exportData(fmt) {
+      if (!currentStationId) return;
+      window.open("/api/export?station_id=" + encodeURIComponent(currentStationId) + "&format=" + fmt);
+    }
+
+    async function loadStationDetails(stationId) {
+      try {
+        const res = await fetch("/api/station/" + encodeURIComponent(stationId));
+        if (!res.ok) throw new Error("Station fetch failed");
+        const data = await res.json();
+
+        // 1. Update Header Banner
+        const st = data.station;
+        document.getElementById("stTitle").innerText = "Station: " + st.station_id;
+        document.getElementById("stDesc").innerText = st.description || "No description configured";
+
+        const badge = document.getElementById("stStatusBadge");
+        const statusText = document.getElementById("stStatusText");
+        const nowSec = Math.floor(Date.now() / 1000);
+        const lastSeen = st.last_seen || 0;
+        const diffMinutes = Math.floor((nowSec - lastSeen) / 60);
+
+        if (lastSeen > 0 && diffMinutes <= 20) {
+          badge.className = "status-badge online";
+          statusText.innerText = "Online (" + diffMinutes + "m ago)";
+        } else {
+          badge.className = "status-badge offline";
+          statusText.innerText = lastSeen > 0 ? "Offline (" + diffMinutes + "m ago)" : "Never Seen";
+        }
+
+        // 2. Render Monitored Network Cards
+        const netContainer = document.getElementById("networksContainer");
+        netContainer.innerHTML = "";
+
+        if (data.latest_measurements && data.latest_measurements.length > 0) {
+          data.latest_measurements.forEach(net => {
+            const card = document.createElement("div");
+            card.className = "card";
+
+            const getPillClass = (ms) => {
+              if (ms === null || ms < 0) return "";
+              if (ms <= 50) return "fast";
+              if (ms <= 150) return "med";
+              return "slow";
+            };
+
+            const fmtMs = (v) => (v !== null && v >= 0) ? v + " ms" : "Timeout";
+
+            card.innerHTML = \`
+              <div class="card-header">
+                <div>
+                  <div class="card-title">\${net.ssid}</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                    BSSID: \${net.bssid || "N/A"} | Ch \${net.channel || "?"}
+                  </div>
+                </div>
+                <span class="status-badge \${net.status === 'connected' ? 'online' : 'offline'}" style="font-size:0.7rem; padding:0.15rem 0.5rem;">
+                  \${net.status}
+                </span>
+              </div>
+
+              <div class="metrics-summary">
+                <div class="metric-box">
+                  <div class="metric-label">Association</div>
+                  <div class="metric-val">\${(net.assoc_ms !== null && net.assoc_ms >= 0) ? net.assoc_ms : '—'}<span>ms</span></div>
+                </div>
+                <div class="metric-box">
+                  <div class="metric-label">DHCP Lease</div>
+                  <div class="metric-val">\${(net.dhcp_ms !== null && net.dhcp_ms >= 0) ? net.dhcp_ms : '—'}<span>ms</span></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem; text-transform:uppercase; font-weight:600;">HTTP Probe Latencies</div>
+                <div class="latency-pills">
+                  <div class="pill">Cloudflare: <span class="pill-val \${getPillClass(net.cloudflare_ms)}">\${fmtMs(net.cloudflare_ms)}</span></div>
+                  <div class="pill">Google: <span class="pill-val \${getPillClass(net.google_ms)}">\${fmtMs(net.google_ms)}</span></div>
+                  <div class="pill">Microsoft: <span class="pill-val \${getPillClass(net.microsoft_ms)}">\${fmtMs(net.microsoft_ms)}</span></div>
+                  <div class="pill">Apple: <span class="pill-val \${getPillClass(net.apple_ms)}">\${fmtMs(net.apple_ms)}</span></div>
+                  <div class="pill">Fast/Netflix: <span class="pill-val \${getPillClass(net.netflix_ms)}">\${fmtMs(net.netflix_ms)}</span></div>
+                  <div class="pill">Facebook: <span class="pill-val \${getPillClass(net.facebook_ms)}">\${fmtMs(net.facebook_ms)}</span></div>
+                </div>
+              </div>
+            \`;
+            netContainer.appendChild(card);
+          });
+        } else {
+          netContainer.innerHTML = "<div class='card' style='grid-column: 1/-1;'><p style='color:var(--text-muted);'>No network latency measurements recorded yet.</p></div>";
+        }
+
+        // 3. Render Spectrum Survey Table
+        const tbody = document.getElementById("surveyTableBody");
+        tbody.innerHTML = "";
+        const surveys = data.latest_survey || [];
+        document.getElementById("surveyCountBadge").innerText = surveys.length + " APs Detected";
+
+        if (surveys.length > 0) {
+          surveys.forEach(s => {
+            const tr = document.createElement("tr");
+            const rssi = s.rssi || -100;
+            const q = s.quality || 0;
+            const barColor = rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444");
+
+            tr.innerHTML = \`
+              <td style="font-weight: 600;">\${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">\${s.bssid || "N/A"}</td>
+              <td>
+                <div class="rssi-bar-wrap">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: \${q}%; background: \${barColor};"></div></div>
+                  <span>\${rssi} dBm</span>
+                </div>
+              </td>
+              <td>\${q}%</td>
+              <td>Ch \${s.channel || "?"}</td>
+              <td><span style="background:#1f293d; padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
+              <td>\${s.encryption || 'Open'}</td>
+              <td>\${s.band || '2.4 GHz'}</td>
+            \`;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = "<tr><td colspan='8' style='text-align: center; color: var(--text-muted); padding: 2rem;'>No surrounding APs scanned yet.</td></tr>";
+        }
+
+        // 4. Update Historical Chart
+        updateTrendChart(data.recent_history || []);
+
+      } catch (err) {
+        console.error("Failed to load station details:", err);
+      }
+    }
+
+    function updateTrendChart(history) {
+      const ctx = document.getElementById("trendChart");
+      if (!ctx) return;
+
+      const labels = [];
+      const cfLatency = [];
+      const googleLatency = [];
+      const assocTime = [];
+
+      history.forEach(pt => {
+        const d = new Date(pt.timestamp * 1000);
+        labels.push(d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0'));
+        cfLatency.push(pt.cloudflare_ms >= 0 ? pt.cloudflare_ms : null);
+        googleLatency.push(pt.google_ms >= 0 ? pt.google_ms : null);
+        assocTime.push(pt.assoc_ms >= 0 ? pt.assoc_ms : null);
+      });
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Cloudflare (ms)',
+              data: cfLatency,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 2
+            },
+            {
+              label: 'Google (ms)',
+              data: googleLatency,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 2
+            },
+            {
+              label: 'Association Time (ms)',
+              data: assocTime,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              borderDash: [5, 5],
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 1.5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#9ca3af', boxWidth: 12 }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', maxTicksLimit: 12 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize
+    loadStations();
+    setInterval(refreshData, 60000); // 1-minute auto refresh
+  </script>
+</body>
+</html>`;
+}

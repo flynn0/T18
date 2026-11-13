@@ -1,0 +1,80 @@
+import { Env } from "./types";
+import { handleRegister } from "./register";
+import { handleTelemetry } from "./telemetry";
+import { handleApiStations, handleApiStationDetail, handleApiExport } from "./api";
+import { handleScheduledMaintenance } from "./cron";
+import { renderDashboardHtml } from "./frontend";
+
+export default {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Handle CORS preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          "Access-Control-Max-Age": "86400"
+        }
+      });
+    }
+
+    try {
+      // 1. Zero-Trust Station Registration
+      if (path === "/register") {
+        return await handleRegister(request, env);
+      }
+
+      // 2. Telemetry Ingestion
+      if (path === "/data") {
+        return await handleTelemetry(request, env);
+      }
+
+      // 3. Public Read-only APIs
+      if (path === "/api/stations" && request.method === "GET") {
+        return await handleApiStations(request, env);
+      }
+
+      if (path.startsWith("/api/station/") && request.method === "GET") {
+        const stationId = decodeURIComponent(path.substring("/api/station/".length));
+        return await handleApiStationDetail(stationId, request, env);
+      }
+
+      if (path === "/api/export" && request.method === "GET") {
+        return await handleApiExport(request, env);
+      }
+
+      // 4. Web Dashboard Frontend
+      if (request.method === "GET" && (path === "/" || path === "/index.html")) {
+        return new Response(renderDashboardHtml(), {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=60"
+          }
+        });
+      }
+
+      // 404 Fallback
+      return new Response(JSON.stringify({ error: "Not Found", path }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch (err: unknown) {
+      console.error("[Worker Error]", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      return new Response(JSON.stringify({ error: "Internal Server Error", message: errMsg }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  },
+
+  async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+    await handleScheduledMaintenance(event, env);
+  }
+};
