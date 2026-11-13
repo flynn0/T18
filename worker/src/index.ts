@@ -48,8 +48,8 @@ export default {
         return await handleApiExport(request, env);
       }
 
-      // 4. Web Dashboard Frontend
-      if ((request.method === "GET" || request.method === "HEAD") && (path === "/" || path === "/index.html")) {
+      // 4. Web Dashboard Frontend (Root or direct station route e.g. /C-103)
+      if ((request.method === "GET" || request.method === "HEAD") && !path.startsWith("/api/")) {
         return new Response(request.method === "HEAD" ? null : renderDashboardHtml(), {
           status: 200,
           headers: {

@@ -1,21 +1,32 @@
 # kreier/wifi
 
-> Version **0.1.0** — Autonomous Wi-Fi Spectrum & Latency Telemetry Fleet Node for ESP32 with Cloudflare Worker and D1 Database.
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
 
-`kreier/wifi` is an upgraded, production-grade successor to [`kreier/T18`](https://github.com/kreier/T18). It transforms an inexpensive generic ESP32 into a self-provisioning, battery-friendly Wi-Fi telemetry probe that performs scheduled 2.4 GHz spectrum surveys and multi-target latency benchmarks every 10 minutes, entering light sleep between cycles.
+> Autonomous Wi-Fi Spectrum & Latency Telemetry Fleet Node for ESP32 with Cloudflare Worker, D1 SQLite Database, and GitHub Pages.
+
+**Live Telemetry Dashboards**:
+- 🌐 **Cloudflare Edge Dashboard**: [https://wifi.kreier.workers.dev/](https://wifi.kreier.workers.dev/)
+- 📄 **GitHub Pages Mirror**: [https://kreier.github.io/wifi/](https://kreier.github.io/wifi/)
+
+**Direct Station Access**:
+Both the Cloudflare Worker and GitHub Pages support deep-linking directly to specific monitoring stations:
+- View Station **C-103**: [https://wifi.kreier.workers.dev/C-103](https://wifi.kreier.workers.dev/C-103) or [https://kreier.github.io/wifi/C-103](https://kreier.github.io/wifi/C-103)
 
 ---
 
 ## Evolution from `kreier/T18`
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.1.0`) |
+| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.2.0`) |
 | :--- | :--- | :--- |
 | **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
 | **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |
 | **Build System** | Separate or monolithic sketches | **Dual-Compatible Architecture**: Single source of modular logic compiled seamlessly by both **PlatformIO** and **Arduino IDE** ([ADR 0003](docs/adr/0003-dual-build-layout.md)) |
 | **Power Management** | Continuous active execution | **ESP32 Light Sleep**: Subsystems powered down, RAM retained, wakes via timer or BOOT button |
 | **Offline Resilience** | Potential telemetry drop on network failure | **LittleFS Spool Ring Buffer**: Capped at 500 KB FIFO ring buffer (`/spool/pending.jsonl`), preserving records until `200 OK` |
-| **Web Frontend** | Static files or GitHub Pages | **Edge Dashboard**: Integrated Cloudflare Worker frontend showing live station health, metrics cards, latency trends, and 2.4 GHz RF table |
+| **Web Frontends** | Static files or GitHub Pages | **Dual Frontends**: Edge-hosted at Cloudflare Workers + Static mirror deployed via GitHub Actions to GitHub Pages, both supporting direct station routing |
 
 ---
 
@@ -43,17 +54,19 @@ flowchart TD
         Sleep -.->|Timer Wakeup| Boot
     end
 
-    subgraph Backend ["3. Cloudflare Edge Backend"]
+    subgraph Backend ["3. Cloudflare Edge Backend & Dashboards"]
         Worker["Cloudflare Worker<br/>(TypeScript API & Router)"]
         D1[("Cloudflare D1<br/>SQLite Database")]
         Cron["Daily Cron Trigger (00:15 UTC)<br/>- 30-day Raw Purge<br/>- Daily Rollup Aggregation"]
-        UI["Web Dashboard<br/>https://wifi.kreier.workers.dev"]
+        CFUI["Cloudflare Edge UI<br/>https://wifi.kreier.workers.dev"]
+        GHUI["GitHub Pages UI<br/>https://kreier.github.io/wifi"]
 
         Reg --> Worker
         Upload --> Worker
         Worker <--> D1
         Cron --> D1
-        D1 --> UI
+        D1 --> CFUI
+        Worker -.->|API /api/stations| GHUI
     end
 ```
 
@@ -63,6 +76,16 @@ flowchart TD
 
 ```
 kreier/wifi/
+├── .github/
+│   └── workflows/
+│       └── deploy-pages.yml  # GitHub Actions workflow deploying to GitHub Pages
+├── docs/                     # Static GitHub Pages web files & ADRs
+│   ├── index.html            # Standalone responsive web dashboard
+│   ├── 404.html              # SPA client router for direct station routes (e.g. /C-103)
+│   └── adr/                  # Architecture Decision Records
+│       ├── 0001-d1-over-git-storage.md
+│       ├── 0002-per-device-token-provisioning.md
+│       └── 0003-dual-build-layout.md
 ├── firmware/                 # Dual-compatible firmware source
 │   ├── platformio.ini        # PlatformIO targets: t18, devkitv1, t8
 │   ├── src/
@@ -98,11 +121,6 @@ kreier/wifi/
 │       └── frontend.ts       # Responsive single-page dashboard HTML/CSS/JS
 ├── data/                     # Reserved for future permanent telemetry exports
 │   └── .gitkeep
-├── docs/
-│   └── adr/                  # Architecture Decision Records
-│       ├── 0001-d1-over-git-storage.md
-│       ├── 0002-per-device-token-provisioning.md
-│       └── 0003-dual-build-layout.md
 ├── LICENSE                   # Apache 2.0 License
 └── README.md
 ```
@@ -124,39 +142,14 @@ Designed for generic ESP32 modules (4 MB Flash, 520 KB SRAM, no external PSRAM r
 
 ---
 
-## Status LED & Lifecycle Behavior
+## Direct Station Routing
 
-```mermaid
-stateDiagram-v2
-    [*] --> CheckBoot
-    CheckBoot --> PortalMode: Unconfigured OR BOOT held 3s
-    CheckBoot --> MeasureCycle: Configured & Provisioned
+Both dashboards support deep-linking directly to a station's real-time metrics and survey:
 
-    state PortalMode {
-        WaitingClient: LED Blinks at 2 Hz
-        ClientConnected: LED Solid ON (Timeout Paused)
-        WaitingClient --> ClientConnected: Client joins WIFI-Mon-XXXX
-    }
+- **Cloudflare Edge**: `https://wifi.kreier.workers.dev/:station_id` (e.g. [`https://wifi.kreier.workers.dev/C-103`](https://wifi.kreier.workers.dev/C-103))
+- **GitHub Pages**: `https://kreier.github.io/wifi/:station_id` (e.g. [`https://kreier.github.io/wifi/C-103`](https://kreier.github.io/wifi/C-103))
 
-    PortalMode --> RegisterNode: Form Submitted & Saved
-    RegisterNode --> MeasureCycle: Device Token Received (NVS)
-
-    state MeasureCycle {
-        Scan: 2.4 GHz Scan (LED ON)
-        Probe: Assoc + DHCP + 6x HTTP Probes (LED OFF)
-        Spool: Save to /spool/pending.jsonl
-        Upload: POST /data (Bearer Token)
-        Sleep: Light Sleep (LED OFF)
-        Scan --> Probe --> Spool --> Upload --> Sleep
-    }
-
-    Sleep --> MeasureCycle: Timer Wakeup (10 min)
-    Sleep --> PortalMode: BOOT Held 3s
-```
-
-1. **Captive Portal Waiting**: The status LED blinks at **2 Hz** (250 ms ON, 250 ms OFF). A 1-minute timeout counts down.
-2. **Client Connected**: When a smartphone or computer connects to `WIFI-Mon-XXXX`, the 1-minute timeout is **paused**, and the status LED switches to **solid ON**.
-3. **Measurement Cycle**: LED illuminates during the active spectrum scan and turns OFF during network probing and sleep to conserve power.
+Switching stations dynamically updates the URL via `history.pushState` without reloading the page.
 
 ---
 
@@ -167,9 +160,9 @@ To prevent secret leakage from physical extraction of flash dumps:
 2. ESP32 connects to Wi-Fi and issues `POST /register`:
    ```json
    {
-     "station_id": "lab-floor-2",
-     "description": "Lab 2nd floor ceiling probe",
-     "bootstrap_secret": "my-secret-phrase"
+     "station_id": "C-103",
+     "description": "Hung Vuong 1",
+     "bootstrap_secret": "<MASTER_PHRASE>"
    }
    ```
 3. Worker validates `bootstrap_secret === env.MASTER_PHRASE`, generates a cryptographic 32-byte UUID `device_token`, upserts the station in D1, and returns:
@@ -224,23 +217,19 @@ npx wrangler login
 npx wrangler d1 create wifi-mon-db
 
 # Apply schema migrations
-npx wrangler d1 migrations apply wifi-mon-db --local   # For local development
-npx wrangler d1 migrations apply wifi-mon-db --remote  # For production
+npx wrangler d1 migrations apply wifi-mon-db --remote
 ```
-
-Update the `database_id` in [worker/wrangler.toml](worker/wrangler.toml) with the database UUID output from the create step.
 
 ### 3. Set Master Bootstrap Secret
 ```bash
 npx wrangler secret put MASTER_PHRASE
-# Enter your secure bootstrap secret (e.g. 32 random characters)
+# Enter your secure bootstrap secret
 ```
 
-### 4. Deploy Worker & Dashboard
+### 4. Deploy Worker
 ```bash
-npm run deploy
+npx wrangler deploy
 ```
-The dashboard and API will be live at `https://wifi.kreier.workers.dev` (or your custom Worker subdomain).
 
 ---
 
@@ -284,8 +273,8 @@ Registers a new station using the bootstrap secret.
 - **Request Body**:
   ```json
   {
-    "station_id": "lab-floor-2",
-    "description": "Lab 2nd floor ceiling probe",
+    "station_id": "C-103",
+    "description": "Hung Vuong 1",
     "bootstrap_secret": "<MASTER_PHRASE>"
   }
   ```
@@ -293,7 +282,7 @@ Registers a new station using the bootstrap secret.
   ```json
   {
     "success": true,
-    "station_id": "lab-floor-2",
+    "station_id": "C-103",
     "device_token": "d748f220-4f51-4e08-9df8-0d12e6973347"
   }
   ```
@@ -306,9 +295,9 @@ Submits raw telemetry cycle data.
   ```json
   {
     "success": true,
-    "station_id": "lab-floor-2",
-    "inserted_measurements": 2,
-    "inserted_surveys": 14,
+    "station_id": "C-103",
+    "inserted_measurements": 3,
+    "inserted_surveys": 39,
     "cycles_processed": 1
   }
   ```

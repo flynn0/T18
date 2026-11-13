@@ -72,8 +72,9 @@ export function renderDashboardHtml(): string {
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      flex-wrap: wrap;
     }
-    select, button {
+    select, button, a.nav-link {
       background: #1e293b;
       color: var(--text-main);
       border: 1px solid var(--card-border);
@@ -82,8 +83,12 @@ export function renderDashboardHtml(): string {
       font-size: 0.875rem;
       outline: none;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
     }
-    select:focus, button:hover {
+    select:focus, button:hover, a.nav-link:hover {
       border-color: var(--primary);
     }
     button.primary-btn {
@@ -306,17 +311,21 @@ export function renderDashboardHtml(): string {
       color: var(--text-muted);
       font-size: 0.8rem;
       margin-top: auto;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
     footer a { color: var(--primary); text-decoration: none; }
   </style>
 </head>
 <body>
   <header>
-    <a href="/" class="brand">
+    <a href="./" class="brand" id="brandLink">
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.1.0</span>
+        <span class="brand-tag">v0.2.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -382,37 +391,103 @@ export function renderDashboardHtml(): string {
   </main>
 
   <footer>
-    <p>Powered by Cloudflare Workers & D1 | <a href="https://github.com/kreier/wifi" target="_blank">kreier/wifi v0.1.0</a></p>
+    <span>Host: <strong id="hostIndicator">Cloudflare Worker</strong></span>
+    <span>|</span>
+    <a href="https://wifi.kreier.workers.dev" id="cfWorkerLink">Cloudflare Dashboard</a>
+    <span>|</span>
+    <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
+    <span>|</span>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.2.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
+    // Dynamically resolve API base URL (relative when on workers.dev, absolute when on GitHub Pages)
+    const API_BASE = window.location.hostname.includes("workers.dev")
+      ? ""
+      : "https://wifi.kreier.workers.dev";
+
     let currentStationId = "";
     let chartInstance = null;
 
+    // Detect if running on GitHub Pages
+    const isGhPages = window.location.pathname.startsWith("/wifi");
+    const basePath = isGhPages ? "/wifi/" : "/";
+    document.getElementById("brandLink").href = basePath;
+    document.getElementById("hostIndicator").innerText = isGhPages ? "GitHub Pages" : "Cloudflare Worker";
+
+    function getRequestedStationId() {
+      // 1. Query parameter override: ?station=C-103 or ?id=C-103
+      const params = new URLSearchParams(window.location.search);
+      const qStation = params.get("station") || params.get("id");
+      if (qStation && qStation.trim()) return qStation.trim();
+
+      // 2. Direct path routing: e.g. /C-103 or /wifi/C-103
+      let path = window.location.pathname || "";
+      path = path.replace(/\\/+$/, ""); // trim trailing slash
+      if (path.startsWith("/wifi")) {
+        path = path.substring(5);
+      }
+      path = path.replace(/^\\/+/, ""); // trim leading slash
+
+      if (path && path !== "index.html" && path !== "404.html") {
+        return decodeURIComponent(path);
+      }
+      return "";
+    }
+
     async function loadStations() {
       try {
-        const res = await fetch("/api/stations");
+        const reqStation = getRequestedStationId();
+        const res = await fetch(API_BASE + "/api/stations");
         const data = await res.json();
         const select = document.getElementById("stationSelect");
         select.innerHTML = "";
 
         if (!data.stations || data.stations.length === 0) {
+          if (reqStation) {
+            const opt = document.createElement("option");
+            opt.value = reqStation;
+            opt.innerText = reqStation;
+            select.appendChild(opt);
+            currentStationId = reqStation;
+            loadStationDetails(reqStation);
+            return;
+          }
           select.innerHTML = "<option value=''>No stations found</option>";
           document.getElementById("stTitle").innerText = "No Stations Registered";
           document.getElementById("stDesc").innerText = "Provision an ESP32 via captive portal to begin monitoring.";
           return;
         }
 
+        let matched = false;
         data.stations.forEach(st => {
           const opt = document.createElement("option");
           opt.value = st.station_id;
           opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
+          if (reqStation && st.station_id.toLowerCase() === reqStation.toLowerCase()) {
+            opt.selected = true;
+            matched = true;
+            currentStationId = st.station_id;
+          }
           select.appendChild(opt);
         });
 
-        currentStationId = data.stations[0].station_id;
-        loadStationDetails(currentStationId);
+        if (reqStation && !matched) {
+          // Explicitly requested station exists or is querying directly
+          const opt = document.createElement("option");
+          opt.value = reqStation;
+          opt.innerText = reqStation;
+          opt.selected = true;
+          select.prepend(opt);
+          currentStationId = reqStation;
+        } else if (!currentStationId && data.stations.length > 0) {
+          currentStationId = data.stations[0].station_id;
+        }
+
+        if (currentStationId) {
+          loadStationDetails(currentStationId);
+        }
       } catch (err) {
         console.error("Failed to load stations:", err);
       }
@@ -421,8 +496,22 @@ export function renderDashboardHtml(): string {
     function switchStation(id) {
       if (!id) return;
       currentStationId = id;
+      const targetPath = basePath + (id === "" ? "" : encodeURIComponent(id));
+      if (window.location.pathname !== targetPath) {
+        history.pushState(null, "", targetPath);
+      }
       loadStationDetails(id);
     }
+
+    window.addEventListener("popstate", () => {
+      const req = getRequestedStationId();
+      if (req && req !== currentStationId) {
+        currentStationId = req;
+        const sel = document.getElementById("stationSelect");
+        if (sel) sel.value = req;
+        loadStationDetails(req);
+      }
+    });
 
     function refreshData() {
       if (currentStationId) {
@@ -432,12 +521,12 @@ export function renderDashboardHtml(): string {
 
     function exportData(fmt) {
       if (!currentStationId) return;
-      window.open("/api/export?station_id=" + encodeURIComponent(currentStationId) + "&format=" + fmt);
+      window.open(API_BASE + "/api/export?station_id=" + encodeURIComponent(currentStationId) + "&format=" + fmt);
     }
 
     async function loadStationDetails(stationId) {
       try {
-        const res = await fetch("/api/station/" + encodeURIComponent(stationId));
+        const res = await fetch(API_BASE + "/api/station/" + encodeURIComponent(stationId));
         if (!res.ok) throw new Error("Station fetch failed");
         const data = await res.json();
 
