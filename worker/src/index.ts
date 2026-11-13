@@ -49,8 +49,8 @@ export default {
       }
 
       // 4. Web Dashboard Frontend
-      if (request.method === "GET" && (path === "/" || path === "/index.html")) {
-        return new Response(renderDashboardHtml(), {
+      if ((request.method === "GET" || request.method === "HEAD") && (path === "/" || path === "/index.html")) {
+        return new Response(request.method === "HEAD" ? null : renderDashboardHtml(), {
           status: 200,
           headers: {
             "Content-Type": "text/html; charset=utf-8",

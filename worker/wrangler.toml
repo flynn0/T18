@@ -1,17 +1,17 @@
-name = "wifi-mon-worker"
+name = "wifi"
 main = "src/index.ts"
 compatibility_date = "2024-05-01"
+account_id = "545c9b44c3df46e24d2ae837aebfa7b6"
+workers_dev = true
 
 [vars]
 ENVIRONMENT = "production"
-# Set MASTER_PHRASE in production using: wrangler secret put MASTER_PHRASE
-MASTER_PHRASE = "changeme-bootstrap-secret"
 
 # D1 Database Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "wifi-mon-db"
-database_id = "wifi-mon-db-id"
+database_id = "75f3f8a5-25d7-427f-a1a0-ea0be410e2f5"
 migrations_dir = "migrations"
 
 # Cron trigger: Runs every day at 00:15 UTC for 30-day data rotation & daily summarization
