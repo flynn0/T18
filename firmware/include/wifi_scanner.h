@@ -72,11 +72,14 @@ public:
 
     static String determinePhyMode(wifi_auth_mode_t auth, uint8_t channel) {
         // Standard ESP32 is 2.4 GHz supporting 802.11b (WIFI_1), 802.11g (WIFI_3), 802.11n (WIFI_4)
-        if (auth == WIFI_AUTH_WEP) {
-            return "WIFI_1"; // 802.11b legacy
+        if (channel > 13) {
+            return "WIFI_1"; // Channel 14 is DSSS only / 802.11b legacy (Japan TELEC)
         }
-        if (auth == WIFI_AUTH_OPEN && channel > 13) {
-            return "WIFI_1";
+        if (auth == WIFI_AUTH_WEP) {
+            // WEP was supported on both 802.11b and 802.11g (up to 54 Mbps ERP-OFDM).
+            // 802.11n strictly prohibits WEP with High Throughput (HT) rates.
+            // On channels 1-13, 2.4 GHz WEP access points operate as 802.11g (Wi-Fi 3).
+            return "WIFI_3"; // 802.11g (Wi-Fi 3)
         }
         // WPA2 and WPA3 networks on 2.4GHz almost universally support 802.11n HT20
         return "WIFI_4"; // 802.11n (Wi-Fi 4)

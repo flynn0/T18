@@ -44,6 +44,16 @@ export interface ScanSurveyRecord {
   band: string | null;
 }
 
+export interface InactiveSurveyRecord {
+  ssid: string | null;
+  bssid: string | null;
+  channel: number | null;
+  phy_mode: string | null;
+  encryption: string | null;
+  band: string | null;
+  last_seen: number;
+}
+
 export interface DailySummaryRecord {
   id?: number;
   station_id: string;

@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -13,13 +13,13 @@
 
 **Direct Station Access**:
 Both the Cloudflare Worker and GitHub Pages support deep-linking directly to specific monitoring stations:
-- View Station **C-103**: [https://wifi.kreier.workers.dev/C-103](https://wifi.kreier.workers.dev/C-103) or [https://kreier.github.io/wifi/C-103](https://kreier.github.io/wifi/C-103)
+- View Station **9E1-9**: [https://wifi.kreier.workers.dev/9E1-9](https://wifi.kreier.workers.dev/9E1-9) or [https://kreier.github.io/wifi/9E1-9](https://kreier.github.io/wifi/9E1-9)
 
 ---
 
 ## Evolution from `kreier/T18`
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.2.0`) |
+| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.3.0`) |
 | :--- | :--- | :--- |
 | **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
 | **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |
@@ -81,7 +81,7 @@ kreier/wifi/
 │       └── deploy-pages.yml  # GitHub Actions workflow deploying to GitHub Pages
 ├── docs/                     # Static GitHub Pages web files & ADRs
 │   ├── index.html            # Standalone responsive web dashboard
-│   ├── 404.html              # SPA client router for direct station routes (e.g. /C-103)
+│   ├── 404.html              # SPA client router for direct station routes (e.g. /9E1-9)
 │   └── adr/                  # Architecture Decision Records
 │       ├── 0001-d1-over-git-storage.md
 │       ├── 0002-per-device-token-provisioning.md
@@ -146,8 +146,8 @@ Designed for generic ESP32 modules (4 MB Flash, 520 KB SRAM, no external PSRAM r
 
 Both dashboards support deep-linking directly to a station's real-time metrics and survey:
 
-- **Cloudflare Edge**: `https://wifi.kreier.workers.dev/:station_id` (e.g. [`https://wifi.kreier.workers.dev/C-103`](https://wifi.kreier.workers.dev/C-103))
-- **GitHub Pages**: `https://kreier.github.io/wifi/:station_id` (e.g. [`https://kreier.github.io/wifi/C-103`](https://kreier.github.io/wifi/C-103))
+- **Cloudflare Edge**: `https://wifi.kreier.workers.dev/:station_id` (e.g. [`https://wifi.kreier.workers.dev/9E1-9`](https://wifi.kreier.workers.dev/9E1-9))
+- **GitHub Pages**: `https://kreier.github.io/wifi/:station_id` (e.g. [`https://kreier.github.io/wifi/9E1-9`](https://kreier.github.io/wifi/9E1-9))
 
 Switching stations dynamically updates the URL via `history.pushState` without reloading the page.
 
@@ -160,8 +160,8 @@ To prevent secret leakage from physical extraction of flash dumps:
 2. ESP32 connects to Wi-Fi and issues `POST /register`:
    ```json
    {
-     "station_id": "C-103",
-     "description": "Hung Vuong 1",
+     "station_id": "9E1-9",
+     "description": "Sky Garden",
      "bootstrap_secret": "<MASTER_PHRASE>"
    }
    ```
@@ -273,8 +273,8 @@ Registers a new station using the bootstrap secret.
 - **Request Body**:
   ```json
   {
-    "station_id": "C-103",
-    "description": "Hung Vuong 1",
+    "station_id": "9E1-9",
+    "description": "Sky Garden",
     "bootstrap_secret": "<MASTER_PHRASE>"
   }
   ```
@@ -282,7 +282,7 @@ Registers a new station using the bootstrap secret.
   ```json
   {
     "success": true,
-    "station_id": "C-103",
+    "station_id": "9E1-9",
     "device_token": "d748f220-4f51-4e08-9df8-0d12e6973347"
   }
   ```
@@ -295,7 +295,7 @@ Submits raw telemetry cycle data.
   ```json
   {
     "success": true,
-    "station_id": "C-103",
+    "station_id": "9E1-9",
     "inserted_measurements": 3,
     "inserted_surveys": 39,
     "cycles_processed": 1

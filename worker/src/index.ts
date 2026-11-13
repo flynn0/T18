@@ -48,7 +48,7 @@ export default {
         return await handleApiExport(request, env);
       }
 
-      // 4. Web Dashboard Frontend (Root or direct station route e.g. /C-103)
+      // 4. Web Dashboard Frontend (Root or direct station route e.g. /9E1-9)
       if ((request.method === "GET" || request.method === "HEAD") && !path.startsWith("/api/")) {
         return new Response(request.method === "HEAD" ? null : renderDashboardHtml(), {
           status: 200,

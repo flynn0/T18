@@ -1,4 +1,4 @@
-import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord } from "./types";
+import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord } from "./types";
 
 export class Database {
   private db: D1Database;
@@ -146,6 +146,38 @@ export class Database {
       .prepare("SELECT * FROM scan_surveys WHERE station_id = ? AND timestamp = ? ORDER BY rssi DESC")
       .bind(stationId, latestTime.max_t)
       .all<ScanSurveyRecord>();
+    return result.results;
+  }
+
+  async getInactiveSurveys(stationId: string): Promise<InactiveSurveyRecord[]> {
+    const latestTime = await this.db
+      .prepare("SELECT MAX(timestamp) as max_t FROM scan_surveys WHERE station_id = ?")
+      .bind(stationId)
+      .first<{ max_t: number | null }>();
+
+    if (!latestTime || !latestTime.max_t) return [];
+
+    const result = await this.db
+      .prepare(`
+        SELECT 
+          s.ssid,
+          s.bssid,
+          s.channel,
+          s.phy_mode,
+          s.encryption,
+          s.band,
+          MAX(s.timestamp) AS last_seen
+        FROM scan_surveys s
+        WHERE s.station_id = ?
+          AND s.bssid IS NOT NULL
+          AND s.bssid NOT IN (
+            SELECT bssid FROM scan_surveys WHERE station_id = ? AND timestamp = ? AND bssid IS NOT NULL
+          )
+        GROUP BY s.bssid
+        ORDER BY last_seen DESC
+      `)
+      .bind(stationId, stationId, latestTime.max_t)
+      .all<InactiveSurveyRecord>();
     return result.results;
   }
 

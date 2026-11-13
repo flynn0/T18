@@ -324,7 +324,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.2.0</span>
+        <span class="brand-tag">v0.3.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -367,7 +367,7 @@
     <div class="table-container">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="font-size: 1.1rem; font-weight: 600;">Surrounding 2.4 GHz Spectrum Survey</h3>
-        <span id="surveyCountBadge" style="font-size: 0.8rem; color: var(--primary);">0 APs Detected</span>
+        <span id="surveyCountBadge" style="font-size: 0.8rem; font-weight: 600; color: var(--primary);">0 APs Detected</span>
       </div>
       <table>
         <thead>
@@ -379,13 +379,41 @@
             <th>Channel</th>
             <th>Phy Mode</th>
             <th>Security</th>
-            <th>Band</th>
+            <th>Last Seen</th>
           </tr>
         </thead>
         <tbody id="surveyTableBody">
           <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No Wi-Fi scan data available yet.</td></tr>
         </tbody>
       </table>
+
+      <!-- Previously Detected Networks Section -->
+      <div id="inactiveSurveySection" style="display: none; margin-top: 1.75rem; border-top: 1px solid var(--card-border); padding-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0;">Previously Detected Networks</h4>
+            <span id="inactiveCountBadge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Missing</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>SSID</th>
+              <th>BSSID</th>
+              <th>Signal (RSSI)</th>
+              <th>Quality</th>
+              <th>Channel</th>
+              <th>Phy Mode</th>
+              <th>Security</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody id="inactiveSurveyBody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
 
@@ -396,7 +424,7 @@
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.2.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.3.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -416,12 +444,12 @@
     document.getElementById("hostIndicator").innerText = isGhPages ? "GitHub Pages" : "Cloudflare Worker";
 
     function getRequestedStationId() {
-      // 1. Query parameter override: ?station=C-103 or ?id=C-103
+      // 1. Query parameter override: ?station=9E1-9 or ?id=9E1-9
       const params = new URLSearchParams(window.location.search);
       const qStation = params.get("station") || params.get("id");
       if (qStation && qStation.trim()) return qStation.trim();
 
-      // 2. Direct path routing: e.g. /C-103 or /wifi/C-103
+      // 2. Direct path routing: e.g. /9E1-9 or /wifi/9E1-9
       let path = window.location.pathname || "";
       path = path.replace(/\/+$/, ""); // trim trailing slash
       if (path.startsWith("/wifi")) {
@@ -612,7 +640,14 @@
         const tbody = document.getElementById("surveyTableBody");
         tbody.innerHTML = "";
         const surveys = data.latest_survey || [];
-        document.getElementById("surveyCountBadge").innerText = surveys.length + " APs Detected";
+        const inactive = data.inactive_survey || [];
+        const totalAps = surveys.length + inactive.length;
+
+        if (inactive.length > 0) {
+          document.getElementById("surveyCountBadge").innerText = surveys.length + "/" + totalAps + " APs Detected";
+        } else {
+          document.getElementById("surveyCountBadge").innerText = surveys.length + " APs Detected";
+        }
 
         if (surveys.length > 0) {
           surveys.forEach(s => {
@@ -634,12 +669,38 @@
               <td>Ch ${s.channel || "?"}</td>
               <td><span style="background:#1f293d; padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
               <td>${s.encryption || 'Open'}</td>
-              <td>${s.band || '2.4 GHz'}</td>
+              <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600; font-size: 0.75rem;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>Active</span></td>
             `;
             tbody.appendChild(tr);
           });
         } else {
           tbody.innerHTML = "<tr><td colspan='8' style='text-align: center; color: var(--text-muted); padding: 2rem;'>No surrounding APs scanned yet.</td></tr>";
+        }
+
+        // 3b. Render Previously Detected Networks (Inactive)
+        const inactiveSection = document.getElementById("inactiveSurveySection");
+        const inactiveBody = document.getElementById("inactiveSurveyBody");
+        if (inactiveBody) inactiveBody.innerHTML = "";
+        if (inactive.length > 0 && inactiveSection && inactiveBody) {
+          inactiveSection.style.display = "block";
+          document.getElementById("inactiveCountBadge").innerText = inactive.length + " Missing";
+          inactive.forEach(s => {
+            const tr = document.createElement("tr");
+            tr.style.opacity = "0.78";
+            tr.innerHTML = `
+              <td style="font-weight: 500; color: var(--text-muted);">${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
+              <td style="color: var(--text-muted);">—</td>
+              <td style="color: var(--text-muted);">—</td>
+              <td>Ch ${s.channel || "?"}</td>
+              <td><span style="background:#1f293d; color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
+              <td style="color: var(--text-muted);">${s.encryption || 'Open'}</td>
+              <td><span title="${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">${formatLastSeen(s.last_seen)}</span></td>
+            `;
+            inactiveBody.appendChild(tr);
+          });
+        } else if (inactiveSection) {
+          inactiveSection.style.display = "none";
         }
 
         // 4. Update Historical Chart
@@ -648,6 +709,17 @@
       } catch (err) {
         console.error("Failed to load station details:", err);
       }
+    }
+
+    function formatLastSeen(ts) {
+      if (!ts) return "Unknown";
+      const now = Math.floor(Date.now() / 1000);
+      const diff = Math.max(0, now - ts);
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+      if (diff < 86400) return Math.floor(diff / 3600) + "h " + Math.floor((diff % 3600) / 60) + "m ago";
+      const days = Math.floor(diff / 86400);
+      return days + "d ago";
     }
 
     function updateTrendChart(history) {

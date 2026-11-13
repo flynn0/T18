@@ -38,6 +38,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
 
   const latestMeasurements = await db.getLatestMeasurements(stationId);
   const latestSurvey = await db.getLatestSurvey(stationId);
+  const inactiveSurvey = await db.getInactiveSurveys(stationId);
   const recentMeasurements = await db.getRecentMeasurements(stationId, 144); // Last 24 hours of 10-min samples
   const dailySummaries = await db.getDailySummaries(stationId, 30);
 
@@ -46,6 +47,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
       station: publicMeta,
       latest_measurements: latestMeasurements,
       latest_survey: latestSurvey,
+      inactive_survey: inactiveSurvey,
       recent_history: recentMeasurements,
       daily_summaries: dailySummaries
     }),
