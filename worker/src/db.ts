@@ -166,6 +166,8 @@ export class Database {
           s.phy_mode,
           s.encryption,
           s.band,
+          MAX(s.rssi) AS rssi,
+          MAX(s.quality) AS quality,
           MAX(s.timestamp) AS last_seen
         FROM scan_surveys s
         WHERE s.station_id = ?

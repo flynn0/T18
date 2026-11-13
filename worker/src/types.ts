@@ -51,6 +51,8 @@ export interface InactiveSurveyRecord {
   phy_mode: string | null;
   encryption: string | null;
   band: string | null;
+  rssi?: number | null;
+  quality?: number | null;
   last_seen: number;
 }
 

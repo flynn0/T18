@@ -325,7 +325,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.3.0</span>
+        <span class="brand-tag">v0.4.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -358,10 +358,120 @@ export function renderDashboardHtml(): string {
     <!-- Historical Trends (Chart) -->
     <div class="chart-container">
       <div class="chart-header">
-        <h3 style="font-size: 1.1rem; font-weight: 600;">24-Hour Network Latency Trends</h3>
-        <span style="font-size: 0.8rem; color: var(--text-muted);">10-Minute Polling Cadence</span>
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 600;">24-Hour Network Latency Trends</h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">10-Minute Polling Cadence</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <label for="networkFilterSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Network:</label>
+          <select id="networkFilterSelect" onchange="onNetworkFilterChange(this.value)">
+            <option value="combined">Combined (All Networks)</option>
+          </select>
+        </div>
       </div>
       <canvas id="trendChart"></canvas>
+    </div>
+
+    <!-- Individual Target Latency Graphs -->
+    <div id="targetGraphsSection">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <h3 style="font-size: 1.05rem; font-weight: 600;">Individual Probe Latencies</h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">24-hour endpoint performance per target</span>
+        </div>
+        <span id="targetFilterBadge" style="font-size: 0.75rem; background: var(--primary-dim); color: var(--primary); padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;">Combined</span>
+      </div>
+      <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem;">
+        <!-- Cloudflare -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></span>
+              <span class="card-title" style="color: #38bdf8; font-size: 0.95rem;">Cloudflare</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">1.1.1.1</span>
+            </div>
+            <span id="stat-cloudflare" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-cloudflare"></canvas>
+          </div>
+        </div>
+
+        <!-- Google -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+              <span class="card-title" style="color: #10b981; font-size: 0.95rem;">Google</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">generate_204</span>
+            </div>
+            <span id="stat-google" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-google"></canvas>
+          </div>
+        </div>
+
+        <!-- Microsoft -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #60a5fa;"></span>
+              <span class="card-title" style="color: #60a5fa; font-size: 0.95rem;">Microsoft</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">connecttest</span>
+            </div>
+            <span id="stat-microsoft" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-microsoft"></canvas>
+          </div>
+        </div>
+
+        <!-- Apple -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #c084fc;"></span>
+              <span class="card-title" style="color: #c084fc; font-size: 0.95rem;">Apple</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">hotspot-detect</span>
+            </div>
+            <span id="stat-apple" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-apple"></canvas>
+          </div>
+        </div>
+
+        <!-- Netflix -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #f87171;"></span>
+              <span class="card-title" style="color: #f87171; font-size: 0.95rem;">Netflix</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">fast.com</span>
+            </div>
+            <span id="stat-netflix" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-netflix"></canvas>
+          </div>
+        </div>
+
+        <!-- Facebook -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+              <span class="card-title" style="color: #3b82f6; font-size: 0.95rem;">Facebook</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">connectivity</span>
+            </div>
+            <span id="stat-facebook" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div style="height: 170px; position: relative;">
+            <canvas id="chart-facebook"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Surrounding 2.4 GHz Scan Survey Table -->
@@ -402,8 +512,8 @@ export function renderDashboardHtml(): string {
             <tr>
               <th>SSID</th>
               <th>BSSID</th>
-              <th>Signal (RSSI)</th>
-              <th>Quality</th>
+              <th>Signal (Max RSSI)</th>
+              <th>Max Quality</th>
               <th>Channel</th>
               <th>Phy Mode</th>
               <th>Security</th>
@@ -425,7 +535,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.3.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.4.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -436,7 +546,44 @@ export function renderDashboardHtml(): string {
       : "https://wifi.kreier.workers.dev";
 
     let currentStationId = "";
-    let chartInstance = null;
+    let currentStationData = null;
+    let selectedNetworkFilter = "combined";
+    let mainChartInstance = null;
+    const targetChartInstances = {
+      cloudflare: null,
+      google: null,
+      microsoft: null,
+      apple: null,
+      netflix: null,
+      facebook: null
+    };
+
+    const TARGET_CONFIG = [
+      { key: "cloudflare", field: "cloudflare_ms", name: "Cloudflare", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.12)" },
+      { key: "google", field: "google_ms", name: "Google", color: "#10b981", bg: "rgba(16, 185, 129, 0.12)" },
+      { key: "microsoft", field: "microsoft_ms", name: "Microsoft", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
+      { key: "apple", field: "apple_ms", name: "Apple", color: "#c084fc", bg: "rgba(192, 132, 252, 0.12)" },
+      { key: "netflix", field: "netflix_ms", name: "Netflix", color: "#f87171", bg: "rgba(248, 113, 113, 0.12)" },
+      { key: "facebook", field: "facebook_ms", name: "Facebook", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.12)" }
+    ];
+
+    const NETWORK_PALETTE = ["#38bdf8", "#a855f7", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#84cc16"];
+
+    function getPillClass(ms) {
+      if (ms === null || ms === undefined || ms < 0) return "";
+      if (ms <= 50) return "fast";
+      if (ms <= 150) return "med";
+      return "slow";
+    }
+
+    function fmtMs(v) {
+      return (v !== null && v !== undefined && v >= 0) ? v + " ms" : "Timeout";
+    }
+
+    function onNetworkFilterChange(val) {
+      selectedNetworkFilter = val;
+      renderAllTrendCharts();
+    }
 
     // Detect if running on GitHub Pages
     const isGhPages = window.location.pathname.startsWith("/wifi");
@@ -585,15 +732,15 @@ export function renderDashboardHtml(): string {
           data.latest_measurements.forEach(net => {
             const card = document.createElement("div");
             card.className = "card";
-
-            const getPillClass = (ms) => {
-              if (ms === null || ms < 0) return "";
-              if (ms <= 50) return "fast";
-              if (ms <= 150) return "med";
-              return "slow";
+            card.style.cursor = "pointer";
+            card.title = "Click to filter latency trends to " + net.ssid;
+            card.onclick = () => {
+              const sel = document.getElementById("networkFilterSelect");
+              if (sel) {
+                sel.value = net.ssid;
+                onNetworkFilterChange(net.ssid);
+              }
             };
-
-            const fmtMs = (v) => (v !== null && v >= 0) ? v + " ms" : "Timeout";
 
             card.innerHTML = \`
               <div class="card-header">
@@ -688,11 +835,21 @@ export function renderDashboardHtml(): string {
           inactive.forEach(s => {
             const tr = document.createElement("tr");
             tr.style.opacity = "0.78";
+            const rssi = (s.rssi !== null && s.rssi !== undefined) ? s.rssi : null;
+            const q = (s.quality !== null && s.quality !== undefined) ? s.quality : (rssi !== null ? Math.min(100, Math.max(0, 2 * (rssi + 100))) : null);
+            const barColor = rssi !== null ? (rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444")) : "#9ca3af";
+
             tr.innerHTML = \`
               <td style="font-weight: 500; color: var(--text-muted);">\${s.ssid}</td>
               <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">\${s.bssid || "N/A"}</td>
-              <td style="color: var(--text-muted);">—</td>
-              <td style="color: var(--text-muted);">—</td>
+              <td>
+                \${rssi !== null ? \`
+                <div class="rssi-bar-wrap">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: \${q}%; background: \${barColor};"></div></div>
+                  <span title="Max signal recorded">\${rssi} dBm</span>
+                </div>\` : '<span style="color: var(--text-muted);">—</span>'}
+              </td>
+              <td>\${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
               <td>Ch \${s.channel || "?"}</td>
               <td><span style="background:#1f293d; color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
               <td style="color: var(--text-muted);">\${s.encryption || 'Open'}</td>
@@ -704,8 +861,35 @@ export function renderDashboardHtml(): string {
           inactiveSection.style.display = "none";
         }
 
-        // 4. Update Historical Chart
-        updateTrendChart(data.recent_history || []);
+        // 4. Update Network Selector & Trend Charts
+        currentStationData = data;
+        const history = data.recent_history || [];
+        const latest = data.latest_measurements || [];
+        const netSet = new Set();
+        latest.forEach(m => { if (m.ssid) netSet.add(m.ssid); });
+        history.forEach(h => { if (h.ssid) netSet.add(h.ssid); });
+        const networks = Array.from(netSet);
+
+        const filterSel = document.getElementById("networkFilterSelect");
+        if (filterSel) {
+          const prevVal = filterSel.value || selectedNetworkFilter;
+          filterSel.innerHTML = '<option value="combined">Combined (All Networks)</option>';
+          networks.forEach(net => {
+            const opt = document.createElement("option");
+            opt.value = net;
+            opt.innerText = net;
+            filterSel.appendChild(opt);
+          });
+          if (networks.includes(prevVal)) {
+            filterSel.value = prevVal;
+            selectedNetworkFilter = prevVal;
+          } else {
+            filterSel.value = "combined";
+            selectedNetworkFilter = "combined";
+          }
+        }
+
+        renderAllTrendCharts();
 
       } catch (err) {
         console.error("Failed to load station details:", err);
@@ -723,65 +907,116 @@ export function renderDashboardHtml(): string {
       return days + "d ago";
     }
 
-    function updateTrendChart(history) {
+    function renderAllTrendCharts() {
+      if (!currentStationData) return;
+      const history = currentStationData.recent_history || [];
+      const latest = currentStationData.latest_measurements || [];
+
+      const netSet = new Set();
+      latest.forEach(m => { if (m.ssid) netSet.add(m.ssid); });
+      history.forEach(h => { if (h.ssid) netSet.add(h.ssid); });
+      const networks = Array.from(netSet);
+
+      const badge = document.getElementById("targetFilterBadge");
+      if (badge) {
+        if (selectedNetworkFilter === "combined") {
+          badge.innerText = networks.length > 1 ? ("Combined (" + networks.length + " Networks)") : "Combined";
+        } else {
+          badge.innerText = selectedNetworkFilter;
+        }
+      }
+
+      // Group history into 10-minute buckets (600s)
+      const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+      const bucketMap = new Map();
+      sortedHistory.forEach(pt => {
+        const bKey = Math.floor(pt.timestamp / 600) * 600;
+        if (!bucketMap.has(bKey)) {
+          bucketMap.set(bKey, []);
+        }
+        bucketMap.get(bKey).push(pt);
+      });
+
+      const sortedBuckets = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+      const labels = sortedBuckets.map(bKey => {
+        const d = new Date(bKey * 1000);
+        return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+      });
+
+      // 1. Render Main Multi-Target Overview Chart
+      renderMainOverviewChart(labels, sortedBuckets, bucketMap, networks);
+
+      // 2. Render 6 Individual Target Charts
+      TARGET_CONFIG.forEach(target => {
+        renderIndividualTargetChart(target, labels, sortedBuckets, bucketMap, networks);
+      });
+    }
+
+    function renderMainOverviewChart(labels, sortedBuckets, bucketMap, networks) {
       const ctx = document.getElementById("trendChart");
       if (!ctx) return;
 
-      const labels = [];
-      const cfLatency = [];
-      const googleLatency = [];
-      const assocTime = [];
+      const datasets = [];
 
-      history.forEach(pt => {
-        const d = new Date(pt.timestamp * 1000);
-        labels.push(d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0'));
-        cfLatency.push(pt.cloudflare_ms >= 0 ? pt.cloudflare_ms : null);
-        googleLatency.push(pt.google_ms >= 0 ? pt.google_ms : null);
-        assocTime.push(pt.assoc_ms >= 0 ? pt.assoc_ms : null);
+      TARGET_CONFIG.forEach(target => {
+        const data = sortedBuckets.map(bKey => {
+          const pts = bucketMap.get(bKey) || [];
+          const matching = (selectedNetworkFilter === "combined")
+            ? pts
+            : pts.filter(p => p.ssid === selectedNetworkFilter);
+          const vals = matching
+            .map(p => p[target.field])
+            .filter(v => v !== null && v !== undefined && v >= 0);
+          if (vals.length === 0) return null;
+          return Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+        });
+
+        datasets.push({
+          label: target.name + ' (ms)',
+          data: data,
+          borderColor: target.color,
+          backgroundColor: target.bg,
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 2
+        });
       });
 
-      if (chartInstance) {
-        chartInstance.destroy();
+      // Association Time
+      const assocData = sortedBuckets.map(bKey => {
+        const pts = bucketMap.get(bKey) || [];
+        const matching = (selectedNetworkFilter === "combined")
+          ? pts
+          : pts.filter(p => p.ssid === selectedNetworkFilter);
+        const vals = matching
+          .map(p => p.assoc_ms)
+          .filter(v => v !== null && v !== undefined && v >= 0);
+        if (vals.length === 0) return null;
+        return Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+      });
+
+      datasets.push({
+        label: 'Association Time (ms)',
+        data: assocData,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderDash: [5, 5],
+        tension: 0.3,
+        pointRadius: 2,
+        borderWidth: 1.5
+      });
+
+      if (mainChartInstance) {
+        mainChartInstance.destroy();
       }
 
-      chartInstance = new Chart(ctx, {
+      mainChartInstance = new Chart(ctx, {
         type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Cloudflare (ms)',
-              data: cfLatency,
-              borderColor: '#38bdf8',
-              backgroundColor: 'rgba(56, 189, 248, 0.1)',
-              tension: 0.3,
-              pointRadius: 2,
-              borderWidth: 2
-            },
-            {
-              label: 'Google (ms)',
-              data: googleLatency,
-              borderColor: '#10b981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              tension: 0.3,
-              pointRadius: 2,
-              borderWidth: 2
-            },
-            {
-              label: 'Association Time (ms)',
-              data: assocTime,
-              borderColor: '#f59e0b',
-              backgroundColor: 'rgba(245, 158, 11, 0.1)',
-              borderDash: [5, 5],
-              tension: 0.3,
-              pointRadius: 2,
-              borderWidth: 1.5
-            }
-          ]
-        },
+        data: { labels: labels, datasets: datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
               labels: { color: '#9ca3af', boxWidth: 12 }
@@ -795,6 +1030,108 @@ export function renderDashboardHtml(): string {
             y: {
               grid: { color: 'rgba(255, 255, 255, 0.05)' },
               ticks: { color: '#9ca3af' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderIndividualTargetChart(target, labels, sortedBuckets, bucketMap, networks) {
+      const canvasId = "chart-" + target.key;
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+
+      const datasets = [];
+      const validPoints = [];
+
+      if (selectedNetworkFilter === "combined" && networks.length > 1) {
+        networks.forEach((netName, idx) => {
+          const color = NETWORK_PALETTE[idx % NETWORK_PALETTE.length];
+          const data = sortedBuckets.map(bKey => {
+            const pts = bucketMap.get(bKey) || [];
+            const p = pts.find(item => item.ssid === netName);
+            if (p && p[target.field] !== null && p[target.field] !== undefined && p[target.field] >= 0) {
+              validPoints.push(p[target.field]);
+              return p[target.field];
+            }
+            return null;
+          });
+
+          datasets.push({
+            label: netName,
+            data: data,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            pointRadius: 2,
+            borderWidth: 1.8
+          });
+        });
+      } else {
+        const data = sortedBuckets.map(bKey => {
+          const pts = bucketMap.get(bKey) || [];
+          const matching = (selectedNetworkFilter === "combined")
+            ? pts
+            : pts.filter(p => p.ssid === selectedNetworkFilter);
+          const vals = matching
+            .map(p => p[target.field])
+            .filter(v => v !== null && v !== undefined && v >= 0);
+          if (vals.length === 0) return null;
+          const avg = Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+          validPoints.push(avg);
+          return avg;
+        });
+
+        datasets.push({
+          label: (selectedNetworkFilter === "combined" ? "Combined" : selectedNetworkFilter) + " (ms)",
+          data: data,
+          borderColor: target.color,
+          backgroundColor: target.bg,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 2
+        });
+      }
+
+      const statEl = document.getElementById("stat-" + target.key);
+      if (statEl) {
+        if (validPoints.length > 0) {
+          const latest = validPoints[validPoints.length - 1];
+          const avg = Math.round(validPoints.reduce((sum, v) => sum + v, 0) / validPoints.length);
+          const min = Math.min(...validPoints);
+          statEl.innerHTML = \`<span class="pill-val \${getPillClass(latest)}">\${latest} ms</span> <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">(avg \${avg} | min \${min})</span>\`;
+        } else {
+          statEl.innerHTML = '<span style="color:var(--text-muted);">—</span>';
+        }
+      }
+
+      if (targetChartInstances[target.key]) {
+        targetChartInstances[target.key].destroy();
+      }
+
+      targetChartInstances[target.key] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: (selectedNetworkFilter === "combined" && networks.length > 1),
+              labels: { color: '#9ca3af', boxWidth: 10, font: { size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', maxTicksLimit: 6, font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 10 } },
               beginAtZero: true
             }
           }

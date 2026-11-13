@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -19,7 +19,7 @@ Both the Cloudflare Worker and GitHub Pages support deep-linking directly to spe
 
 ## Evolution from `kreier/T18`
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.3.0`) |
+| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.4.0`) |
 | :--- | :--- | :--- |
 | **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
 | **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |

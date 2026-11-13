@@ -39,7 +39,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const latestMeasurements = await db.getLatestMeasurements(stationId);
   const latestSurvey = await db.getLatestSurvey(stationId);
   const inactiveSurvey = await db.getInactiveSurveys(stationId);
-  const recentMeasurements = await db.getRecentMeasurements(stationId, 144); // Last 24 hours of 10-min samples
+  const recentMeasurements = await db.getRecentMeasurements(stationId, 500); // 24 hours of 10-min samples across monitored networks
   const dailySummaries = await db.getDailySummaries(stationId, 30);
 
   return new Response(
