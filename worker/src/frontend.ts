@@ -171,6 +171,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      overflow: hidden;
     }
     .card-header {
       display: flex;
@@ -252,9 +253,15 @@ export function renderDashboardHtml(): string {
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    canvas {
-      width: 100% !important;
-      height: 260px !important;
+    .main-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 260px;
+    }
+    .target-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 160px;
     }
 
     /* Table Section */
@@ -369,7 +376,9 @@ export function renderDashboardHtml(): string {
           </select>
         </div>
       </div>
-      <canvas id="trendChart"></canvas>
+      <div class="main-chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
     </div>
 
     <!-- Individual Target Latency Graphs -->
@@ -392,7 +401,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-cloudflare" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-cloudflare"></canvas>
           </div>
         </div>
@@ -407,7 +416,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-google" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-google"></canvas>
           </div>
         </div>
@@ -422,7 +431,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-microsoft" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-microsoft"></canvas>
           </div>
         </div>
@@ -437,7 +446,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-apple" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-apple"></canvas>
           </div>
         </div>
@@ -452,7 +461,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-netflix" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-netflix"></canvas>
           </div>
         </div>
@@ -467,7 +476,7 @@ export function renderDashboardHtml(): string {
             </div>
             <span id="stat-facebook" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
           </div>
-          <div style="height: 170px; position: relative;">
+          <div class="target-chart-wrap">
             <canvas id="chart-facebook"></canvas>
           </div>
         </div>
