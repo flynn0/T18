@@ -6,11 +6,23 @@ export function renderDashboardHtml(): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wi-Fi Fleet Telemetry | kreier/wifi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/></svg>" />
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem("wifi_theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+      } catch(e) {}
+    })();
+  </script>
   <style>
-    :root {
+    :root, [data-theme="dark"] {
       --bg: #090d16;
       --card-bg: #111827;
       --card-border: #1f293d;
+      --header-bg: rgba(17, 24, 39, 0.85);
+      --input-bg: #1e293b;
+      --metric-box-bg: #090d16;
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --primary: #38bdf8;
@@ -19,6 +31,34 @@ export function renderDashboardHtml(): string {
       --warning: #f59e0b;
       --danger: #ef4444;
       --accent: #818cf8;
+      --chart-grid: rgba(255, 255, 255, 0.05);
+      --chart-text: #9ca3af;
+      --table-border: rgba(255, 255, 255, 0.04);
+      --table-hover: rgba(255, 255, 255, 0.02);
+      --rssi-track: #1f293d;
+      --badge-bg: #1f293d;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --header-bg: rgba(255, 255, 255, 0.88);
+      --input-bg: #f1f5f9;
+      --metric-box-bg: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #0284c7;
+      --primary-dim: rgba(2, 132, 199, 0.12);
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --accent: #6366f1;
+      --chart-grid: rgba(0, 0, 0, 0.06);
+      --chart-text: #64748b;
+      --table-border: rgba(0, 0, 0, 0.05);
+      --table-hover: rgba(0, 0, 0, 0.03);
+      --rssi-track: #e2e8f0;
+      --badge-bg: #f1f5f9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -30,7 +70,7 @@ export function renderDashboardHtml(): string {
       flex-direction: column;
     }
     header {
-      background: rgba(17, 24, 39, 0.85);
+      background: var(--header-bg);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--card-border);
       padding: 1rem 1.5rem;
@@ -75,7 +115,7 @@ export function renderDashboardHtml(): string {
       flex-wrap: wrap;
     }
     select, button, a.nav-link {
-      background: #1e293b;
+      background: var(--input-bg);
       color: var(--text-main);
       border: 1px solid var(--card-border);
       padding: 0.45rem 0.85rem;
@@ -87,18 +127,24 @@ export function renderDashboardHtml(): string {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
     }
     select:focus, button:hover, a.nav-link:hover {
       border-color: var(--primary);
     }
     button.primary-btn {
       background: var(--primary);
-      color: #0f172a;
+      color: #ffffff;
       font-weight: 600;
       border: none;
     }
     button.primary-btn:hover {
-      background: #0ea5e9;
+      opacity: 0.9;
+    }
+    #themeToggleBtn {
+      padding: 0.45rem 0.65rem;
+      font-size: 1rem;
+      line-height: 1;
     }
     main {
       flex: 1;
@@ -177,7 +223,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--table-border);
       padding-bottom: 0.75rem;
     }
     .card-title {
@@ -191,7 +237,7 @@ export function renderDashboardHtml(): string {
       gap: 0.75rem;
     }
     .metric-box {
-      background: #090d16;
+      background: var(--metric-box-bg);
       border: 1px solid var(--card-border);
       border-radius: 0.5rem;
       padding: 0.75rem;
@@ -220,7 +266,7 @@ export function renderDashboardHtml(): string {
       gap: 0.45rem;
     }
     .pill {
-      background: #1e293b;
+      background: var(--input-bg);
       border: 1px solid var(--card-border);
       border-radius: 0.4rem;
       padding: 0.3rem 0.55rem;
@@ -289,11 +335,11 @@ export function renderDashboardHtml(): string {
     }
     td {
       padding: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid var(--table-border);
       color: var(--text-main);
     }
     tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--table-hover);
     }
     .rssi-bar-wrap {
       display: flex;
@@ -303,7 +349,7 @@ export function renderDashboardHtml(): string {
     .rssi-bar {
       width: 60px;
       height: 6px;
-      background: #1f293d;
+      background: var(--rssi-track);
       border-radius: 3px;
       overflow: hidden;
     }
@@ -332,7 +378,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.4.0</span>
+        <span class="brand-tag">v0.5.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -341,6 +387,9 @@ export function renderDashboardHtml(): string {
       </select>
       <button onclick="refreshData()">↻ Refresh</button>
       <button class="primary-btn" onclick="exportData('json')">Export JSON</button>
+      <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+        <span id="themeIcon">☀️</span>
+      </button>
     </div>
   </header>
 
@@ -544,7 +593,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.4.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.5.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -591,6 +640,32 @@ export function renderDashboardHtml(): string {
 
     function onNetworkFilterChange(val) {
       selectedNetworkFilter = val;
+      renderAllTrendCharts();
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem("wifi_theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(saved || (prefersDark ? "dark" : "light"));
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("wifi_theme", theme);
+      const icon = document.getElementById("themeIcon");
+      if (icon) {
+        icon.innerText = theme === "dark" ? "☀️" : "🌙";
+      }
+      const btn = document.getElementById("themeToggleBtn");
+      if (btn) {
+        btn.title = theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode";
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
       renderAllTrendCharts();
     }
 
@@ -824,7 +899,7 @@ export function renderDashboardHtml(): string {
               </td>
               <td>\${q}%</td>
               <td>Ch \${s.channel || "?"}</td>
-              <td><span style="background:#1f293d; padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
+              <td><span style="background:var(--badge-bg); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
               <td>\${s.encryption || 'Open'}</td>
               <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600; font-size: 0.75rem;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>Active</span></td>
             \`;
@@ -860,7 +935,7 @@ export function renderDashboardHtml(): string {
               </td>
               <td>\${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
               <td>Ch \${s.channel || "?"}</td>
-              <td><span style="background:#1f293d; color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
+              <td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
               <td style="color: var(--text-muted);">\${s.encryption || 'Open'}</td>
               <td><span title="\${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">\${formatLastSeen(s.last_seen)}</span></td>
             \`;
@@ -1019,6 +1094,9 @@ export function renderDashboardHtml(): string {
         mainChartInstance.destroy();
       }
 
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
       mainChartInstance = new Chart(ctx, {
         type: 'line',
         data: { labels: labels, datasets: datasets },
@@ -1028,17 +1106,17 @@ export function renderDashboardHtml(): string {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
-              labels: { color: '#9ca3af', boxWidth: 12 }
+              labels: { color: textColor, boxWidth: 12 }
             }
           },
           scales: {
             x: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#9ca3af', maxTicksLimit: 12 }
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 12 }
             },
             y: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#9ca3af' },
+              grid: { color: gridColor },
+              ticks: { color: textColor },
               beginAtZero: true
             }
           }
@@ -1120,6 +1198,9 @@ export function renderDashboardHtml(): string {
         targetChartInstances[target.key].destroy();
       }
 
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
       targetChartInstances[target.key] = new Chart(ctx, {
         type: 'line',
         data: { labels: labels, datasets: datasets },
@@ -1130,17 +1211,17 @@ export function renderDashboardHtml(): string {
           plugins: {
             legend: {
               display: (selectedNetworkFilter === "combined" && networks.length > 1),
-              labels: { color: '#9ca3af', boxWidth: 10, font: { size: 10 } }
+              labels: { color: textColor, boxWidth: 10, font: { size: 10 } }
             }
           },
           scales: {
             x: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#9ca3af', maxTicksLimit: 6, font: { size: 10 } }
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 6, font: { size: 10 } }
             },
             y: {
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { color: '#9ca3af', font: { size: 10 } },
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { size: 10 } },
               beginAtZero: true
             }
           }
@@ -1149,6 +1230,7 @@ export function renderDashboardHtml(): string {
     }
 
     // Initialize
+    initTheme();
     loadStations();
     setInterval(refreshData, 60000); // 1-minute auto refresh
   </script>
