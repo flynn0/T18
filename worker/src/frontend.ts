@@ -505,7 +505,7 @@ export function renderDashboardHtml(): string {
             <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0;">Previously Detected Networks</h4>
             <span id="inactiveCountBadge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Missing</span>
           </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle (last 24h peak)</span>
         </div>
         <table>
           <thead>

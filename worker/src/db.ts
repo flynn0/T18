@@ -157,6 +157,8 @@ export class Database {
 
     if (!latestTime || !latestTime.max_t) return [];
 
+    const since24h = latestTime.max_t - 86400; // Prior 24 hours of scan history
+
     const result = await this.db
       .prepare(`
         SELECT 
@@ -172,13 +174,14 @@ export class Database {
         FROM scan_surveys s
         WHERE s.station_id = ?
           AND s.bssid IS NOT NULL
+          AND s.timestamp >= ?
           AND s.bssid NOT IN (
             SELECT bssid FROM scan_surveys WHERE station_id = ? AND timestamp = ? AND bssid IS NOT NULL
           )
         GROUP BY s.bssid
         ORDER BY last_seen DESC
       `)
-      .bind(stationId, stationId, latestTime.max_t)
+      .bind(stationId, since24h, stationId, latestTime.max_t)
       .all<InactiveSurveyRecord>();
     return result.results;
   }
