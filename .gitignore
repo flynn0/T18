@@ -62,6 +62,7 @@ compile_commands.json
 node_modules/
 dist/
 .wrangler/
+release_assets/
 
 # Secrets & Environment variables
 *.env

@@ -1,19 +1,24 @@
-name = "t18-telemetry-worker"
+name = "t18"
 main = "src/index.ts"
-compatibility_date = "2024-11-01"
+compatibility_date = "2024-05-01"
+account_id = "545c9b44c3df46e24d2ae837aebfa7b6"
+workers_dev = true
 
 [vars]
-GITHUB_OWNER = "kreier"
-GITHUB_REPO = "T18"
-GITHUB_BRANCH = "main"
+ENVIRONMENT = "production"
+STABLE_VERSION = "1.0.0"
 
-# Cloudflare KV binding for real-time live telemetry & hourly buffer:
-# Run: npx wrangler kv namespace create TELEMETRY_KV
-# Then paste the generated id below:
-[[kv_namespaces]]
-binding = "TELEMETRY_KV"
-id = "4baa85710d8041fbb762e4b4cf305040"
+[observability.logs]
+enabled = true
+invocation_logs = true
 
-# Secrets configured via `wrangler secret put`:
-# wrangler secret put AUTH_TOKEN
-# wrangler secret put GITHUB_TOKEN
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "t18-mon-db"
+database_id = "ded19daf-64c6-4f58-bda8-1ffa02ba99f1"
+migrations_dir = "migrations"
+
+# Cron trigger: Runs every day at 00:15 UTC for 30-day data rotation & daily summarization
+[triggers]
+crons = ["15 0 * * *"]

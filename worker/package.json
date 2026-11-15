@@ -1,13 +1,16 @@
 {
-  "name": "t18-telemetry-worker",
-  "version": "0.5.1",
-  "description": "Cloudflare Worker ingestion proxy committing T18 ESP32 telemetry to GitHub",
+  "name": "t18-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker & D1 backend for kreier/T18 telemetry",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply t18-mon-db --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply t18-mon-db --remote",
+    "build:docs": "node ../scripts/build-docs.js",
+    "build": "tsc --noEmit"
   },
-  "dependencies": {},
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261110.1",
     "typescript": "^5.6.3",

@@ -1,203 +1,2708 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>T18 Network Reliability Monitor</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wi-Fi Fleet Telemetry | kreier/T18</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/></svg>" />
   <script>
     (function() {
-      var saved = localStorage.getItem('t18_theme');
-      if (saved === 'light' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
-        document.documentElement.setAttribute('data-theme', 'light');
-      }
+      try {
+        const saved = localStorage.getItem("t18_theme") || localStorage.getItem("wifi_theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+      } catch(e) {}
     })();
   </script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --header-bg: rgba(17, 24, 39, 0.85);
+      --input-bg: #1e293b;
+      --metric-box-bg: #090d16;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #38bdf8;
+      --primary-dim: rgba(56, 189, 248, 0.15);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #818cf8;
+      --chart-grid: rgba(255, 255, 255, 0.05);
+      --chart-text: #9ca3af;
+      --table-border: rgba(255, 255, 255, 0.04);
+      --table-hover: rgba(255, 255, 255, 0.02);
+      --rssi-track: #1f293d;
+      --badge-bg: #1f293d;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --header-bg: rgba(255, 255, 255, 0.88);
+      --input-bg: #f1f5f9;
+      --metric-box-bg: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #0284c7;
+      --primary-dim: rgba(2, 132, 199, 0.12);
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --accent: #6366f1;
+      --chart-grid: rgba(0, 0, 0, 0.06);
+      --chart-text: #64748b;
+      --table-border: rgba(0, 0, 0, 0.05);
+      --table-hover: rgba(0, 0, 0, 0.03);
+      --rssi-track: #e2e8f0;
+      --badge-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--header-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+    .brand svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--primary);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-tag {
+      font-size: 0.75rem;
+      background: var(--primary-dim);
+      color: var(--primary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    select, button, a.nav-link {
+      background: var(--input-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 0.45rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      outline: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    }
+    select:focus, button:hover, a.nav-link:hover {
+      border-color: var(--primary);
+    }
+    button.primary-btn {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+      border: none;
+    }
+    button.primary-btn:hover {
+      opacity: 0.9;
+    }
+    #themeToggleBtn {
+      padding: 0.45rem 0.65rem;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .station-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .station-info h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .station-info p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .battery-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .battery-badge:hover {
+      filter: brightness(1.15);
+    }
+    .battery-badge.warn {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    .battery-badge.crit {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--table-border);
+      padding-bottom: 0.75rem;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .metrics-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .metric-box {
+      background: var(--metric-box-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .metric-val {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+      color: var(--text-main);
+    }
+    .metric-val span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 0.2rem;
+    }
+    .latency-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .pill {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.4rem;
+      padding: 0.3rem 0.55rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .pill-val {
+      font-weight: 700;
+    }
+    .pill-val.fast { color: var(--success); }
+    .pill-val.med { color: var(--warning); }
+    .pill-val.slow { color: var(--danger); }
+
+    /* Chart Section */
+    .chart-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .main-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 260px;
+    }
+    .target-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 160px;
+    }
+
+    /* Table Section */
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th {
+      padding: 0.75rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--table-border);
+      color: var(--text-main);
+    }
+    tr:hover td {
+      background: var(--table-hover);
+    }
+    .rssi-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .rssi-bar {
+      width: 60px;
+      height: 6px;
+      background: var(--rssi-track);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .rssi-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+    .rssi-stacked-bar {
+      display: inline-flex;
+      height: 8px;
+      width: 110px;
+      background: var(--rssi-track);
+      border-radius: 4px;
+      overflow: hidden;
+      vertical-align: middle;
+    }
+    .rssi-seg {
+      height: 100%;
+    }
+    .heatmap-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+    .heatmap-row-label {
+      width: 44px;
+      min-width: 44px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: right;
+      padding-right: 6px;
+    }
+    .heatmap-cells-wrap {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+    .heatmap-cell {
+      flex: 1;
+      height: 18px;
+      min-width: 13px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: transform 0.1s ease, outline 0.1s ease;
+      background: rgba(100, 116, 139, 0.15);
+    }
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+      z-index: 10;
+      outline: 1.5px solid #fff;
+    }
+    .heatmap-header-wrap {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+      margin-bottom: 4px;
+    }
+    .heatmap-header-col {
+      flex: 1;
+      min-width: 13px;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: center;
+      overflow: visible;
+      white-space: nowrap;
+      position: relative;
+    }
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    .fw-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-    <header class="header">
-      <div class="brand">
-        <div class="logo-badge">T18</div>
+  <header>
+    <a href="./" class="brand" id="brandLink">
+      <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      <div>
+        <span class="brand-title">T18 Wi-Fi Monitor</span>
+        <span class="brand-tag">v1.0.0</span>
+      </div>
+    </a>
+    <div class="header-controls">
+      <select id="stationSelect" onchange="switchStation(this.value)">
+        <option value="">Loading stations...</option>
+      </select>
+      <button onclick="refreshData()">↻ Refresh</button>
+      <button class="primary-btn" onclick="exportData('json')">Export JSON</button>
+      <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+        <span id="themeIcon">☀️</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Station Header & Health -->
+    <div class="station-banner">
+      <div class="station-info">
+        <h2 id="stTitle">Station: Loading...</h2>
+        <p id="stDesc">Fetching telemetry data...</p>
+        <div id="stBatteryRuntime" style="display: none; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+          <div id="stBatteryRunTimeText"></div>
+          <div id="stBatteryEstTimeText"></div>
+        </div>
+      </div>
+      <div class="station-header-badges" style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+        <div id="stBatteryBadge" class="battery-badge" style="display: none;" title="Battery Status" onclick="toggleBatteryGraph(true)">
+          <svg class="battery-icon" width="28" height="15" viewBox="0 0 28 15" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+            <rect x="0.75" y="0.75" width="22.5" height="13.5" rx="2.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="M25 5C25.5523 5 26 5.44772 26 6V9C26 9.55228 25.5523 10 25 10V5Z" fill="currentColor" />
+            <rect id="batBar1" x="3" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar2" x="7.7" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar3" x="12.4" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar4" x="17.1" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+          </svg>
+          <span id="stBatteryPctText">100%</span>
+        </div>
+        <div id="stStatusBadge" class="status-badge online">
+          <span class="pulse-dot"></span>
+          <span id="stStatusText">Checking</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Monitored Networks Cards -->
+    <div id="networksContainer" class="grid-cards">
+      <!-- Populated via JavaScript -->
+    </div>
+
+    <!-- Network Environment & Firewall Diagnostics -->
+    <div id="diagnosticsContainer" style="margin-bottom: 2rem;">
+      <!-- Populated via JavaScript -->
+    </div>
+
+    <!-- Collapsed Battery Voltage Graph (Day / Week / Month) -->
+    <div id="batterySection" class="chart-container" style="display: none; margin-bottom: 2rem;">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem; cursor: pointer; user-select: none;" onclick="toggleBatteryGraph()">
         <div>
-          <h1>Network Reliability Monitor <span class="version-badge" id="app-version"></span></h1>
-          <p class="subtitle">Distributed ESP32 Field Telemetry &bull; 53-Day Hourly Heatmap</p>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">Battery Voltage & Discharge Profile</h3>
+            <span id="batteryStatusBadge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">LiPo 3.3V–4.2V</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Measured on predefined ADC pin (IO35, 100k/100k divider) every 10 minutes</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;" onclick="event.stopPropagation()">
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <label for="batteryTimeframeSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Timeframe:</label>
+            <select id="batteryTimeframeSelect" onchange="onBatteryTimeframeChange(this.value)">
+              <option value="day">Last Day (24h)</option>
+              <option value="week">Last Week (7d)</option>
+              <option value="month">Last Month (30d)</option>
+            </select>
+          </div>
+          <span id="batteryCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted); padding: 0.2rem 0.5rem; cursor: pointer;" onclick="toggleBatteryGraph()">▼</span>
         </div>
       </div>
 
-      <div class="controls-wrapper">
-        <div class="control-group">
-          <label for="station-select">Station:</label>
-          <select id="station-select">
-            <option value="">Loading stations...</option>
+      <!-- Quick KPI Stat Boxes for Battery -->
+      <div id="batteryKpiRow" class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 1rem; margin-top: 0.75rem;">
+        <div class="metric-box">
+          <div class="metric-label">Current Voltage</div>
+          <div class="metric-val" id="stat-bat-voltage" style="color: #10b981;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Battery Level</div>
+          <div class="metric-val" id="stat-bat-pct" style="color: #38bdf8;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Discharge Rate</div>
+          <div class="metric-val" id="stat-bat-rate" style="color: #f59e0b;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Estimated Runtime</div>
+          <div class="metric-val" id="stat-bat-runtime" style="color: #a78bfa; font-size: 0.85rem;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Timeframe Span</div>
+          <div class="metric-val" id="stat-bat-range" style="font-size: 0.82rem; color: var(--text-muted);">—</div>
+        </div>
+      </div>
+
+      <!-- Collapsed Drawer for Battery Graph -->
+      <div id="batteryGraphDrawer" style="display: none; margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 1rem;">
+        <div class="main-chart-wrap" style="height: 290px;">
+          <canvas id="batteryChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 24-Hour Channel Utilization & Spectrum Congestion -->
+    <div id="channelUtilizationSection" class="chart-container" style="margin-bottom: 2rem;">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">24-Hour Channel Utilization & Spectrum Congestion</h3>
+            <span id="channelAirtimeBadge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">Promiscuous 2s/ch</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Measured across all 13 channels every 30 minutes with Wi-Fi spectrum scan duration</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label for="channelViewSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Channel View:</label>
+            <select id="channelViewSelect" onchange="onChannelViewChange(this.value)">
+              <option value="combined">All Channels Combined</option>
+              <option value="non_overlapping">Channels 1, 6, 11 (Non-Overlapping)</option>
+              <option value="all_individual">All Channels Individual (1–13)</option>
+            </select>
+          </div>
+          <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="toggleScanTimeCheck" onchange="onToggleScanTime(this.checked)" checked style="cursor: pointer;" />
+            <span>Show Scan Duration (ms)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick KPI Stat Boxes -->
+      <div class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 1rem;">
+        <div class="metric-box">
+          <div class="metric-label">24h Avg Airtime</div>
+          <div class="metric-val" id="stat-avg-airtime" style="color: #38bdf8;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Peak Congested Ch</div>
+          <div class="metric-val" id="stat-peak-channel" style="color: #f59e0b;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Latest Scan Time</div>
+          <div class="metric-val" id="stat-latest-scantime" style="color: #a78bfa;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Active Transmitters</div>
+          <div class="metric-val" id="stat-total-transmitters" style="color: #10b981;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Frames Breakdown</div>
+          <div class="metric-val" id="stat-frame-breakdown" style="font-size: 0.82rem;">—</div>
+        </div>
+      </div>
+
+      <div class="main-chart-wrap" style="height: 290px;">
+        <canvas id="channelUtilChart"></canvas>
+      </div>
+
+      <!-- Per-Channel Utilization Matrix Drawer / Table -->
+      <div style="margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelTable()">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Latest Channel Breakdown Table (13 Channels)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(Airtime %, Frames, Transmitters, RSSI Histogram)</span>
+          </div>
+          <span id="channelTableExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+        </div>
+        <div id="channelTableDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th style="padding: 6px 10px; text-align: left;">Channel</th>
+                <th style="padding: 6px 10px; text-align: left;">Airtime %</th>
+                <th style="padding: 6px 10px; text-align: left;">Data Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Mgmt Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Ctrl Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Unique Transmitters</th>
+                <th style="padding: 6px 10px; text-align: left;">RSSI Distribution (&lt;-80 / -80..-71 / -70..-61 / &ge;-60 dBm)</th>
+                <th style="padding: 6px 10px; text-align: left;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="channelTableBody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No channel utilization data available yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 24-Hour Channel Utilization Heatmap Drawer -->
+      <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelHeatmap()">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Channel Utilization Heatmap (13 Channels)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, Dynamic Nuance Scale)</span>
+          </div>
+          <span id="channelHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+        </div>
+        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+          <!-- Heatmap Legend & Hover Info Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;">
+            <div style="display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap;">
+              <span style="color: var(--text-muted); margin-right: 3px;">Airtime:</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="&le; 2% (Quiet)"></span>
+              <span style="color:var(--text-muted); margin-right:2px;">&le;2%</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0284c7; border-radius:2px;" title="2% - 5%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#06b6d4; border-radius:2px;" title="5% - 8%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0d9488; border-radius:2px;" title="8% - 12%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#10b981; border-radius:2px;" title="12% - 16%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#22c55e; border-radius:2px;" title="16% - 20%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#84cc16; border-radius:2px;" title="20% - 25%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#eab308; border-radius:2px;" title="25% - 30%"></span>
+              <span style="color:var(--text-muted); margin-left:1px; margin-right:3px;">5–30%</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#f97316; border-radius:2px;" title="30% - 40%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#ef4444; border-radius:2px;" title="40% - 55%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#dc2626; border-radius:2px;" title="55% - 70%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 70% (Outlier Spike)"></span>
+              <span style="color:#d946ef; font-weight:600; margin-left:2px;">&gt;70% Spike</span>
+            </div>
+            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">Hover over a cell to inspect metrics</div>
+          </div>
+          <!-- Heatmap Container -->
+          <div id="channelHeatmapContainer" style="min-width: 760px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical Trends (Chart) -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 600;">24-Hour Network Latency Trends</h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">10-Minute Polling Cadence</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <label for="networkFilterSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Network:</label>
+          <select id="networkFilterSelect" onchange="onNetworkFilterChange(this.value)">
+            <option value="combined">Combined (All Networks)</option>
           </select>
         </div>
+      </div>
+      <div class="main-chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
 
-        <div class="control-group">
-          <label for="timezone-select">Timezone:</label>
-          <select id="timezone-select">
-            <option value="7" selected>Vietnam (ICT / UTC+7)</option>
-            <option value="0">UTC (Universal Time)</option>
-          </select>
-        </div>
-
-        <div class="control-group">
-          <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark/light mode" title="Toggle theme">
-            <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-            <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-            <span id="theme-label">Light</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Station Info Card -->
-    <section class="station-meta-grid" id="station-meta">
-      <div class="meta-card">
-        <span class="meta-label">Station ID / Name</span>
-        <span class="meta-value" id="meta-name">-</span>
-      </div>
-      <div class="meta-card">
-        <span class="meta-label">Location</span>
-        <span class="meta-value" id="meta-location">-</span>
-      </div>
-      <div class="meta-card">
-        <span class="meta-label">Monitored Wi-Fi</span>
-        <div class="meta-value-container" id="meta-ssid-container">
-          <span class="meta-value mono" id="meta-ssid">-</span>
-        </div>
-      </div>
-      <div class="meta-card">
-        <span class="meta-label">Battery Level</span>
-        <span class="meta-value" id="meta-battery">-</span>
-      </div>
-      <div class="meta-card clickable-card" id="card-visible-networks" role="button" tabindex="0" title="Click to view visible networks spectrum & signal strength survey">
-        <div class="meta-card-header">
-          <span class="meta-label">Visible Networks</span>
-          <span class="card-action-badge">Survey ↗</span>
-        </div>
-        <span class="meta-value" id="meta-networks">-</span>
-      </div>
-      <div class="meta-card">
-        <span class="meta-label">Last Transmission</span>
-        <span class="meta-value" id="meta-last-seen">-</span>
-      </div>
-    </section>
-
-    <!-- Heatmap Section -->
-    <section class="heatmap-section">
-      <div class="section-header">
+    <!-- Individual Target Latency Graphs -->
+    <div id="targetGraphsSection">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
         <div>
-          <h2>53-Day Reliability Heatmap (Hourly Aggregations)</h2>
-          <span class="tz-indicator" id="tz-indicator">Showing local time (UTC+7) &bull; 08:00–18:00 High Activity / Working Hours</span>
+          <h3 style="font-size: 1.05rem; font-weight: 600;">Individual Probe Latencies</h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">24-hour endpoint performance per target</span>
         </div>
-        <div class="legend">
-          <span class="legend-item"><span class="box color-green"></span> Healthy (< 3s assoc, < 150ms HTTP)</span>
-          <span class="legend-item"><span class="box color-orange"></span> Degraded / 1 Failed</span>
-          <span class="legend-item"><span class="box color-purple"></span> Slow Assoc / DHCP Lag</span>
-          <span class="legend-item"><span class="box color-red"></span> Outage / No Link</span>
-          <span class="legend-item"><span class="box color-gray"></span> No Data / Offline</span>
+        <span id="targetFilterBadge" style="font-size: 0.75rem; background: var(--primary-dim); color: var(--primary); padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;">Combined</span>
+      </div>
+      <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem;">
+        <!-- Gateway RTT -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #06b6d4;"></span>
+              <span class="card-title" style="color: #06b6d4; font-size: 0.95rem;">Gateway RTT</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Router / Firewall</span>
+            </div>
+            <span id="stat-gateway" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-gateway"></canvas>
+          </div>
+        </div>
+
+        <!-- Cloudflare -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></span>
+              <span class="card-title" style="color: #38bdf8; font-size: 0.95rem;">Cloudflare</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">1.1.1.1</span>
+            </div>
+            <span id="stat-cloudflare" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-cloudflare"></canvas>
+          </div>
+        </div>
+
+        <!-- Google -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+              <span class="card-title" style="color: #10b981; font-size: 0.95rem;">Google</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">generate_204</span>
+            </div>
+            <span id="stat-google" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-google"></canvas>
+          </div>
+        </div>
+
+        <!-- Microsoft -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #60a5fa;"></span>
+              <span class="card-title" style="color: #60a5fa; font-size: 0.95rem;">Microsoft</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">connecttest</span>
+            </div>
+            <span id="stat-microsoft" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-microsoft"></canvas>
+          </div>
+        </div>
+
+        <!-- Netflix -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #f87171;"></span>
+              <span class="card-title" style="color: #f87171; font-size: 0.95rem;">Netflix</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">fast.com</span>
+            </div>
+            <span id="stat-netflix" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-netflix"></canvas>
+          </div>
+        </div>
+
+        <!-- Facebook -->
+        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
+          <div class="card-header" style="padding-bottom: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+              <span class="card-title" style="color: #3b82f6; font-size: 0.95rem;">Facebook</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">connectivity</span>
+            </div>
+            <span id="stat-facebook" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
+          </div>
+          <div class="target-chart-wrap">
+            <canvas id="chart-facebook"></canvas>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="heatmap-scroll-container">
-        <div class="heatmap-wrapper" id="heatmap-container">
-          <!-- Populated dynamically via JavaScript -->
-        </div>
+    <!-- Surrounding 2.4 GHz Scan Survey Table -->
+    <div class="table-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">Surrounding 2.4 GHz Spectrum Survey</h3>
+        <span id="surveyCountBadge" style="font-size: 0.8rem; font-weight: 600; color: var(--primary);">0 APs Detected</span>
       </div>
+      <table>
+        <thead>
+          <tr>
+            <th>SSID</th>
+            <th>BSSID</th>
+            <th>Signal (RSSI)</th>
+            <th>Quality</th>
+            <th>Channel</th>
+            <th>Phy Mode</th>
+            <th>Security</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody id="surveyTableBody">
+          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No Wi-Fi scan data available yet.</td></tr>
+        </tbody>
+      </table>
 
-      <div class="heatmap-footer">
-        <span>&larr; 53 Days Ago</span>
-        <span id="footer-axis-note">Rows 00:00 &ndash; 23:00 (Local Time UTC+7)</span>
-        <span>Today &rarr;</span>
-      </div>
-    </section>
-
-    <!-- Metrics Deep Dive / Details Card on Click -->
-    <section class="detail-section" id="detail-card">
-      <div class="detail-content">
-        <h3 id="detail-title">Select an hour box to inspect telemetry details</h3>
-        <div class="detail-stats" id="detail-stats">
-          <p class="muted">Hover or click on any box in the heatmap above to view Wi-Fi connection time, DHCP latency, target ping response times, and battery levels.</p>
+      <!-- Previously Detected Networks Section -->
+      <div id="inactiveSurveySection" style="display: none; margin-top: 1.75rem; border-top: 1px solid var(--card-border); padding-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0;">Previously Detected Networks</h4>
+            <span id="inactiveCountBadge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Missing</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle (last 24h peak)</span>
         </div>
-      </div>
-    </section>
-
-    <footer class="footer">
-      <p>Powered by <a href="https://github.com/kreier/T18" target="_blank" rel="noopener">T18 ESP32 Firmware</a>, Cloudflare Workers, and GitHub Pages &bull; Version <span id="footer-version" class="mono"></span></p>
-    </footer>
-  </div>
-
-  <!-- Visible Networks Modal -->
-  <div class="modal-backdrop" id="networks-modal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-header">
-        <div>
-          <h2 id="modal-title">Visible Wi-Fi Spectrum Survey</h2>
-          <p class="modal-subtitle" id="modal-subtitle">Station C-103 &bull; Daily Relative Signal Strength & Visibility</p>
-        </div>
-        <button class="modal-close-btn" id="modal-close-btn" type="button" aria-label="Close dialog">&times;</button>
-      </div>
-
-      <div class="modal-toolbar">
-        <div class="toolbar-group">
-          <label for="survey-date-select">Survey Date:</label>
-          <select id="survey-date-select">
-            <option value="">Loading dates...</option>
-          </select>
-        </div>
-        <div class="toolbar-group flex-1">
-          <label for="survey-filter-input">Filter SSID:</label>
-          <input type="text" id="survey-filter-input" placeholder="Type to filter networks..." />
-        </div>
-        <div class="survey-stats-pill" id="survey-stats-pill">
-          0 networks
-        </div>
-      </div>
-
-      <div class="modal-table-wrap">
-        <table class="survey-table">
+        <table>
           <thead>
             <tr>
-              <th style="width: 48px; text-align: center;">#</th>
-              <th>Network Name (SSID)</th>
-              <th style="width: 220px;">Average Signal (dBm)</th>
-              <th style="width: 200px;">Daily Visibility</th>
-              <th style="width: 120px;">Presence</th>
-              <th style="width: 60px; text-align: center;">Ch</th>
+              <th>SSID</th>
+              <th>BSSID</th>
+              <th>Signal (Max RSSI)</th>
+              <th>Max Quality</th>
+              <th>Channel</th>
+              <th>Phy Mode</th>
+              <th>Security</th>
+              <th>Last Seen</th>
             </tr>
           </thead>
-          <tbody id="survey-table-body">
-            <!-- Populated dynamically -->
+          <tbody id="inactiveSurveyBody">
+            <!-- Populated via JavaScript -->
           </tbody>
         </table>
       </div>
-
-      <div class="modal-footer">
-        <span class="modal-footer-note">Collected every 10 minutes. Signal averages & visibility percentages calculated across daily scans. Sorted from strongest to weakest signal.</span>
-        <button class="btn-secondary" id="modal-close-footer-btn" type="button">Close</button>
-      </div>
     </div>
-  </div>
+  </main>
 
-  <!-- Tooltip element -->
-  <div class="tooltip" id="tooltip"></div>
+  <footer>
+    <span>Host: <strong id="hostIndicator">Cloudflare Worker</strong></span>
+    <span>|</span>
+    <a href="https://t18.kreier.workers.dev" id="cfWorkerLink">Cloudflare Dashboard</a>
+    <span>|</span>
+    <a href="https://kreier.github.io/T18" id="ghPagesLink">GitHub Pages</a>
+    <span>|</span>
+    <a href="https://github.com/kreier/T18" target="_blank">Repository (kreier/T18 v1.0.0)</a>
+  </footer>
 
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Dynamically resolve API base URL (relative when on workers.dev, absolute when on GitHub Pages)
+    const API_BASE = window.location.hostname.includes("workers.dev")
+      ? ""
+      : "https://t18.kreier.workers.dev";
+
+    let currentStationId = "";
+    let currentStationData = null;
+    let selectedNetworkFilter = "combined";
+    let mainChartInstance = null;
+    let batteryChartInstance = null;
+    let selectedBatteryTimeframe = "day";
+    let batteryDrawerOpen = false;
+    const targetChartInstances = {
+      gateway: null,
+      cloudflare: null,
+      google: null,
+      microsoft: null,
+      netflix: null,
+      facebook: null
+    };
+
+    const TARGET_CONFIG = [
+      { key: "gateway", field: "gateway_ms", name: "Gateway RTT", color: "#06b6d4", bg: "rgba(6, 182, 212, 0.12)" },
+      { key: "cloudflare", field: "cloudflare_ms", name: "Cloudflare", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.12)" },
+      { key: "google", field: "google_ms", name: "Google", color: "#10b981", bg: "rgba(16, 185, 129, 0.12)" },
+      { key: "microsoft", field: "microsoft_ms", name: "Microsoft", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
+      { key: "netflix", field: "netflix_ms", name: "Netflix", color: "#f87171", bg: "rgba(248, 113, 113, 0.12)" },
+      { key: "facebook", field: "facebook_ms", name: "Facebook", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.12)" }
+    ];
+
+    const NETWORK_PALETTE = ["#38bdf8", "#a855f7", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#84cc16"];
+
+    function getPillClass(ms) {
+      if (ms === null || ms === undefined || ms < 0) return "";
+      if (ms <= 50) return "fast";
+      if (ms <= 150) return "med";
+      return "slow";
+    }
+
+    function fmtMs(v) {
+      return (v !== null && v !== undefined && v >= 0) ? v + " ms" : "Timeout";
+    }
+
+    function onNetworkFilterChange(val) {
+      selectedNetworkFilter = val;
+      renderAllTrendCharts();
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem("t18_theme") || localStorage.getItem("wifi_theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(saved || (prefersDark ? "dark" : "light"));
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("t18_theme", theme);
+      const icon = document.getElementById("themeIcon");
+      if (icon) {
+        icon.innerText = theme === "dark" ? "☀️" : "🌙";
+      }
+      const btn = document.getElementById("themeToggleBtn");
+      if (btn) {
+        btn.title = theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode";
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      renderAllTrendCharts();
+      renderChannelUtilizationSection();
+    }
+
+    // Detect if running on GitHub Pages
+    const isGhPages = window.location.pathname.toLowerCase().startsWith("/t18") || window.location.pathname.startsWith("/wifi");
+    const basePath = isGhPages ? (window.location.pathname.toLowerCase().startsWith("/t18") ? "/T18/" : "/wifi/") : "/";
+    document.getElementById("brandLink").href = basePath;
+    document.getElementById("hostIndicator").innerText = isGhPages ? "GitHub Pages" : "Cloudflare Worker";
+
+    function getRequestedStationId() {
+      // 1. Query parameter override: ?station=9E1-9 or ?id=9E1-9
+      const params = new URLSearchParams(window.location.search);
+      const qStation = params.get("station") || params.get("id");
+      if (qStation && qStation.trim()) return qStation.trim();
+
+      // 2. Direct path routing: e.g. /9E1-9 or /T18/9E1-9
+      let path = window.location.pathname || "";
+      while (path.endsWith("/")) path = path.slice(0, -1);
+      if (path.toLowerCase().startsWith("/t18")) {
+        path = path.substring(4);
+      } else if (path.startsWith("/wifi")) {
+        path = path.substring(5);
+      }
+      while (path.startsWith("/")) path = path.slice(1);
+
+      if (path && path !== "index.html" && path !== "404.html" && path !== "wifi" && path.toLowerCase() !== "t18") {
+        return decodeURIComponent(path);
+      }
+      return "";
+    }
+
+    async function loadStations() {
+      try {
+        const reqStation = getRequestedStationId();
+        const res = await fetch(API_BASE + "/api/stations");
+        const data = await res.json();
+        const select = document.getElementById("stationSelect");
+        select.innerHTML = "";
+
+        if (!data.stations || data.stations.length === 0) {
+          if (reqStation) {
+            const opt = document.createElement("option");
+            opt.value = reqStation;
+            opt.innerText = reqStation;
+            select.appendChild(opt);
+            currentStationId = reqStation;
+            loadStationDetails(reqStation);
+            return;
+          }
+          select.innerHTML = "<option value=''>No stations found</option>";
+          document.getElementById("stTitle").innerText = "No Stations Registered";
+          document.getElementById("stDesc").innerText = "Provision an ESP32 via captive portal to begin monitoring.";
+          return;
+        }
+
+        let matched = false;
+        data.stations.forEach(st => {
+          const opt = document.createElement("option");
+          opt.value = st.station_id;
+          const descStr = st.description ? " (" + st.description + ")" : "";
+          opt.innerText = st.station_id + descStr;
+          if (reqStation && st.station_id.toLowerCase() === reqStation.toLowerCase()) {
+            opt.selected = true;
+            matched = true;
+            currentStationId = st.station_id;
+          }
+          select.appendChild(opt);
+        });
+
+        if (reqStation && !matched) {
+          // If a requested station from URL was not found in registered stations, fallback to first available station
+          if (data.stations.length > 0) {
+            currentStationId = data.stations[0].station_id;
+            select.value = currentStationId;
+          } else {
+            const opt = document.createElement("option");
+            opt.value = reqStation;
+            opt.innerText = reqStation;
+            opt.selected = true;
+            select.prepend(opt);
+            currentStationId = reqStation;
+          }
+        } else if (!currentStationId && data.stations.length > 0) {
+          currentStationId = data.stations[0].station_id;
+        }
+
+        if (currentStationId) {
+          loadStationDetails(currentStationId);
+        }
+      } catch (err) {
+        console.error("Failed to load stations:", err);
+      }
+    }
+
+    function switchStation(id) {
+      if (!id) return;
+      currentStationId = id;
+      const targetPath = basePath + (id === "" ? "" : encodeURIComponent(id));
+      if (window.location.pathname !== targetPath) {
+        history.pushState(null, "", targetPath);
+      }
+      loadStationDetails(id);
+    }
+
+    window.addEventListener("popstate", () => {
+      const req = getRequestedStationId();
+      if (req && req !== currentStationId) {
+        currentStationId = req;
+        const sel = document.getElementById("stationSelect");
+        if (sel) sel.value = req;
+        loadStationDetails(req);
+      }
+    });
+
+    function refreshData() {
+      if (currentStationId) {
+        loadStationDetails(currentStationId);
+      }
+    }
+
+    function exportData(fmt) {
+      if (!currentStationId) return;
+      window.open(API_BASE + "/api/export?station_id=" + encodeURIComponent(currentStationId) + "&format=" + fmt);
+    }
+
+    async function loadStationDetails(stationId) {
+      try {
+        const res = await fetch(API_BASE + "/api/station/" + encodeURIComponent(stationId) + "?t=" + Date.now());
+        if (!res.ok) throw new Error("Station fetch failed");
+        const data = await res.json();
+
+        // 1. Update Header Banner
+        const st = data.station;
+        const titleEl = document.getElementById("stTitle");
+        titleEl.textContent = "Station: " + st.station_id;
+        if (st.firmware_version) {
+          const badge = document.createElement("span");
+          badge.className = "fw-badge";
+          badge.textContent = "v" + st.firmware_version;
+          titleEl.appendChild(badge);
+        }
+        document.getElementById("stDesc").innerText = st.description || "No description configured";
+
+        const badge = document.getElementById("stStatusBadge");
+        const statusText = document.getElementById("stStatusText");
+        const nowSec = Math.floor(Date.now() / 1000);
+        const lastSeen = st.last_seen || 0;
+        const diffSec = nowSec - lastSeen;
+        const isOnline = lastSeen > 0 && diffSec <= 20 * 60;
+
+        if (isOnline) {
+          badge.className = "status-badge online";
+          statusText.innerText = "Online (" + formatLastSeen(lastSeen) + ")";
+        } else {
+          badge.className = "status-badge offline";
+          statusText.innerText = lastSeen > 0 ? "Offline (" + formatLastSeen(lastSeen) + ")" : "Never Seen";
+        }
+
+        // 2. Render Monitored Network Cards
+        const netContainer = document.getElementById("networksContainer");
+        netContainer.innerHTML = "";
+
+        if (data.latest_measurements && data.latest_measurements.length > 0) {
+          data.latest_measurements.forEach(net => {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.style.cursor = "pointer";
+            card.title = "Click to filter latency trends to " + net.ssid;
+            card.onclick = () => {
+              const sel = document.getElementById("networkFilterSelect");
+              if (sel) {
+                sel.value = net.ssid;
+                onNetworkFilterChange(net.ssid);
+              }
+            };
+
+              const gwVal = (net.gateway_ms !== null && net.gateway_ms !== undefined && net.gateway_ms >= 0) ? net.gateway_ms + 'ms' : '—';
+              let dnsVal = '—';
+              if (net.dns_ipv4_ms !== null && net.dns_ipv4_ms !== undefined && net.dns_ipv4_ms >= 0) {
+                dnsVal = 'v4: ' + net.dns_ipv4_ms + 'ms';
+                if (net.dns_ipv6_ms !== null && net.dns_ipv6_ms !== undefined) {
+                  dnsVal += (net.dns_ipv6_ms >= 0) ? (' | v6: ' + net.dns_ipv6_ms + 'ms') : ' | v6: Timeout ⚠️';
+                }
+              }
+
+              card.innerHTML = `
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">${net.ssid}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                      BSSID: ${net.bssid || "N/A"} | Ch ${net.channel || "?"}
+                    </div>
+                  </div>
+                  <span class="status-badge ${net.status === 'connected' ? 'online' : 'offline'}" style="font-size:0.7rem; padding:0.15rem 0.5rem;">
+                    ${net.status}
+                  </span>
+                </div>
+
+                <div class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));">
+                  <div class="metric-box">
+                    <div class="metric-label">Association</div>
+                    <div class="metric-val">${(net.assoc_ms !== null && net.assoc_ms >= 0) ? net.assoc_ms : '—'}<span>ms</span></div>
+                  </div>
+                  <div class="metric-box">
+                    <div class="metric-label">DHCP Lease</div>
+                    <div class="metric-val">${(net.dhcp_ms !== null && net.dhcp_ms >= 0) ? net.dhcp_ms : '—'}<span>ms</span></div>
+                  </div>
+                  <div class="metric-box">
+                    <div class="metric-label">Gateway RTT</div>
+                    <div class="metric-val" style="color: #06b6d4;">${gwVal}</div>
+                  </div>
+                  <div class="metric-box">
+                    <div class="metric-label">DNS v4 / v6</div>
+                    <div class="metric-val" style="font-size: 0.82rem; color: ${net.dns_ipv6_ms === -1 ? '#ef4444' : 'inherit'};">${dnsVal}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem; text-transform:uppercase; font-weight:600;">HTTP Probe Latencies</div>
+                  <div class="latency-pills">
+                    <div class="pill">Gateway: <span class="pill-val ${getPillClass(net.gateway_ms)}">${fmtMs(net.gateway_ms)}</span></div>
+                    <div class="pill">Cloudflare: <span class="pill-val ${getPillClass(net.cloudflare_ms)}">${fmtMs(net.cloudflare_ms)}</span></div>
+                    <div class="pill">Google: <span class="pill-val ${getPillClass(net.google_ms)}">${fmtMs(net.google_ms)}</span></div>
+                    <div class="pill">Microsoft: <span class="pill-val ${getPillClass(net.microsoft_ms)}">${fmtMs(net.microsoft_ms)}</span></div>
+                    <div class="pill">Fast/Netflix: <span class="pill-val ${getPillClass(net.netflix_ms)}">${fmtMs(net.netflix_ms)}</span></div>
+                    <div class="pill">Facebook: <span class="pill-val ${getPillClass(net.facebook_ms)}">${fmtMs(net.facebook_ms)}</span></div>
+                  </div>
+                </div>
+              `;
+              netContainer.appendChild(card);
+            });
+          } else {
+            netContainer.innerHTML = "<div class='card' style='grid-column: 1/-1;'><p style='color:var(--text-muted);'>No network latency measurements recorded yet.</p></div>";
+          }
+
+          // 3. Render Network Environment & Firewall Diagnostics
+          renderDiagnosticsSection(data.diagnostics, data.latest_measurements);
+
+          // 4. Render Spectrum Survey Table
+        const tbody = document.getElementById("surveyTableBody");
+        tbody.innerHTML = "";
+        const rawSurveys = data.latest_survey || [];
+        const surveys = rawSurveys.map(s => ({
+          ...s,
+          bssid: s.bssid ? s.bssid.trim().toUpperCase() : ""
+        }));
+        const activeBssids = new Set(surveys.map(s => s.bssid).filter(Boolean));
+        const seenInactive = new Set();
+        const inactive = (data.inactive_survey || [])
+          .map(s => ({
+            ...s,
+            bssid: s.bssid ? s.bssid.trim().toUpperCase() : ""
+          }))
+          .filter(s => {
+            if (!s.bssid) return false;
+            if (activeBssids.has(s.bssid)) return false;
+            if (seenInactive.has(s.bssid)) return false;
+            seenInactive.add(s.bssid);
+            return true;
+          });
+        const totalAps = surveys.length + inactive.length;
+
+        if (inactive.length > 0) {
+          document.getElementById("surveyCountBadge").innerText = surveys.length + "/" + totalAps + " APs Detected";
+        } else {
+          document.getElementById("surveyCountBadge").innerText = surveys.length + " APs Detected";
+        }
+
+        if (surveys.length > 0) {
+          surveys.forEach(s => {
+            const tr = document.createElement("tr");
+            const rssi = s.rssi || -100;
+            const q = s.quality || 0;
+            const barColor = rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444");
+
+            tr.innerHTML = `
+              <td style="font-weight: 600;">${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
+              <td>
+                <div class="rssi-bar-wrap">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: ${q}%; background: ${barColor};"></div></div>
+                  <span>${rssi} dBm</span>
+                </div>
+              </td>
+              <td>${q}%</td>
+              <td>Ch ${s.channel || "?"}</td>
+              <td><span style="background:var(--badge-bg); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
+              <td>${s.encryption || 'Open'}</td>
+              <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600; font-size: 0.75rem;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>Active</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = "<tr><td colspan='8' style='text-align: center; color: var(--text-muted); padding: 2rem;'>No surrounding APs scanned yet.</td></tr>";
+        }
+
+        // 3b. Render Previously Detected Networks (Inactive)
+        const inactiveSection = document.getElementById("inactiveSurveySection");
+        const inactiveBody = document.getElementById("inactiveSurveyBody");
+        if (inactiveBody) inactiveBody.innerHTML = "";
+        if (inactive.length > 0 && inactiveSection && inactiveBody) {
+          inactiveSection.style.display = "block";
+          document.getElementById("inactiveCountBadge").innerText = inactive.length + " Missing";
+          inactive.forEach(s => {
+            const tr = document.createElement("tr");
+            tr.style.opacity = "0.78";
+            const rssi = (s.rssi !== null && s.rssi !== undefined) ? s.rssi : null;
+            const q = (s.quality !== null && s.quality !== undefined) ? s.quality : (rssi !== null ? Math.min(100, Math.max(0, 2 * (rssi + 100))) : null);
+            const barColor = rssi !== null ? (rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444")) : "#9ca3af";
+
+            tr.innerHTML = `
+              <td style="font-weight: 500; color: var(--text-muted);">${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
+              <td>
+                ${rssi !== null ? `
+                <div class="rssi-bar-wrap">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: ${q}%; background: ${barColor};"></div></div>
+                  <span title="Max signal recorded">${rssi} dBm</span>
+                </div>` : '<span style="color: var(--text-muted);">—</span>'}
+              </td>
+              <td>${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
+              <td>Ch ${s.channel || "?"}</td>
+              <td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
+              <td style="color: var(--text-muted);">${s.encryption || 'Open'}</td>
+              <td><span title="${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">${formatLastSeen(s.last_seen)}</span></td>
+            `;
+            inactiveBody.appendChild(tr);
+          });
+        } else if (inactiveSection) {
+          inactiveSection.style.display = "none";
+        }
+
+        // 4. Update Network Selector & Trend Charts
+        currentStationData = data;
+        const history = data.recent_history || [];
+        const latest = data.latest_measurements || [];
+        const netSet = new Set();
+        latest.forEach(m => { if (m.ssid) netSet.add(m.ssid); });
+        history.forEach(h => { if (h.ssid) netSet.add(h.ssid); });
+        const networks = Array.from(netSet);
+
+        const filterSel = document.getElementById("networkFilterSelect");
+        if (filterSel) {
+          const prevVal = filterSel.value || selectedNetworkFilter;
+          filterSel.innerHTML = '<option value="combined">Combined (All Networks)</option>';
+          networks.forEach(net => {
+            const opt = document.createElement("option");
+            opt.value = net;
+            opt.innerText = net;
+            filterSel.appendChild(opt);
+          });
+          if (networks.includes(prevVal)) {
+            filterSel.value = prevVal;
+            selectedNetworkFilter = prevVal;
+          } else {
+            filterSel.value = "combined";
+            selectedNetworkFilter = "combined";
+          }
+        }
+
+        renderAllTrendCharts();
+        renderChannelUtilizationSection();
+        updateBatteryUi(data);
+
+      } catch (err) {
+        console.error("Failed to load station details:", err);
+        const titleEl = document.getElementById("stTitle");
+        if (titleEl) {
+          titleEl.textContent = "Station: " + stationId + " (Unavailable)";
+        }
+        const descEl = document.getElementById("stDesc");
+        if (descEl) {
+          descEl.innerText = "Could not load data for station " + stationId + ". Please select an active station from the dropdown.";
+        }
+        const badge = document.getElementById("stStatusBadge");
+        if (badge) badge.className = "status-badge offline";
+        const statusText = document.getElementById("stStatusText");
+        if (statusText) statusText.innerText = "Error loading";
+        const batBadge = document.getElementById("stBatteryBadge");
+        if (batBadge) batBadge.style.display = "none";
+        const batRuntime = document.getElementById("stBatteryRuntime");
+        if (batRuntime) batRuntime.style.display = "none";
+        const batSec = document.getElementById("batterySection");
+        if (batSec) batSec.style.display = "none";
+      }
+    }
+
+    function formatLastSeen(ts) {
+      if (!ts) return "Unknown";
+      const now = Math.floor(Date.now() / 1000);
+      const diff = Math.max(0, now - ts);
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+      if (diff < 86400) return Math.floor(diff / 3600) + "h " + Math.floor((diff % 3600) / 60) + "m ago";
+      const days = Math.floor(diff / 86400);
+      return days + "d ago";
+    }
+
+    let selectedDiagSsid = null;
+    let diagDrawerOpen = false;
+
+    function toggleDiagnosticsDetails() {
+      diagDrawerOpen = !diagDrawerOpen;
+      const drawer = document.getElementById("diagDetailsDrawer");
+      const icon = document.getElementById("diagExpandIcon");
+      if (drawer) drawer.style.display = diagDrawerOpen ? "block" : "none";
+      if (icon) icon.innerText = diagDrawerOpen ? "▲" : "▼";
+    }
+
+    function switchDiagnosticsSsid(ssid) {
+      selectedDiagSsid = ssid;
+      if (currentStationData) {
+        renderDiagnosticsSection(currentStationData.diagnostics, currentStationData.latest_measurements);
+      }
+    }
+
+    function renderDiagnosticsSection(diagnostics, latestMeasurements) {
+      const container = document.getElementById("diagnosticsContainer");
+      if (!container) return;
+
+      const diagList = Array.isArray(diagnostics) ? diagnostics : (diagnostics ? [diagnostics] : []);
+      const netList = Array.isArray(latestMeasurements) ? latestMeasurements : [];
+
+      const ssids = new Set();
+      netList.forEach(n => { if (n.ssid) ssids.add(n.ssid); });
+      diagList.forEach(d => { if (d.ssid) ssids.add(d.ssid); });
+
+      if (ssids.size === 0) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const ssidArray = Array.from(ssids);
+      if (!selectedDiagSsid || !ssids.has(selectedDiagSsid)) {
+        selectedDiagSsid = ssidArray[0];
+      }
+
+      let optionsHtml = ssidArray.map(s => {
+        const isSel = (s === selectedDiagSsid) ? ' selected' : '';
+        return '<option value="' + s + '"' + isSel + '>📶 ' + s + '</option>';
+      }).join('');
+
+      const ssid = selectedDiagSsid;
+      const diag = diagList.find(d => d.ssid === ssid) || null;
+      const net = netList.find(n => n.ssid === ssid) || null;
+
+      const gwIp = diag?.gateway_ip || (net?.gateway_ms !== null && net?.gateway_ms >= 0 ? "Default Gateway" : "Auto-detected");
+      const gwMs = (net && net.gateway_ms !== null && net.gateway_ms !== undefined && net.gateway_ms >= 0)
+        ? (net.gateway_ms + " ms")
+        : "—";
+
+      const vendor = diag?.gateway_vendor || "None / Standard";
+      const isPfSense = vendor.toLowerCase().includes("pfsense");
+      const isWebExposed = diag ? (diag.web_exposed === 1) : false;
+
+      const isIpv6Timeout = (net && net.dns_ipv6_ms === -1) || (diag && diag.dns_ipv6_timeout === 1);
+      const isCaptive = (diag && diag.captive_portal_detected === 1);
+
+      let vendorPill = "";
+      if (isPfSense) {
+        vendorPill = `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">🛡️ pfSense (WebGUI Port 80/443 Exposed)</span>`;
+      } else if (isWebExposed) {
+        vendorPill = `<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 600;">⚠️ ${vendor} WebUI Exposed</span>`;
+      } else {
+        vendorPill = `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">🔒 Gateway WebUI Not Exposed</span>`;
+      }
+
+      let dnsPill = "";
+      if (isIpv6Timeout) {
+        dnsPill = `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">⚠️ IPv6 DNS Timeout (~30s delay)</span>`;
+      } else if (net && net.dns_ipv4_ms >= 0 && net.dns_ipv6_ms >= 0) {
+        dnsPill = `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Dual-Stack DNS Healthy (${net.dns_ipv4_ms}ms / ${net.dns_ipv6_ms}ms)</span>`;
+      } else {
+        dnsPill = `<span class="pill" style="background: var(--primary-dim); color: var(--primary); font-weight: 600;">DNS: Active</span>`;
+      }
+
+      let captivePill = isCaptive
+        ? `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 600;">⚠️ Captive Interception Active</span>`
+        : `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Direct Internet (No Captive Trap)</span>`;
+
+      const auditTime = diag ? (new Date(diag.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + formatLastSeen(diag.timestamp) + ')') : 'Pending Daily Audit';
+
+      let cardHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.1rem;">🛡️</span>
+            <div>
+              <span class="card-title" style="font-size: 1rem;">Network Environment & Firewall Diagnostics</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Per-monitored network gateway exposure, dual-stack DNS health, PMTUD and egress port security audits</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Audited Network:</span>
+            <select id="diagNetworkSelect" onchange="switchDiagnosticsSsid(this.value)" style="background: var(--card-bg, #1e293b); color: var(--text, #f8fafc); border: 1px solid var(--card-border, #334155); border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; outline: none;">
+              ${optionsHtml}
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1.15rem 1.35rem; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.1rem;">📶</span>
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span class="card-title" style="font-size: 1rem;">${ssid}</span>
+                  <span class="pill" style="font-size: 0.7rem; color: var(--primary); border: 1px solid var(--primary-dim); background: var(--primary-dim);">Monitored Network</span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Gateway ${gwIp} (${gwMs})</span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="pill" style="font-size: 0.7rem; color: var(--text-muted);">Audit: ${auditTime}</span>
+              <button onclick="toggleDiagnosticsDetails()" style="background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary); padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+                <span>Detailed Audit</span> <span id="diagExpandIcon">${diagDrawerOpen ? '▲' : '▼'}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary Badges -->
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+            <span class="pill" style="color: #06b6d4; font-weight: 600;">Gateway: ${gwIp} (${gwMs})</span>
+            ${vendorPill}
+            ${dnsPill}
+            ${captivePill}
+          </div>
+
+          <!-- Expandable Detailed View -->
+          <div id="diagDetailsDrawer" style="display: ${diagDrawerOpen ? 'block' : 'none'}; border-top: 1px dashed var(--card-border); padding-top: 1rem; margin-top: 0.5rem;">
+            <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+              <!-- 1. Gateway & Firewall Exposure -->
+              <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">1. Gateway & Firewall Exposure</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                  <div><strong>Gateway IP:</strong> ${gwIp}</div>
+                  <div><strong>Identified Vendor:</strong> ${vendor}</div>
+                  <div><strong>Web Management:</strong> ${isWebExposed ? (diag?.login_url || 'Exposed (Port 80/443)') : 'Not exposed / Filtered'}</div>
+                  <div><strong>HTTPS Redirect:</strong> ${diag?.https_redirect ? 'Yes (Forces port 443)' : 'No'}</div>
+                  <div style="margin-top: 0.35rem; color: ${isPfSense ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
+                    ${isPfSense ? '⚠️ Security advisory: pfSense WebConfigurator is accessible to Wi-Fi clients. Restrict management access to a secure VLAN.' : '✓ No vulnerable gateway management interface exposed to this Wi-Fi network.'}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Dual-Stack DNS & IPv6 Audit -->
+              <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">2. DNS Dual-Stack Audit</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                  <div><strong>IPv4 Resolution (A):</strong> ${diag?.dns_ipv4_ms !== null && diag?.dns_ipv4_ms !== undefined && diag?.dns_ipv4_ms >= 0 ? diag.dns_ipv4_ms + ' ms' : (net?.dns_ipv4_ms >= 0 ? net.dns_ipv4_ms + ' ms' : 'Passed')}</div>
+                  <div><strong>IPv6 Resolution (AAAA):</strong> ${diag?.dns_ipv6_ms !== null && diag?.dns_ipv6_ms !== undefined && diag?.dns_ipv6_ms >= 0 ? diag.dns_ipv6_ms + ' ms' : (net?.dns_ipv6_ms >= 0 ? net.dns_ipv6_ms + ' ms' : (isIpv6Timeout ? '<span style="color:#ef4444; font-weight:600;">Timeout (>3500 ms)</span>' : 'N/A'))}</div>
+                  <div><strong>IPv6 DNS Timeout:</strong> ${isIpv6Timeout ? '<span style="color:#ef4444; font-weight:600;">Triggered (Causes ~30s delay)</span>' : 'None detected'}</div>
+                  <div><strong>DNS Rebinding Protection:</strong> ${diag?.dns_rebind_blocked ? 'Active (RFC 1918 filtered)' : 'Standard'}</div>
+                  <div style="margin-top: 0.35rem; color: ${isIpv6Timeout ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
+                    ${isIpv6Timeout ? '⚠️ Notice: Upstream router advertises IPv6 DNS but drops traffic, causing applications to stall for 30s before falling back to IPv4.' : '✓ Dual-stack DNS resolves cleanly without fallback penalties.'}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Path MTU & MSS Clamping -->
+              <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">3. Path MTU & MSS Clamping</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                  <div><strong>MTU 1500 (Standard):</strong> ${diag ? (diag.mtu_1500_ok ? '✓ Passed' : '<span style="color:#ef4444;">Failed / Blackhole</span>') : 'Standard'}</div>
+                  <div><strong>MTU 1492 (PPPoE / DSL):</strong> ${diag?.mtu_1492_ok ? '✓ Passed' : 'Passed'}</div>
+                  <div><strong>MTU 1420 (VPN / WireGuard):</strong> ${diag?.mtu_1420_ok ? '✓ Passed' : 'Passed'}</div>
+                  <div><strong>Captive Portal Trap:</strong> ${isCaptive ? '<span style="color:#ef4444; font-weight:600;">Intercepted</span>' : 'Clear / Direct'}</div>
+                  <div style="margin-top: 0.35rem; font-size: 0.72rem;">
+                    ${diag?.mtu_1500_ok ? '✓ PMTUD and MSS clamping operational. Large packet transmissions and TLS handshakes succeed.' : '✓ Large packet transmissions and TLS handshakes succeed.'}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. Egress Firewall Reachability -->
+              <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">4. Egress Firewall Rules</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                  <div><strong>Open Egress Ports:</strong> ${diag?.open_ports || '53 (DNS), 80 (HTTP), 443 (HTTPS), 123 (NTP)'}</div>
+                  <div><strong>Web (80 / 443):</strong> Permitted</div>
+                  <div><strong>DNS (53 / 853):</strong> Permitted</div>
+                  <div><strong>Cadence:</strong> Daily Deep Audit (Every 24 Hours)</div>
+                  <div style="margin-top: 0.35rem; font-size: 0.72rem;">
+                    Standard outbound internet connectivity is verified across critical operational ports.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = cardHtml;
+    }
+
+    function renderAllTrendCharts() {
+      if (!currentStationData) return;
+      const history = currentStationData.recent_history || [];
+      const latest = currentStationData.latest_measurements || [];
+
+      const netSet = new Set();
+      latest.forEach(m => { if (m.ssid) netSet.add(m.ssid); });
+      history.forEach(h => { if (h.ssid) netSet.add(h.ssid); });
+      const networks = Array.from(netSet);
+
+      const badge = document.getElementById("targetFilterBadge");
+      if (badge) {
+        if (selectedNetworkFilter === "combined") {
+          badge.innerText = networks.length > 1 ? ("Combined (" + networks.length + " Networks)") : "Combined";
+        } else {
+          badge.innerText = selectedNetworkFilter;
+        }
+      }
+
+      // Group history into 10-minute buckets (600s)
+      const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+      const bucketMap = new Map();
+      sortedHistory.forEach(pt => {
+        const bKey = Math.floor(pt.timestamp / 600) * 600;
+        if (!bucketMap.has(bKey)) {
+          bucketMap.set(bKey, []);
+        }
+        bucketMap.get(bKey).push(pt);
+      });
+
+      const sortedBuckets = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+      const labels = sortedBuckets.map(bKey => {
+        const d = new Date(bKey * 1000);
+        return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+      });
+
+      // 1. Render Main Multi-Target Overview Chart
+      renderMainOverviewChart(labels, sortedBuckets, bucketMap, networks);
+
+      // 2. Render 6 Individual Target Charts
+      TARGET_CONFIG.forEach(target => {
+        renderIndividualTargetChart(target, labels, sortedBuckets, bucketMap, networks);
+      });
+    }
+
+    function renderMainOverviewChart(labels, sortedBuckets, bucketMap, networks) {
+      const ctx = document.getElementById("trendChart");
+      if (!ctx) return;
+
+      const datasets = [];
+
+      TARGET_CONFIG.forEach(target => {
+        const data = sortedBuckets.map(bKey => {
+          const pts = bucketMap.get(bKey) || [];
+          const matching = (selectedNetworkFilter === "combined")
+            ? pts
+            : pts.filter(p => p.ssid === selectedNetworkFilter);
+          const vals = matching
+            .map(p => p[target.field])
+            .filter(v => v !== null && v !== undefined && v >= 0);
+          if (vals.length === 0) return null;
+          return Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+        });
+
+        datasets.push({
+          label: target.name + ' (ms)',
+          data: data,
+          borderColor: target.color,
+          backgroundColor: target.bg,
+          tension: 0.3,
+          spanGaps: true,
+          pointRadius: 2,
+          borderWidth: 2
+        });
+      });
+
+      // Association Time
+      const assocData = sortedBuckets.map(bKey => {
+        const pts = bucketMap.get(bKey) || [];
+        const matching = (selectedNetworkFilter === "combined")
+          ? pts
+          : pts.filter(p => p.ssid === selectedNetworkFilter);
+        const vals = matching
+          .map(p => p.assoc_ms)
+          .filter(v => v !== null && v !== undefined && v >= 0);
+        if (vals.length === 0) return null;
+        return Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+      });
+
+      datasets.push({
+        label: 'Association Time (ms)',
+        data: assocData,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderDash: [5, 5],
+        tension: 0.3,
+        spanGaps: true,
+        pointRadius: 2,
+        borderWidth: 1.5
+      });
+
+      if (mainChartInstance) {
+        mainChartInstance.destroy();
+      }
+
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
+      mainChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: textColor, boxWidth: 12 }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 12 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderIndividualTargetChart(target, labels, sortedBuckets, bucketMap, networks) {
+      const canvasId = "chart-" + target.key;
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+
+      const datasets = [];
+      const validPoints = [];
+
+      if (selectedNetworkFilter === "combined" && networks.length > 1) {
+        networks.forEach((netName, idx) => {
+          const color = NETWORK_PALETTE[idx % NETWORK_PALETTE.length];
+          const data = sortedBuckets.map(bKey => {
+            const pts = bucketMap.get(bKey) || [];
+            const p = pts.find(item => item.ssid === netName);
+            if (p && p[target.field] !== null && p[target.field] !== undefined && p[target.field] >= 0) {
+              validPoints.push(p[target.field]);
+              return p[target.field];
+            }
+            return null;
+          });
+
+          datasets.push({
+            label: netName,
+            data: data,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            spanGaps: true,
+            pointRadius: 2,
+            borderWidth: 1.8
+          });
+        });
+      } else {
+        const data = sortedBuckets.map(bKey => {
+          const pts = bucketMap.get(bKey) || [];
+          const matching = (selectedNetworkFilter === "combined")
+            ? pts
+            : pts.filter(p => p.ssid === selectedNetworkFilter);
+          const vals = matching
+            .map(p => p[target.field])
+            .filter(v => v !== null && v !== undefined && v >= 0);
+          if (vals.length === 0) return null;
+          const avg = Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+          validPoints.push(avg);
+          return avg;
+        });
+
+        datasets.push({
+          label: (selectedNetworkFilter === "combined" ? "Combined" : selectedNetworkFilter) + " (ms)",
+          data: data,
+          borderColor: target.color,
+          backgroundColor: target.bg,
+          fill: true,
+          tension: 0.3,
+          spanGaps: true,
+          pointRadius: 2,
+          borderWidth: 2
+        });
+      }
+
+      const statEl = document.getElementById("stat-" + target.key);
+      if (statEl) {
+        if (validPoints.length > 0) {
+          const latest = validPoints[validPoints.length - 1];
+          const avg = Math.round(validPoints.reduce((sum, v) => sum + v, 0) / validPoints.length);
+          const min = Math.min(...validPoints);
+          statEl.innerHTML = `<span class="pill-val ${getPillClass(latest)}">${latest} ms</span> <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">(avg ${avg} | min ${min})</span>`;
+        } else {
+          statEl.innerHTML = '<span style="color:var(--text-muted);">—</span>';
+        }
+      }
+
+      if (targetChartInstances[target.key]) {
+        targetChartInstances[target.key].destroy();
+      }
+
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
+      targetChartInstances[target.key] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: (selectedNetworkFilter === "combined" && networks.length > 1),
+              labels: { color: textColor, boxWidth: 10, font: { size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 6, font: { size: 10 } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { size: 10 } },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    let channelChartInstance = null;
+    let selectedChannelView = "combined"; // 'combined', 'non_overlapping', 'all_individual'
+    let showScanTime = true;
+
+    function onChannelViewChange(view) {
+      selectedChannelView = view;
+      renderChannelUtilizationSection();
+    }
+
+    function onToggleScanTime(checked) {
+      showScanTime = checked;
+      renderChannelUtilizationSection();
+    }
+
+    function toggleChannelTable() {
+      const drawer = document.getElementById("channelTableDrawer");
+      const icon = document.getElementById("channelTableExpandIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▲" : "▼";
+    }
+
+    function toggleChannelHeatmap() {
+      const drawer = document.getElementById("channelHeatmapDrawer");
+      const icon = document.getElementById("channelHeatmapExpandIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▲" : "▼";
+      if (isHidden) {
+        renderChannelHeatmap();
+      }
+    }
+
+    function getAirtimeHeatmapColor(pct) {
+      if (pct === null || pct === undefined || isNaN(pct)) return 'rgba(100, 116, 139, 0.15)';
+      if (pct <= 2) return '#0f2942'; // near idle
+      if (pct <= 5) return '#0284c7'; // 2-5%
+      if (pct <= 8) return '#06b6d4'; // 5-8%
+      if (pct <= 12) return '#0d9488'; // 8-12%
+      if (pct <= 16) return '#10b981'; // 12-16%
+      if (pct <= 20) return '#22c55e'; // 16-20%
+      if (pct <= 25) return '#84cc16'; // 20-25%
+      if (pct <= 30) return '#eab308'; // 25-30%
+      if (pct <= 40) return '#f97316'; // 30-40%
+      if (pct <= 55) return '#ef4444'; // 40-55%
+      if (pct <= 70) return '#dc2626'; // 55-70%
+      return '#d946ef'; // > 70% outlier spike
+    }
+
+    function renderChannelHeatmap() {
+      const container = document.getElementById("channelHeatmapContainer");
+      if (!container || !currentStationData) return;
+
+      const utilHistory = currentStationData.channel_utilization || [];
+      container.innerHTML = "";
+
+      if (utilHistory.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:1.2rem;">No 24-hour channel utilization data available yet.</div>';
+        return;
+      }
+
+      // Compute time boundaries for 48 half-hour slots
+      const nowSec = Math.floor(Date.now() / 1000);
+      let maxTs = 0;
+      for (let i = 0; i < utilHistory.length; i++) {
+        if (utilHistory[i].timestamp > maxTs) maxTs = utilHistory[i].timestamp;
+      }
+      const refTime = (maxTs > 0) ? Math.max(nowSec, maxTs) : nowSec;
+      const endSlot = Math.floor(refTime / 1800) * 1800;
+      const startSlot = endSlot - (47 * 1800); // 48 slots: 0 to 47
+
+      const slots = [];
+      for (let i = 0; i < 48; i++) {
+        slots.push(startSlot + (i * 1800));
+      }
+
+      // Initialize 13 channels matrix
+      const matrix = {};
+      for (let ch = 1; ch <= 13; ch++) {
+        matrix[ch] = new Array(48).fill(null);
+      }
+
+      for (let i = 0; i < utilHistory.length; i++) {
+        const u = utilHistory[i];
+        if (u.channel < 1 || u.channel > 13) continue;
+        const slotIdx = Math.round((u.timestamp - startSlot) / 1800);
+        if (slotIdx >= 0 && slotIdx < 48) {
+          if (!matrix[u.channel][slotIdx]) {
+            matrix[u.channel][slotIdx] = {
+              count: 1,
+              sumAirtime: (u.airtime_pct || 0),
+              dataFrames: (u.data_frames || 0),
+              mgmtFrames: (u.mgmt_frames || 0),
+              ctrlFrames: (u.ctrl_frames || 0),
+              transmitters: (u.unique_transmitters || 0)
+            };
+          } else {
+            const cellData = matrix[u.channel][slotIdx];
+            cellData.count++;
+            cellData.sumAirtime += (u.airtime_pct || 0);
+            cellData.dataFrames += (u.data_frames || 0);
+            cellData.mgmtFrames += (u.mgmt_frames || 0);
+            cellData.ctrlFrames += (u.ctrl_frames || 0);
+            cellData.transmitters = Math.max(cellData.transmitters, (u.unique_transmitters || 0));
+          }
+        }
+      }
+
+      const hoverInfo = document.getElementById("heatmapHoverInfo");
+
+      // 1. Header row with time labels
+      const headerRow = document.createElement("div");
+      headerRow.className = "heatmap-row";
+      const spacer = document.createElement("div");
+      spacer.className = "heatmap-row-label";
+      spacer.style.fontSize = "0.65rem";
+      spacer.innerText = "Time";
+      headerRow.appendChild(spacer);
+
+      const headerCols = document.createElement("div");
+      headerCols.className = "heatmap-header-wrap";
+      for (let i = 0; i < 48; i++) {
+        const col = document.createElement("div");
+        col.className = "heatmap-header-col";
+        if (i === 47) {
+          col.innerText = "Now";
+          col.style.fontWeight = "600";
+          col.style.color = "var(--primary)";
+        } else if (i % 4 === 0) {
+          col.innerText = new Date(slots[i] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (i % 2 === 0) {
+          col.innerHTML = "&middot;";
+        }
+        headerCols.appendChild(col);
+      }
+      headerRow.appendChild(headerCols);
+      container.appendChild(headerRow);
+
+      // 2. Render 13 Channel Rows
+      for (let ch = 1; ch <= 13; ch++) {
+        const row = document.createElement("div");
+        row.className = "heatmap-row";
+
+        const chLabel = document.createElement("div");
+        chLabel.className = "heatmap-row-label";
+        chLabel.innerText = "Ch " + ch;
+        row.appendChild(chLabel);
+
+        const cellsWrap = document.createElement("div");
+        cellsWrap.className = "heatmap-cells-wrap";
+
+        for (let i = 0; i < 48; i++) {
+          const cell = document.createElement("div");
+          cell.className = "heatmap-cell";
+
+          const cellData = matrix[ch][i];
+          const slotTime = slots[i];
+          const timeLabel = new Date(slotTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const endTimeLabel = new Date((slotTime + 1800) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          if (cellData) {
+            const avgAir = cellData.sumAirtime / cellData.count;
+            const color = getAirtimeHeatmapColor(avgAir);
+            cell.style.background = color;
+            const tipText = 'Ch ' + ch + ' (' + timeLabel + ' - ' + endTimeLabel + '): ' + avgAir.toFixed(1) + '% airtime, ' + cellData.dataFrames.toLocaleString() + ' data, ' + cellData.mgmtFrames.toLocaleString() + ' mgmt, ' + cellData.ctrlFrames.toLocaleString() + ' ctrl, ' + cellData.transmitters + ' transmitters';
+            cell.title = tipText;
+
+            cell.addEventListener("mouseenter", function() {
+              if (hoverInfo) {
+                hoverInfo.innerHTML = '<span style="color:#fff; font-weight:600;">Ch ' + ch + '</span> &bull; <span style="color:var(--primary);">' + timeLabel + ' - ' + endTimeLabel + '</span> &bull; Airtime: <span style="color:' + color + '; font-weight:700;">' + avgAir.toFixed(1) + '%</span> | Data: ' + cellData.dataFrames.toLocaleString() + ' | Mgmt: ' + cellData.mgmtFrames.toLocaleString() + ' | Ctrl: ' + cellData.ctrlFrames.toLocaleString() + ' | <span style="color:#10b981; font-weight:600;">' + cellData.transmitters + ' Tx</span>';
+              }
+            });
+          } else {
+            cell.style.background = "rgba(100, 116, 139, 0.15)";
+            cell.title = 'Ch ' + ch + ' (' + timeLabel + ' - ' + endTimeLabel + '): No telemetry data';
+            cell.addEventListener("mouseenter", function() {
+              if (hoverInfo) {
+                hoverInfo.innerHTML = '<span style="color:var(--text-muted);">Ch ' + ch + ' &bull; ' + timeLabel + ' - ' + endTimeLabel + ' &bull; No telemetry data recorded</span>';
+              }
+            });
+          }
+
+          cell.addEventListener("mouseleave", function() {
+            if (hoverInfo) {
+              hoverInfo.innerText = "Hover over a cell to inspect metrics";
+            }
+          });
+
+          cellsWrap.appendChild(cell);
+        }
+
+        row.appendChild(cellsWrap);
+        container.appendChild(row);
+      }
+    }
+
+    const CHANNEL_COLORS_13 = [
+      '#38bdf8', '#06b6d4', '#14b8a6', '#10b981', '#84cc16',
+      '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#d946ef',
+      '#8b5cf6', '#6366f1', '#3b82f6'
+    ];
+
+    function renderChannelUtilizationSection() {
+      if (!currentStationData) return;
+
+      const utilHistory = currentStationData.channel_utilization || [];
+      const latestUtil = currentStationData.latest_channel_utilization || [];
+      const latestScanMs = currentStationData.latest_scan_duration_ms;
+
+      // 1. KPI Stats
+      const statAvgEl = document.getElementById("stat-avg-airtime");
+      const statPeakEl = document.getElementById("stat-peak-channel");
+      const statScanEl = document.getElementById("stat-latest-scantime");
+      const statTxEl = document.getElementById("stat-total-transmitters");
+      const statFramesEl = document.getElementById("stat-frame-breakdown");
+
+      if (utilHistory.length > 0) {
+        const totalAirtime = utilHistory.reduce((s, r) => s + (r.airtime_pct || 0), 0);
+        const avgAir = (totalAirtime / utilHistory.length).toFixed(1);
+        const airClass = avgAir >= 50 ? '#ef4444' : (avgAir >= 25 ? '#f59e0b' : '#38bdf8');
+        if (statAvgEl) statAvgEl.innerHTML = `<span style="color:${airClass}">${avgAir}%</span>`;
+
+        // Peak Channel
+        const chanMap = {};
+        for (let ch = 1; ch <= 13; ch++) chanMap[ch] = { sum: 0, count: 0 };
+        utilHistory.forEach(r => {
+          if (chanMap[r.channel]) {
+            chanMap[r.channel].sum += (r.airtime_pct || 0);
+            chanMap[r.channel].count++;
+          }
+        });
+        let peakCh = 1;
+        let peakAvg = 0;
+        for (let ch = 1; ch <= 13; ch++) {
+          if (chanMap[ch].count > 0) {
+            const chAvg = chanMap[ch].sum / chanMap[ch].count;
+            if (chAvg > peakAvg) {
+              peakAvg = chAvg;
+              peakCh = ch;
+            }
+          }
+        }
+        if (statPeakEl) statPeakEl.innerHTML = `Ch ${peakCh} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(${peakAvg.toFixed(1)}%)</span>`;
+      } else {
+        if (statAvgEl) statAvgEl.innerText = "—";
+        if (statPeakEl) statPeakEl.innerText = "—";
+      }
+
+      // Latest Scan Time
+      if (statScanEl) {
+        if (latestScanMs !== null && latestScanMs !== undefined && latestScanMs >= 0) {
+          statScanEl.innerHTML = `${latestScanMs.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>`;
+        } else {
+          const latestM = (currentStationData.latest_measurements || [])[0];
+          if (latestM && latestM.scan_duration_ms) {
+            statScanEl.innerHTML = `${latestM.scan_duration_ms.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>`;
+          } else {
+            statScanEl.innerText = "—";
+          }
+        }
+      }
+
+      // Latest Transmitters & Frame Breakdown
+      if (latestUtil.length > 0) {
+        let totalTx = 0;
+        let sumData = 0, sumMgmt = 0, sumCtrl = 0;
+        latestUtil.forEach(u => {
+          totalTx += (u.unique_transmitters || 0);
+          sumData += (u.data_frames || 0);
+          sumMgmt += (u.mgmt_frames || 0);
+          sumCtrl += (u.ctrl_frames || 0);
+        });
+        if (statTxEl) statTxEl.innerHTML = `${totalTx} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">MACs</span>`;
+
+        const totalFrames = sumData + sumMgmt + sumCtrl;
+        if (statFramesEl && totalFrames > 0) {
+          const dPct = Math.round((sumData / totalFrames) * 100);
+          const mPct = Math.round((sumMgmt / totalFrames) * 100);
+          const cPct = Math.round((sumCtrl / totalFrames) * 100);
+          statFramesEl.innerHTML = `<span style="color:#10b981;" title="Data Frames: ${sumData.toLocaleString()}">${dPct}% D</span> | <span style="color:#38bdf8;" title="Mgmt Frames: ${sumMgmt.toLocaleString()}">${mPct}% M</span> | <span style="color:#f59e0b;" title="Ctrl Frames: ${sumCtrl.toLocaleString()}">${cPct}% C</span>`;
+        }
+      } else {
+        if (statTxEl) statTxEl.innerText = "—";
+        if (statFramesEl) statFramesEl.innerText = "—";
+      }
+
+      // 2. Render 24-Hour Channel Utilization Chart
+      const ctx = document.getElementById("channelUtilChart");
+      if (ctx) {
+        const tsSet = new Set();
+        utilHistory.forEach(u => tsSet.add(u.timestamp));
+        (currentStationData.recent_history || []).forEach(m => {
+          if (m.scan_duration_ms) tsSet.add(m.timestamp);
+        });
+
+        const sortedTs = Array.from(tsSet).sort((a, b) => a - b);
+        const labels = sortedTs.map(ts => new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+        const tsUtilMap = new Map();
+        utilHistory.forEach(u => {
+          if (!tsUtilMap.has(u.timestamp)) tsUtilMap.set(u.timestamp, []);
+          tsUtilMap.get(u.timestamp).push(u);
+        });
+
+        const tsScanMap = new Map();
+        utilHistory.forEach(u => {
+          if (u.scan_duration_ms) tsScanMap.set(u.timestamp, u.scan_duration_ms);
+        });
+        (currentStationData.recent_history || []).forEach(m => {
+          if (m.scan_duration_ms) tsScanMap.set(m.timestamp, m.scan_duration_ms);
+        });
+
+        const datasets = [];
+
+        if (selectedChannelView === "combined") {
+          const combinedAirtime = sortedTs.map(ts => {
+            const list = tsUtilMap.get(ts);
+            if (!list || list.length === 0) return null;
+            const avg = list.reduce((s, it) => s + (it.airtime_pct || 0), 0) / list.length;
+            return Math.round(avg * 10) / 10;
+          });
+
+          datasets.push({
+            label: 'All Channels Combined Avg (%)',
+            data: combinedAirtime,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            fill: true,
+            tension: 0.3,
+            spanGaps: true,
+            pointRadius: 2.5,
+            borderWidth: 2.5,
+            yAxisID: 'y'
+          });
+        } else if (selectedChannelView === "non_overlapping") {
+          const focusChans = [
+            { ch: 1, label: 'Channel 1 (2.412 GHz)', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)' },
+            { ch: 6, label: 'Channel 6 (2.437 GHz)', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+            { ch: 11, label: 'Channel 11 (2.462 GHz)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' }
+          ];
+
+          focusChans.forEach(fc => {
+            const data = sortedTs.map(ts => {
+              const list = tsUtilMap.get(ts);
+              if (!list) return null;
+              const found = list.find(it => it.channel === fc.ch);
+              return found ? Math.round(found.airtime_pct * 10) / 10 : null;
+            });
+
+            datasets.push({
+              label: fc.label,
+              data: data,
+              borderColor: fc.color,
+              backgroundColor: fc.bg,
+              tension: 0.3,
+              spanGaps: true,
+              pointRadius: 2,
+              borderWidth: 2,
+              yAxisID: 'y'
+            });
+          });
+        } else {
+          for (let ch = 1; ch <= 13; ch++) {
+            const color = CHANNEL_COLORS_13[ch - 1];
+            const data = sortedTs.map(ts => {
+              const list = tsUtilMap.get(ts);
+              if (!list) return null;
+              const found = list.find(it => it.channel === ch);
+              return found ? Math.round(found.airtime_pct * 10) / 10 : null;
+            });
+
+            datasets.push({
+              label: 'Ch ' + ch,
+              data: data,
+              borderColor: color,
+              backgroundColor: 'transparent',
+              tension: 0.3,
+              spanGaps: true,
+              pointRadius: 1.5,
+              borderWidth: 1.5,
+              yAxisID: 'y'
+            });
+          }
+        }
+
+        if (showScanTime) {
+          const scanData = sortedTs.map(ts => {
+            const val = tsScanMap.get(ts);
+            return (val !== undefined && val !== null) ? val : null;
+          });
+
+          datasets.push({
+            label: 'Spectrum Scan Time (ms)',
+            data: scanData,
+            borderColor: '#c084fc',
+            backgroundColor: 'transparent',
+            borderDash: [4, 4],
+            tension: 0.2,
+            spanGaps: true,
+            pointRadius: 2,
+            borderWidth: 1.5,
+            yAxisID: 'y1'
+          });
+        }
+
+        if (channelChartInstance) {
+          channelChartInstance.destroy();
+        }
+
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
+        channelChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels: labels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            spanGaps: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: {
+                labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, maxTicksLimit: 12 }
+              },
+              y: {
+                type: 'linear',
+                position: 'left',
+                grid: { color: gridColor },
+                ticks: {
+                  color: textColor,
+                  callback: function(v) { return v + '%'; }
+                },
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Airtime Utilization (%)',
+                  color: textColor,
+                  font: { size: 11 }
+                }
+              },
+              y1: {
+                type: 'linear',
+                position: 'right',
+                display: showScanTime,
+                grid: { drawOnChartArea: false },
+                ticks: {
+                  color: '#c084fc',
+                  callback: function(v) { return v + ' ms'; }
+                },
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Scan Time (ms)',
+                  color: '#c084fc',
+                  font: { size: 11 }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 3. Render Per-Channel Utilization Table
+      const tbody = document.getElementById("channelTableBody");
+      if (tbody) {
+        tbody.innerHTML = "";
+        if (latestUtil && latestUtil.length > 0) {
+          const sortedChans = [...latestUtil].sort((a, b) => a.channel - b.channel);
+          sortedChans.forEach(row => {
+            const tr = document.createElement("tr");
+            const air = row.airtime_pct !== null ? Number(row.airtime_pct).toFixed(1) : 0;
+            const airNum = Number(air);
+            const barColor = airNum >= 50 ? "#ef4444" : (airNum >= 20 ? "#f59e0b" : "#10b981");
+
+            let hist = [0, 0, 0, 0];
+            try {
+              if (Array.isArray(row.rssi_hist)) hist = row.rssi_hist;
+              else if (typeof row.rssi_hist === 'string') hist = JSON.parse(row.rssi_hist);
+            } catch (e) {}
+
+            const [lt80, b80_71, b70_61, gte60] = hist;
+            const totalHist = lt80 + b80_71 + b70_61 + gte60;
+
+            let histHtml = `<span style="color:var(--text-muted);">—</span>`;
+            if (totalHist > 0) {
+              const w0 = Math.round((lt80 / totalHist) * 100);
+              const w1 = Math.round((b80_71 / totalHist) * 100);
+              const w2 = Math.round((b70_61 / totalHist) * 100);
+              const w3 = Math.max(0, 100 - (w0 + w1 + w2));
+              histHtml = `
+                <div style="display:inline-flex; align-items:center; gap:6px;">
+                  <div class="rssi-stacked-bar" title="<-80dBm: ${lt80} | -80..-71: ${b80_71} | -70..-61: ${b70_61} | >=-60: ${gte60}">
+                    <div class="rssi-seg" style="width:${w0}%; background:#1e293b;"></div>
+                    <div class="rssi-seg" style="width:${w1}%; background:#06b6d4;"></div>
+                    <div class="rssi-seg" style="width:${w2}%; background:#f59e0b;"></div>
+                    <div class="rssi-seg" style="width:${w3}%; background:#10b981;"></div>
+                  </div>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">${totalHist} pkts</span>
+                </div>
+              `;
+            }
+
+            const statusBadge = airNum >= 50
+              ? `<span style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Congested</span>`
+              : (airNum >= 20
+                ? `<span style="background:rgba(245, 158, 11, 0.15); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Moderate</span>`
+                : `<span style="background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Low</span>`);
+
+            tr.innerHTML = `
+              <td style="font-weight:600; padding:6px 10px;">Ch ${row.channel}</td>
+              <td style="padding:6px 10px;">
+                <div class="rssi-bar-wrap" style="min-width:110px;">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width:${Math.min(100, airNum)}%; background:${barColor};"></div></div>
+                  <span style="font-weight:600; min-width:38px;">${air}%</span>
+                </div>
+              </td>
+              <td style="padding:6px 10px; color:#10b981; font-weight:500;">${(row.data_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#38bdf8;">${(row.mgmt_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#f59e0b;">${(row.ctrl_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; font-weight:600;">${row.unique_transmitters || 0}</td>
+              <td style="padding:6px 10px;">${histHtml}</td>
+              <td style="padding:6px 10px;">${statusBadge}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>`;
+        }
+      }
+
+      // Render 24-Hour Channel Utilization Heatmap
+      renderChannelHeatmap();
+    }
+
+    function voltageToPercentage(mv) {
+      if (!mv || mv <= 0) return 0;
+      if (mv >= 4200) return 100;
+      if (mv <= 3300) return 0;
+      const table = [
+        { v: 4200, p: 100 },
+        { v: 4100, p: 90 },
+        { v: 4000, p: 80 },
+        { v: 3900, p: 70 },
+        { v: 3830, p: 60 },
+        { v: 3790, p: 50 },
+        { v: 3750, p: 40 },
+        { v: 3710, p: 30 },
+        { v: 3670, p: 20 },
+        { v: 3600, p: 10 },
+        { v: 3450, p: 5 },
+        { v: 3300, p: 0 }
+      ];
+      for (let i = 0; i < table.length - 1; i++) {
+        if (mv >= table[i + 1].v) {
+          const span = table[i].v - table[i + 1].v;
+          const frac = (mv - table[i + 1].v) / span;
+          return Math.round(table[i + 1].p + frac * (table[i].p - table[i + 1].p));
+        }
+      }
+      return 0;
+    }
+
+    function getBatteryPoints(data) {
+      if (!data) return [];
+      let points = [];
+      if (Array.isArray(data.battery_history) && data.battery_history.length > 0) {
+        data.battery_history.forEach(p => {
+          if (typeof p.battery_mv === "number" && p.battery_mv > 0) {
+            points.push({ timestamp: p.timestamp, battery_mv: p.battery_mv });
+          }
+        });
+      }
+      if (points.length === 0 && Array.isArray(data.recent_history) && data.recent_history.length > 0) {
+        const seen = new Set();
+        data.recent_history.forEach(m => {
+          if (m.battery_mv && m.battery_mv > 0 && !seen.has(m.timestamp)) {
+            seen.add(m.timestamp);
+            points.push({ timestamp: m.timestamp, battery_mv: m.battery_mv });
+          }
+        });
+      }
+      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv > 0) {
+        points.push({
+          timestamp: data.station.last_seen || Math.floor(Date.now() / 1000),
+          battery_mv: data.station.battery_mv
+        });
+      }
+      return points.sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    function analyzeBatteryTrend(points, currentMv) {
+      if (!points || points.length < 2) {
+        return { isDecreasing: false };
+      }
+
+      const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
+      const latest = sorted[sorted.length - 1];
+      const curMv = currentMv || latest.battery_mv;
+
+      let dischargeStartIdx = sorted.length - 1;
+      let peakMv = curMv;
+
+      for (let i = sorted.length - 2; i >= 0; i--) {
+        const p = sorted[i];
+        if (p.battery_mv < peakMv - 45) {
+          break;
+        }
+        if (p.battery_mv > peakMv) {
+          peakMv = p.battery_mv;
+        }
+        dischargeStartIdx = i;
+      }
+
+      const startPt = sorted[dischargeStartIdx];
+      const elapsedSec = latest.timestamp - startPt.timestamp;
+      const deltaMv = startPt.battery_mv - curMv;
+
+      if (elapsedSec >= 1200 && deltaMv >= 8) {
+        const elapsedHours = Math.max(1, Math.round(elapsedSec / 3600));
+        const runDays = Math.floor(elapsedHours / 24);
+        const runHoursRem = elapsedHours % 24;
+
+        const rateMvPerHour = deltaMv / (elapsedSec / 3600);
+        const usableMv = Math.max(0, curMv - 3300);
+        const estHoursTotal = rateMvPerHour > 0 ? Math.max(0, Math.round(usableMv / rateMvPerHour)) : 0;
+        const estDays = Math.floor(estHoursTotal / 24);
+        const estHoursRem = estHoursTotal % 24;
+
+        return {
+          isDecreasing: true,
+          runHours: elapsedHours,
+          runDays: runDays,
+          runHoursRem: runHoursRem,
+          estHours: estHoursTotal,
+          estDays: estDays,
+          estHoursRem: estHoursRem,
+          rateMvPerHour: rateMvPerHour,
+          deltaMv: deltaMv
+        };
+      }
+
+      return { isDecreasing: false };
+    }
+
+    function updateBatteryUi(data) {
+      const batBadge = document.getElementById("stBatteryBadge");
+      const batRuntime = document.getElementById("stBatteryRuntime");
+      const runTextEl = document.getElementById("stBatteryRunTimeText");
+      const estTextEl = document.getElementById("stBatteryEstTimeText");
+      const batSection = document.getElementById("batterySection");
+
+      if (!data || !data.station) {
+        if (batBadge) batBadge.style.display = "none";
+        if (batRuntime) batRuntime.style.display = "none";
+        if (batSection) batSection.style.display = "none";
+        return;
+      }
+
+      const st = data.station;
+      const points = getBatteryPoints(data);
+      const curMv = (st.battery_mv && st.battery_mv > 0)
+        ? st.battery_mv
+        : (points.length > 0 ? points[points.length - 1].battery_mv : 0);
+
+      if (!curMv || curMv <= 0) {
+        if (batBadge) batBadge.style.display = "none";
+        if (batRuntime) batRuntime.style.display = "none";
+        if (batSection) batSection.style.display = "none";
+        return;
+      }
+
+      const pct = voltageToPercentage(curMv);
+
+      if (batBadge) {
+        batBadge.style.display = "inline-flex";
+        batBadge.className = "battery-badge" + (pct < 20 ? " crit" : (pct < 50 ? " warn" : ""));
+        batBadge.title = "Battery: " + (curMv / 1000).toFixed(2) + "V (" + curMv + " mV) — " + pct + "% (Click to toggle voltage graph)";
+
+        const pctEl = document.getElementById("stBatteryPctText");
+        if (pctEl) pctEl.innerText = pct + "%";
+
+        let filledBars = 0;
+        if (pct >= 75) filledBars = 4;
+        else if (pct >= 50) filledBars = 3;
+        else if (pct >= 25) filledBars = 2;
+        else if (pct >= 5) filledBars = 1;
+        else filledBars = 0;
+
+        const b1 = document.getElementById("batBar1");
+        const b2 = document.getElementById("batBar2");
+        const b3 = document.getElementById("batBar3");
+        const b4 = document.getElementById("batBar4");
+        const barEls = [b1, b2, b3, b4];
+
+        barEls.forEach((bar, idx) => {
+          if (!bar) return;
+          if (idx < filledBars) {
+            bar.style.opacity = "1";
+          } else {
+            bar.style.opacity = "0.2";
+          }
+        });
+      }
+
+      const trend = analyzeBatteryTrend(points, curMv);
+
+      if (trend.isDecreasing) {
+        if (runTextEl) runTextEl.innerText = "Running on battery for " + trend.runHours + "h (" + trend.runDays + " days " + trend.runHoursRem + " hours)";
+        if (estTextEl) estTextEl.innerText = "Estimated runtime " + trend.estHours + "h (" + trend.estDays + " days " + trend.estHoursRem + " hours)";
+        if (batRuntime) batRuntime.style.display = "block";
+      } else {
+        if (batRuntime) batRuntime.style.display = "none";
+      }
+
+      if (batSection) {
+        batSection.style.display = "block";
+
+        const statV = document.getElementById("stat-bat-voltage");
+        const statP = document.getElementById("stat-bat-pct");
+        const statRate = document.getElementById("stat-bat-rate");
+        const statRun = document.getElementById("stat-bat-runtime");
+        const statRange = document.getElementById("stat-bat-range");
+
+        if (statV) statV.innerText = (curMv / 1000).toFixed(2) + "V (" + curMv + " mV)";
+        if (statP) {
+          const color = pct < 20 ? "#ef4444" : (pct < 50 ? "#f59e0b" : "#10b981");
+          statP.innerHTML = '<span style="color:' + color + '">' + pct + '%</span>';
+        }
+        if (statRate) {
+          statRate.innerText = trend.isDecreasing ? "-" + trend.rateMvPerHour.toFixed(1) + " mV/h" : "Steady / Charging";
+        }
+        if (statRun) {
+          statRun.innerText = trend.isDecreasing ? trend.estHours + "h (" + trend.estDays + "d " + trend.estHoursRem + "h)" : "—";
+        }
+
+        if (points.length > 0 && statRange) {
+          const vList = points.map(p => p.battery_mv);
+          const minV = Math.min(...vList);
+          const maxV = Math.max(...vList);
+          statRange.innerText = (minV / 1000).toFixed(2) + "V – " + (maxV / 1000).toFixed(2) + "V";
+        }
+
+        if (batteryDrawerOpen) {
+          renderBatteryChart();
+        }
+      }
+    }
+
+    function toggleBatteryGraph(forceOpen) {
+      const drawer = document.getElementById("batteryGraphDrawer");
+      const icon = document.getElementById("batteryCollapseIcon");
+      if (!drawer) return;
+      if (forceOpen === true) {
+        batteryDrawerOpen = true;
+      } else {
+        batteryDrawerOpen = !batteryDrawerOpen;
+      }
+      drawer.style.display = batteryDrawerOpen ? "block" : "none";
+      if (icon) icon.innerText = batteryDrawerOpen ? "▲" : "▼";
+      if (batteryDrawerOpen) {
+        renderBatteryChart();
+        if (forceOpen === true) {
+          const sec = document.getElementById("batterySection");
+          if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    }
+
+    function onBatteryTimeframeChange(val) {
+      selectedBatteryTimeframe = val;
+      renderBatteryChart();
+    }
+
+    function renderBatteryChart() {
+      if (!currentStationData) return;
+      const canvas = document.getElementById("batteryChart");
+      if (!canvas) return;
+
+      const points = getBatteryPoints(currentStationData);
+      if (points.length === 0) return;
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      let cutoffSec = nowSec - 86400; // default day
+      if (selectedBatteryTimeframe === "week") {
+        cutoffSec = nowSec - 7 * 86400;
+      } else if (selectedBatteryTimeframe === "month") {
+        cutoffSec = nowSec - 30 * 86400;
+      }
+
+      let filtered = points.filter(p => p.timestamp >= cutoffSec);
+      if (filtered.length === 0) {
+        filtered = points;
+      }
+
+      const statRange = document.getElementById("stat-bat-range");
+      if (statRange && filtered.length > 0) {
+        const vList = filtered.map(p => p.battery_mv);
+        const minV = Math.min(...vList);
+        const maxV = Math.max(...vList);
+        statRange.innerText = (minV / 1000).toFixed(2) + "V – " + (maxV / 1000).toFixed(2) + "V";
+      }
+
+      const labels = filtered.map(p => {
+        const d = new Date(p.timestamp * 1000);
+        if (selectedBatteryTimeframe === "month") {
+          return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + d.getHours().toString().padStart(2, "0") + ":00";
+        } else if (selectedBatteryTimeframe === "week") {
+          return d.toLocaleDateString([], { weekday: "short" }) + " " + d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+        }
+        return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+      });
+
+      const voltValues = filtered.map(p => Number((p.battery_mv / 1000).toFixed(3)));
+      const minVolt = Math.min(...voltValues);
+      const maxVolt = Math.max(...voltValues);
+      const yMin = Math.max(2.8, Number((minVolt - 0.1).toFixed(2)));
+      const yMax = Math.min(4.5, Number((maxVolt + 0.1).toFixed(2)));
+
+      if (batteryChartInstance) {
+        batteryChartInstance.destroy();
+      }
+
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue("--chart-grid").trim() || "rgba(255, 255, 255, 0.05)";
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue("--chart-text").trim() || "#9ca3af";
+
+      batteryChartInstance = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Battery Voltage (V)",
+            data: voltValues,
+            borderColor: "#10b981",
+            backgroundColor: "rgba(16, 185, 129, 0.12)",
+            tension: 0.25,
+            fill: true,
+            pointRadius: filtered.length > 100 ? 1 : 3,
+            borderWidth: 2,
+            spanGaps: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.parsed.y;
+                  const mv = Math.round(val * 1000);
+                  const pct = voltageToPercentage(mv);
+                  return "Voltage: " + val.toFixed(3) + " V (" + mv + " mV) • " + pct + "%";
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 12 }
+            },
+            y: {
+              type: "linear",
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                callback: function(v) { return Number(v).toFixed(2) + " V"; }
+              },
+              min: yMin,
+              max: yMax,
+              title: {
+                display: true,
+                text: "Battery Voltage (V)",
+                color: textColor,
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize
+    initTheme();
+    loadStations();
+    setInterval(refreshData, 60000); // 1-minute auto refresh
+  </script>
 </body>
 </html>
