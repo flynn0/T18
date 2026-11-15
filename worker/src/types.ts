@@ -199,7 +199,7 @@ export interface TelemetryCyclePayload {
   firmware_version?: string;
   networks?: NetworkPayload[];
   scan_survey?: SurveyPayload[];
-  diagnostics?: NetworkDiagnosticsPayload;
+  diagnostics?: NetworkDiagnosticsPayload | NetworkDiagnosticsPayload[];
   channel_utilization?: ChannelUtilizationPayload[];
 }
 

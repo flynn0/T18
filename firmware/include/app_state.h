@@ -118,7 +118,7 @@ struct CycleTelemetry {
     std::vector<NetworkMeasurement> measurements;
     std::vector<SurveyItem> survey;
     bool has_diagnostics;
-    NetworkDiagnostics diagnostics;
+    std::vector<NetworkDiagnostics> diagnostics;
     bool has_channel_utilization;
     std::vector<ChannelUtilizationItem> channel_utilization;
 

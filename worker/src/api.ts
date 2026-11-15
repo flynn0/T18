@@ -100,7 +100,10 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
     station_id: station.station_id,
     description: station.description,
     created_at: station.created_at,
-    last_seen: station.last_seen
+    last_seen: station.last_seen,
+    firmware_version: station.firmware_version ?? null,
+    board_type: station.board_type ?? null,
+    battery_mv: station.battery_mv ?? null
   };
 
   const latestMeasurements = await db.getLatestMeasurements(stationId);

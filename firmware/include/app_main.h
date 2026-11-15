@@ -110,19 +110,19 @@ public:
             shouldRunDaily = true;
         }
 
-        NetworkDiagnostics dailyDiag;
-        bool diagCaptured = false;
+        std::vector<NetworkDiagnostics> dailyDiags;
 
         for (uint8_t i = 0; i < _config.network_count; i++) {
             NetworkMeasurement m = LatencyProber::probeNetwork(_config.networks[i], 15000);
             measurements.push_back(m);
 
-            if (shouldRunDaily && !diagCaptured && m.status == "connected") {
-                dailyDiag = LatencyProber::runDailyDiagnostics(_config.networks[i]);
-                diagCaptured = true;
-                _lastDailyCheckEpoch = currentEpoch;
+            if (shouldRunDaily && m.status == "connected") {
+                dailyDiags.push_back(LatencyProber::runDailyDiagnostics(_config.networks[i]));
             }
             delay(200);
+        }
+        if (shouldRunDaily && !dailyDiags.empty()) {
+            _lastDailyCheckEpoch = currentEpoch;
         }
         _led.setOff();
 
@@ -135,8 +135,8 @@ public:
         cycle.board_type = _config.hw.board_name;
         cycle.measurements = measurements;
         cycle.survey = scanResults;
-        cycle.has_diagnostics = diagCaptured;
-        cycle.diagnostics = dailyDiag;
+        cycle.has_diagnostics = !dailyDiags.empty();
+        cycle.diagnostics = dailyDiags;
         cycle.has_channel_utilization = shouldRunChannelAnalysis;
         cycle.channel_utilization = chanResults;
 
@@ -271,24 +271,27 @@ private:
             s["band"] = item.band;
         }
 
-        if (cycle.has_diagnostics) {
-            JsonObject d = doc["diagnostics"].to<JsonObject>();
-            d["ssid"] = cycle.diagnostics.ssid;
-            d["gateway_ip"] = cycle.diagnostics.gateway_ip;
-            d["gateway_vendor"] = cycle.diagnostics.gateway_vendor;
-            d["web_exposed"] = cycle.diagnostics.web_exposed;
-            d["login_url"] = cycle.diagnostics.login_url;
-            d["https_redirect"] = cycle.diagnostics.https_redirect;
-            d["mtu_1500_ok"] = cycle.diagnostics.mtu_1500_ok;
-            d["mtu_1492_ok"] = cycle.diagnostics.mtu_1492_ok;
-            d["mtu_1420_ok"] = cycle.diagnostics.mtu_1420_ok;
-            d["dns_ipv4_ms"] = cycle.diagnostics.dns_ipv4_ms;
-            d["dns_ipv6_ms"] = cycle.diagnostics.dns_ipv6_ms;
-            d["dns_ipv6_timeout"] = cycle.diagnostics.dns_ipv6_timeout;
-            d["dns_rebind_blocked"] = cycle.diagnostics.dns_rebind_blocked;
-            d["captive_portal_detected"] = cycle.diagnostics.captive_portal_detected;
-            d["open_ports"] = cycle.diagnostics.open_ports;
-            d["details_json"] = cycle.diagnostics.details_json;
+        if (cycle.has_diagnostics && !cycle.diagnostics.empty()) {
+            JsonArray arrDiag = doc["diagnostics"].to<JsonArray>();
+            for (const auto &dItem : cycle.diagnostics) {
+                JsonObject d = arrDiag.add<JsonObject>();
+                d["ssid"] = dItem.ssid;
+                d["gateway_ip"] = dItem.gateway_ip;
+                d["gateway_vendor"] = dItem.gateway_vendor;
+                d["web_exposed"] = dItem.web_exposed;
+                d["login_url"] = dItem.login_url;
+                d["https_redirect"] = dItem.https_redirect;
+                d["mtu_1500_ok"] = dItem.mtu_1500_ok;
+                d["mtu_1492_ok"] = dItem.mtu_1492_ok;
+                d["mtu_1420_ok"] = dItem.mtu_1420_ok;
+                d["dns_ipv4_ms"] = dItem.dns_ipv4_ms;
+                d["dns_ipv6_ms"] = dItem.dns_ipv6_ms;
+                d["dns_ipv6_timeout"] = dItem.dns_ipv6_timeout;
+                d["dns_rebind_blocked"] = dItem.dns_rebind_blocked;
+                d["captive_portal_detected"] = dItem.captive_portal_detected;
+                d["open_ports"] = dItem.open_ports;
+                d["details_json"] = dItem.details_json;
+            }
         }
 
         if (cycle.has_channel_utilization) {

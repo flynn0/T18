@@ -110,7 +110,13 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
     // Process daily network diagnostics if present in this cycle
     if (cycle.diagnostics) {
-      await db.saveNetworkDiagnostics(station.station_id, cycleTime, cycle.diagnostics);
+      if (Array.isArray(cycle.diagnostics)) {
+        for (const d of cycle.diagnostics) {
+          await db.saveNetworkDiagnostics(station.station_id, cycleTime, d);
+        }
+      } else {
+        await db.saveNetworkDiagnostics(station.station_id, cycleTime, cycle.diagnostics);
+      }
     }
 
     // Process 30-minute promiscuous channel utilization metrics if present
