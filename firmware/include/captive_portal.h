@@ -155,7 +155,7 @@ private:
             "border:none;border-radius:0.5rem;cursor:pointer;font-size:1rem;margin-top:1.5rem;transition:background 0.2s}"
             "button[type='submit']:hover{background:var(--primary-hover)}"
             "</style></head><body><div class='card'>"
-            "<h1>&#128246; Wi-Fi Monitor Setup (v1.0.0)</h1>"
+            "<h1>&#128246; Wi-Fi Monitor Setup</h1>"
             "<p class='sub'>Configure device identity, hardware board profile, and network credentials.</p>"
             "<form method='POST' action='/save'>");
 
@@ -200,6 +200,19 @@ private:
                   "<input type='text' id='hw_name' name='hw_name' value='");
         html += String(config.hw.board_name);
         html += F("'></div></div>");
+
+        // Power Management / Power Bank Keep-Alive
+        html += F("<div class='section-title'>Power Management</div>");
+        html += F("<div class='field' style='display:flex;align-items:flex-start;gap:0.75rem;margin-top:0.5rem;'>"
+                  "<input type='checkbox' id='pb_alive' name='pb_alive' value='1'");
+        if (config.powerbank_keepalive) {
+            html += F(" checked");
+        }
+        html += F(" style='width:1.25rem;min-width:1.25rem;height:1.25rem;accent-color:var(--primary);cursor:pointer;margin-top:0.2rem;'>"
+                  "<div><label for='pb_alive' style='cursor:pointer;margin-bottom:0.15rem;font-weight:600;'>Power Bank Keep-Alive Workaround</label>"
+                  "<span style='color:var(--muted);font-size:0.75rem;line-height:1.3;display:block;'>"
+                  "Wake up ESP32 from light sleep for 500 ms every 20 seconds to draw current and prevent external power banks from auto-shutting off."
+                  "</span></div></div>");
 
         // Monitored Networks
         html += F("<div class='section-title'>Monitored Wi-Fi Networks</div>");
@@ -294,6 +307,9 @@ private:
 
         // Apply new LED pin immediately
         _led.setPin(config.hw.status_led_pin);
+
+        // Power Management
+        config.powerbank_keepalive = _server.hasArg("pb_alive");
 
         // Networks
         config.network_count = 0;

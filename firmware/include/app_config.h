@@ -62,6 +62,7 @@ public:
         config.hw.has_5ghz = prefs.getBool("has_5g", config.hw.has_5ghz);
         config.hw.has_wifi6 = prefs.getBool("has_w6", config.hw.has_wifi6);
 
+        config.powerbank_keepalive = prefs.getBool("pb_alive", false);
         config.is_configured = prefs.getBool("is_cfg", (strlen(config.station_id) > 0 && config.network_count > 0));
         prefs.end();
 
@@ -105,6 +106,7 @@ public:
         prefs.putBool("has_5g", config.hw.has_5ghz);
         prefs.putBool("has_w6", config.hw.has_wifi6);
 
+        prefs.putBool("pb_alive", config.powerbank_keepalive);
         prefs.putBool("is_cfg", config.is_configured);
         prefs.end();
 

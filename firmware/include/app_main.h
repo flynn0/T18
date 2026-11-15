@@ -40,6 +40,7 @@ public:
         Serial.printf(" kreier/wifi Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
         Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
                       _config.hw.status_led_pin, _config.hw.battery_pin);
+        Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (500ms/20s)" : "DISABLED");
         Serial.println(F("========================================"));
 
         // Always launch the 60-second captive portal on power-on / reset
@@ -400,18 +401,62 @@ private:
     }
 
     void enterLightSleep(uint32_t sleepDurationMs) {
-        Serial.printf("[Main] Entering Light Sleep for %u seconds...\n", (unsigned)(sleepDurationMs / 1000));
+        Serial.printf("[Main] Entering Light Sleep for %u seconds (Power Bank Keep-Alive: %s)...\n",
+                      (unsigned)(sleepDurationMs / 1000),
+                      _config.powerbank_keepalive ? "ENABLED (500ms pulse every 20s)" : "DISABLED");
         Serial.flush();
 
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
         _led.setOff();
 
-        uint64_t sleepUs = ((uint64_t)sleepDurationMs) * 1000ULL;
-        esp_sleep_enable_timer_wakeup(sleepUs);
         esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
 
-        esp_light_sleep_start();
+        if (!_config.powerbank_keepalive) {
+            uint64_t sleepUs = ((uint64_t)sleepDurationMs) * 1000ULL;
+            esp_sleep_enable_timer_wakeup(sleepUs);
+            esp_light_sleep_start();
+        } else {
+            uint32_t remainingMs = sleepDurationMs;
+            const uint32_t INTERVAL_SLEEP_MS = 20000; // 20 seconds
+            const uint32_t WAKE_PULSE_MS = 500;       // 500 ms
+
+            while (remainingMs > 0) {
+                uint32_t chunkSleepMs = (remainingMs > INTERVAL_SLEEP_MS) ? INTERVAL_SLEEP_MS : remainingMs;
+                uint64_t chunkSleepUs = ((uint64_t)chunkSleepMs) * 1000ULL;
+                esp_sleep_enable_timer_wakeup(chunkSleepUs);
+                esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
+
+                esp_light_sleep_start();
+
+                // If woken up by BOOT button, exit sleep immediately
+                if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+                    break;
+                }
+
+                if (remainingMs > chunkSleepMs) {
+                    remainingMs -= chunkSleepMs;
+                } else {
+                    break;
+                }
+
+                // Keep-alive pulse: wake for 500 ms with active current draw to keep power bank awake
+                _led.setSolid(true);
+                delay(WAKE_PULSE_MS);
+                _led.setOff();
+
+                if (remainingMs > WAKE_PULSE_MS) {
+                    remainingMs -= WAKE_PULSE_MS;
+                } else {
+                    break;
+                }
+
+                // If BOOT button is pressed during pulse, break immediately
+                if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+                    break;
+                }
+            }
+        }
 
         Serial.println(F("[Main] Woke up from Light Sleep."));
     }

@@ -20,6 +20,7 @@ struct AppConfig {
     WifiNetworkConfig networks[MAX_MONITORED_NETWORKS];
     uint8_t network_count;
     bool is_configured;
+    bool powerbank_keepalive; // Wake up 500ms every 20s during light sleep
     HardwareProfile hw;
 
     AppConfig() {
@@ -30,6 +31,7 @@ struct AppConfig {
         memset(networks, 0, sizeof(networks));
         network_count = 0;
         is_configured = false;
+        powerbank_keepalive = false;
         hw.setPreset(BOARD_T18);
     }
 };
