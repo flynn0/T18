@@ -402,7 +402,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v1.0.0</span>
+        <span class="brand-tag">v1.0.1</span>
       </div>
     </a>
     <div class="header-controls">
@@ -707,7 +707,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v1.0.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v1.0.1)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -804,7 +804,7 @@ export function renderDashboardHtml(): string {
       }
       while (path.startsWith("/")) path = path.slice(1);
 
-      if (path && path !== "index.html" && path !== "404.html") {
+      if (path && path !== "index.html" && path !== "404.html" && path !== "wifi") {
         return decodeURIComponent(path);
       }
       return "";
@@ -850,13 +850,18 @@ export function renderDashboardHtml(): string {
         });
 
         if (reqStation && !matched) {
-          // Explicitly requested station exists or is querying directly
-          const opt = document.createElement("option");
-          opt.value = reqStation;
-          opt.innerText = reqStation;
-          opt.selected = true;
-          select.prepend(opt);
-          currentStationId = reqStation;
+          // If a requested station from URL was not found in registered stations, fallback to first available station
+          if (data.stations.length > 0) {
+            currentStationId = data.stations[0].station_id;
+            select.value = currentStationId;
+          } else {
+            const opt = document.createElement("option");
+            opt.value = reqStation;
+            opt.innerText = reqStation;
+            opt.selected = true;
+            select.prepend(opt);
+            currentStationId = reqStation;
+          }
         } else if (!currentStationId && data.stations.length > 0) {
           currentStationId = data.stations[0].station_id;
         }
@@ -1123,6 +1128,18 @@ export function renderDashboardHtml(): string {
 
       } catch (err) {
         console.error("Failed to load station details:", err);
+        const titleEl = document.getElementById("stTitle");
+        if (titleEl) {
+          titleEl.textContent = "Station: " + stationId + " (Unavailable)";
+        }
+        const descEl = document.getElementById("stDesc");
+        if (descEl) {
+          descEl.innerText = "Could not load data for station " + stationId + ". Please select an active station from the dropdown.";
+        }
+        const badge = document.getElementById("stStatusBadge");
+        if (badge) badge.className = "status-badge offline";
+        const statusText = document.getElementById("stStatusText");
+        if (statusText) statusText.innerText = "Error loading";
       }
     }
 
