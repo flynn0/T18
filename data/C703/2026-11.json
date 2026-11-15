@@ -685,12 +685,42 @@
     "2026-11-15T21:00:00Z": {
       "samples": 3,
       "successful": 3,
-      "avg_assoc_ms": 1058,
+      "avg_assoc_ms": 1054,
       "avg_dhcp_ms": 0,
-      "avg_http_latency_ms": 435,
+      "avg_http_latency_ms": 294,
+      "status": "orange",
+      "avg_rssi": -62,
+      "avg_battery_mv": 3989
+    },
+    "2026-11-15T22:00:00Z": {
+      "samples": 6,
+      "successful": 6,
+      "avg_assoc_ms": 1056,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 272,
+      "status": "orange",
+      "avg_rssi": -61,
+      "avg_battery_mv": 3987
+    },
+    "2026-11-15T23:00:00Z": {
+      "samples": 6,
+      "successful": 6,
+      "avg_assoc_ms": 1067,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 274,
+      "status": "orange",
+      "avg_rssi": -59,
+      "avg_battery_mv": 3988
+    },
+    "2026-11-16T00:00:00Z": {
+      "samples": 1,
+      "successful": 1,
+      "avg_assoc_ms": 1054,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 370,
       "status": "orange",
       "avg_rssi": -60,
-      "avg_battery_mv": 3988
+      "avg_battery_mv": 3983
     }
   }
 }
