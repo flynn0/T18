@@ -60,7 +60,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "X-Cache": "HIT-ISOLATE",
-        "Cache-Control": "public, max-age=60, s-maxage=600"
+        "Cache-Control": "public, max-age=15, must-revalidate"
       }
     });
   }
@@ -77,7 +77,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "X-Cache": "HIT-D1",
-        "Cache-Control": "public, max-age=60, s-maxage=600"
+        "Cache-Control": "public, max-age=15, must-revalidate"
       }
     });
   }
@@ -136,7 +136,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "X-Cache": "MISS",
-      "Cache-Control": "public, max-age=60, s-maxage=600"
+      "Cache-Control": "public, max-age=15, must-revalidate"
     }
   });
 }
@@ -157,9 +157,9 @@ export async function handleApiExport(request: Request, env: Env): Promise<Respo
   const measurements = await db.getRecentMeasurements(stationId, 1000);
 
   if (format === "csv") {
-    let csv = "timestamp,ssid,assoc_ms,dhcp_ms,cloudflare_ms,google_ms,microsoft_ms,facebook_ms,netflix_ms,apple_ms,status\n";
+    let csv = "timestamp,ssid,assoc_ms,dhcp_ms,cloudflare_ms,google_ms,microsoft_ms,facebook_ms,netflix_ms,status\n";
     for (const m of measurements) {
-      csv += `${m.timestamp},"${m.ssid}",${m.assoc_ms ?? ""},${m.dhcp_ms ?? ""},${m.cloudflare_ms ?? ""},${m.google_ms ?? ""},${m.microsoft_ms ?? ""},${m.facebook_ms ?? ""},${m.netflix_ms ?? ""},${m.apple_ms ?? ""},"${m.status ?? ""}"\n`;
+      csv += `${m.timestamp},"${m.ssid}",${m.assoc_ms ?? ""},${m.dhcp_ms ?? ""},${m.cloudflare_ms ?? ""},${m.google_ms ?? ""},${m.microsoft_ms ?? ""},${m.facebook_ms ?? ""},${m.netflix_ms ?? ""},"${m.status ?? ""}"\n`;
     }
     return new Response(csv, {
       status: 200,

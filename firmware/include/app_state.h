@@ -53,7 +53,6 @@ struct NetworkMeasurement {
     int32_t microsoft_ms;
     int32_t facebook_ms;
     int32_t netflix_ms;
-    int32_t apple_ms;
     int32_t gateway_ms;    // Local gateway RTT (TCP/ICMP)
     int32_t dns_ipv4_ms;   // DNS IPv4 (A) resolution time
     int32_t dns_ipv6_ms;   // DNS IPv6 (AAAA) resolution time (-1 on timeout/fail)

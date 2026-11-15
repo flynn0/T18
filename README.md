@@ -17,16 +17,26 @@ Both the Cloudflare Worker and GitHub Pages support deep-linking directly to spe
 
 ---
 
-## Evolution from `kreier/T18`
+## Key Architectural Features
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.8.0`) |
-| :--- | :--- | :--- |
-| **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
-| **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |
-| **Build System** | Separate or monolithic sketches | **Dual-Compatible Architecture**: Single source of modular logic compiled seamlessly by both **PlatformIO** and **Arduino IDE** ([ADR 0003](docs/adr/0003-dual-build-layout.md)) |
-| **Power Management** | Continuous active execution | **ESP32 Light Sleep**: Subsystems powered down, RAM retained, wakes via timer or BOOT button |
-| **Offline Resilience** | Potential telemetry drop on network failure | **LittleFS Spool Ring Buffer**: Capped at 500 KB FIFO ring buffer (`/spool/pending.jsonl`), preserving records until `200 OK` |
-| **Web Frontends** | Static files or GitHub Pages | **Dual Frontends**: Edge-hosted at Cloudflare Workers + Static mirror deployed via GitHub Actions to GitHub Pages, both supporting direct station routing |
+The `kreier/wifi` platform is built on an edge-native, zero-trust, and power-optimized architecture designed for autonomous continuous Wi-Fi fleet telemetry:
+
+- **Serverless Edge Storage & Analytics ([ADR 0001: Cloudflare D1 Storage](docs/adr/0001-d1-over-git-storage.md))**:
+  All telemetry cycles, spectrum scans, channel congestion metrics, and daily rollups are stored in **Cloudflare D1** (serverless SQLite at edge). Automated daily cron triggers aggregate 24-hour summaries and enforce 30-day raw data retention.
+- **Zero-Trust Device Provisioning ([ADR 0002: Per-Device Token Provisioning](docs/adr/0002-per-device-token-provisioning.md))**:
+  Devices are commissioned via an on-device captive portal using a one-time bootstrap phrase (`MASTER_PHRASE`). Upon the first successful connection, a unique cryptographically-random Bearer token is negotiated with the backend and stored in hardware NVS; the master phrase is permanently erased from LittleFS flash and RAM.
+- **Dual-Compatible Firmware Layout ([ADR 0003: Single-Source Dual Build](docs/adr/0003-dual-build-layout.md))**:
+  Maintains a unified modular codebase in `firmware/include/` that compiles seamlessly in both **PlatformIO** (automated CI/CD pipelines, multi-board target flags) and **Arduino IDE** (single-click desktop flashing without external CLI dependencies).
+- **2.4 GHz Promiscuous RF Contention Profiling**:
+  Measures all 13 channels every 30 minutes with 2-second dwell times using ESP-IDF promiscuous mode. Classifies frames (Management, Data, Control), records 4-bracket RSSI histograms, counts unique transmitter MACs, and estimates PHY-modeled airtime percentage.
+- **10-Minute Spectrum Scan Variance Tracking**:
+  Monitors the duration of full-spectrum scans in milliseconds on every 10-minute cycle, correlating scan latency with RF contention.
+- **Local Network & Dual-Stack Diagnostics**:
+  Measures local gateway TCP SYN round-trip time, performs IPv4 vs. IPv6 DNS resolution benchmarking, detects captive portal HTTP canary hijacking, and executes automated daily gateway firewall audits.
+- **Offline Resilience via LittleFS Ring Buffer**:
+  When Wi-Fi connectivity is unavailable, cycles are appended as JSONL into a dedicated LittleFS spool ring buffer (capped at 500 KB FIFO), ensuring zero data loss during network outages.
+- **Dual Web Dashboards**:
+  Edge-hosted server-rendered dashboard on Cloudflare Worker (`wifi.kreier.workers.dev`) coupled with a GitHub Pages static client mirror (`kreier.github.io/wifi`), both supporting client-side station deep-linking and theme switching.
 
 ---
 
@@ -45,7 +55,7 @@ flowchart TD
         Boot["Cold Boot or Wake"]
         NTP["NTP Sync (every 24h)<br/>pool.ntp.org"]
         Scan["Wi-Fi 2.4 GHz Scan Survey<br/>(SSID, RSSI, Phy Mode, Enc)"]
-        Bench["Sequential Benchmarks (up to 5 SSIDs)<br/>- Assoc Time (ms)<br/>- DHCP Lease Time (ms)<br/>- HTTP Latency (6 targets)"]
+        Bench["Sequential Benchmarks (up to 5 SSIDs)<br/>- Assoc Time (ms)<br/>- DHCP Lease Time (ms)<br/>- HTTP Latency (5 targets + Gateway)"]
         Spool["LittleFS Ring Buffer<br/>/spool/pending.jsonl (Max 500 KB)"]
         Upload["POST /data<br/>Authorization: Bearer <device_token>"]
         Sleep["ESP32 Light Sleep<br/>(Remainder of 10 min)"]
@@ -99,7 +109,7 @@ kreier/wifi/
 │       ├── api_client.h      # HTTPS /register and /data client
 │       ├── board_pins.h      # Compile-time board LED & pin mappings
 │       ├── captive_portal.h  # Soft-AP, captive DNS server, & setup UI
-│       ├── latency_prober.h  # Association, DHCP, and 6-target HTTP probes
+│       ├── latency_prober.h  # Association, DHCP, and 5-target HTTP probes
 │       ├── channel_analyzer.h # Promiscuous 13-channel utilization & airtime analyzer
 │       ├── led_controller.h  # Non-blocking LED status indicator
 │       ├── ntp_sync.h        # SNTP synchronization engine (24h interval)
@@ -195,7 +205,6 @@ Every 10 minutes, the probe executes:
      - **Microsoft**: `http://www.msftconnecttest.com/connecttest.txt`
      - **Facebook**: `http://www.facebook.com/`
      - **Netflix**: `http://fast.com/`
-     - **Apple**: `http://captive.apple.com/hotspot-detect.html`
 4. **Spool Ring Buffer**: Records are spooled to `/spool/pending.jsonl` (capped at 500 KB FIFO ring buffer).
 5. **Telemetry Flush**: Uploads spooled data to `POST /data`. Only after receiving `200 OK` is the spool buffer cleared.
 6. **ESP32 Light Sleep**: Subsystems and radio are deactivated; CPU enters light sleep for the remainder of the 600-second window.
@@ -331,7 +340,7 @@ Version `0.7.0` introduces real-time gateway and dual-stack DNS monitoring along
 3. **Dashboard Summary & Expandable View**:
    - High-level status bar with color-coded pills for Gateway RTT, Firewall Detection (e.g. pfSense Exposed vs Secured Gateway), Dual-Stack DNS Health, and Captive Interception.
    - Expandable **Detailed Audit Drawer** displaying comprehensive 4-quadrant diagnostic breakdowns for all station types.
-   - Integrated **Gateway RTT** plotted alongside Google, Cloudflare, Microsoft, Apple, Netflix, and Facebook on the 24-hour latency trend graphs.
+   - Integrated **Gateway RTT** plotted alongside Google, Cloudflare, Microsoft, Netflix, and Facebook on the 24-hour latency trend graphs.
 
 ---
 

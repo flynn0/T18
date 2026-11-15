@@ -601,21 +601,6 @@
           </div>
         </div>
 
-        <!-- Apple -->
-        <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
-          <div class="card-header" style="padding-bottom: 0.4rem;">
-            <div style="display: flex; align-items: center; gap: 0.45rem;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #c084fc;"></span>
-              <span class="card-title" style="color: #c084fc; font-size: 0.95rem;">Apple</span>
-              <span style="font-size: 0.7rem; color: var(--text-muted);">hotspot-detect</span>
-            </div>
-            <span id="stat-apple" class="pill" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">—</span>
-          </div>
-          <div class="target-chart-wrap">
-            <canvas id="chart-apple"></canvas>
-          </div>
-        </div>
-
         <!-- Netflix -->
         <div class="card" style="padding: 1rem 1.15rem; gap: 0.5rem;">
           <div class="card-header" style="padding-bottom: 0.4rem;">
@@ -728,7 +713,6 @@
       cloudflare: null,
       google: null,
       microsoft: null,
-      apple: null,
       netflix: null,
       facebook: null
     };
@@ -738,7 +722,6 @@
       { key: "cloudflare", field: "cloudflare_ms", name: "Cloudflare", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.12)" },
       { key: "google", field: "google_ms", name: "Google", color: "#10b981", bg: "rgba(16, 185, 129, 0.12)" },
       { key: "microsoft", field: "microsoft_ms", name: "Microsoft", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
-      { key: "apple", field: "apple_ms", name: "Apple", color: "#c084fc", bg: "rgba(192, 132, 252, 0.12)" },
       { key: "netflix", field: "netflix_ms", name: "Netflix", color: "#f87171", bg: "rgba(248, 113, 113, 0.12)" },
       { key: "facebook", field: "facebook_ms", name: "Facebook", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.12)" }
     ];
@@ -904,7 +887,7 @@
 
     async function loadStationDetails(stationId) {
       try {
-        const res = await fetch(API_BASE + "/api/station/" + encodeURIComponent(stationId));
+        const res = await fetch(API_BASE + "/api/station/" + encodeURIComponent(stationId) + "?t=" + Date.now());
         if (!res.ok) throw new Error("Station fetch failed");
         const data = await res.json();
 
@@ -994,7 +977,6 @@
                     <div class="pill">Cloudflare: <span class="pill-val ${getPillClass(net.cloudflare_ms)}">${fmtMs(net.cloudflare_ms)}</span></div>
                     <div class="pill">Google: <span class="pill-val ${getPillClass(net.google_ms)}">${fmtMs(net.google_ms)}</span></div>
                     <div class="pill">Microsoft: <span class="pill-val ${getPillClass(net.microsoft_ms)}">${fmtMs(net.microsoft_ms)}</span></div>
-                    <div class="pill">Apple: <span class="pill-val ${getPillClass(net.apple_ms)}">${fmtMs(net.apple_ms)}</span></div>
                     <div class="pill">Fast/Netflix: <span class="pill-val ${getPillClass(net.netflix_ms)}">${fmtMs(net.netflix_ms)}</span></div>
                     <div class="pill">Facebook: <span class="pill-val ${getPillClass(net.facebook_ms)}">${fmtMs(net.facebook_ms)}</span></div>
                   </div>

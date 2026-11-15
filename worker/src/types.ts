@@ -26,7 +26,7 @@ export interface MeasurementRecord {
   microsoft_ms: number | null;
   facebook_ms: number | null;
   netflix_ms: number | null;
-  apple_ms: number | null;
+  apple_ms?: number | null;
   gateway_ms?: number | null;
   dns_ipv4_ms?: number | null;
   dns_ipv6_ms?: number | null;

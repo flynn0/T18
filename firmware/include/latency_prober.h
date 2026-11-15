@@ -18,8 +18,7 @@ static const ProbeTarget PROBE_TARGETS[] = {
     { "cloudflare", "http://cp.cloudflare.com/",                         "GET"  },
     { "microsoft",  "http://www.msftconnecttest.com/connecttest.txt",    "GET"  },
     { "facebook",   "http://www.facebook.com/",                          "HEAD" },
-    { "netflix",    "http://fast.com/",                                  "HEAD" },
-    { "apple",      "http://captive.apple.com/hotspot-detect.html",      "GET"  }
+    { "netflix",    "http://fast.com/",                                  "HEAD" }
 };
 static const size_t NUM_PROBE_TARGETS = sizeof(PROBE_TARGETS) / sizeof(PROBE_TARGETS[0]);
 
@@ -37,7 +36,6 @@ public:
         result.microsoft_ms = -1;
         result.facebook_ms = -1;
         result.netflix_ms = -1;
-        result.apple_ms = -1;
         result.gateway_ms = -1;
         result.dns_ipv4_ms = -1;
         result.dns_ipv6_ms = -1;
@@ -131,7 +129,6 @@ public:
             else if (strcmp(tgt.name, "microsoft") == 0) result.microsoft_ms = lat;
             else if (strcmp(tgt.name, "facebook") == 0) result.facebook_ms = lat;
             else if (strcmp(tgt.name, "netflix") == 0) result.netflix_ms = lat;
-            else if (strcmp(tgt.name, "apple") == 0) result.apple_ms = lat;
 
             Serial.printf("[Prober]   %-11s : %d ms\n", tgt.name, lat);
             delay(50); // Small breath between HTTP requests

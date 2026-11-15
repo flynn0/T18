@@ -51,7 +51,6 @@ public:
             lat["microsoft"] = net.microsoft_ms;
             lat["facebook"] = net.facebook_ms;
             lat["netflix"] = net.netflix_ms;
-            lat["apple"] = net.apple_ms;
 
             o["status"] = net.status;
         }
