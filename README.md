@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -19,7 +19,7 @@ Both the Cloudflare Worker and GitHub Pages support deep-linking directly to spe
 
 ## Evolution from `kreier/T18`
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.7.0`) |
+| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.8.0`) |
 | :--- | :--- | :--- |
 | **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
 | **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |
@@ -332,6 +332,31 @@ Version `0.7.0` introduces real-time gateway and dual-stack DNS monitoring along
    - High-level status bar with color-coded pills for Gateway RTT, Firewall Detection (e.g. pfSense Exposed vs Secured Gateway), Dual-Stack DNS Health, and Captive Interception.
    - Expandable **Detailed Audit Drawer** displaying comprehensive 4-quadrant diagnostic breakdowns for all station types.
    - Integrated **Gateway RTT** plotted alongside Google, Cloudflare, Microsoft, Apple, Netflix, and Facebook on the 24-hour latency trend graphs.
+
+---
+
+## 2.4 GHz Promiscuous Spectrum Congestion & Scan Time Analysis (v0.8.0)
+
+Version `0.8.0` introduces RF channel utilization and contention measurement via ESP-IDF promiscuous mode, resolving the limitation of only tracking station count:
+
+1. **Promiscuous Mode Channel Contention Profiling (Every 30 Minutes)**:
+   - **13-Channel Full Spectrum Sweep**: Sweeps 2.4 GHz channels 1 through 13 with a 2.0-second dwell per channel (26 seconds total measurement time).
+   - **Traffic Classification**: Separately tallies 802.11 **Management frames** (beacons, probe requests/responses), **Data frames** (QoS & user payloads), and **Control frames** (RTS, CTS, ACK, BlockACK).
+   - **Unique Transmitter Identification**: Extracts 802.11 Transmitter Addresses (TA / SA) from frame MAC headers to quantify active competing transmitters per channel.
+   - **RSSI Histogram Distribution**: Categorizes packet signal strength into 4 buckets (`< -80 dBm`, `-80 to -71 dBm`, `-70 to -61 dBm`, `>= -60 dBm`).
+   - **PHY-Modeled Airtime Utilization %**: Computes channel airtime consumption based on PLCP preamble duration, packet length, and modulation coding scheme (Legacy OFDM/DSSS or 802.11n HT MCS 0–7) with SIFS/ACK interframe spacing.
+
+2. **Spectrum Scan Duration Variance Tracking (Every 10 Minutes)**:
+   - Records the exact duration in milliseconds required for `WiFi.scanNetworks(false, true)` across all available channels.
+   - Correlates scan time variance with surrounding RF congestion and channel density.
+
+3. **Interactive 24-Hour Dashboard Visualization**:
+   - **Channel View Selector**: Instant toggles between:
+     - **All Channels Combined**: Overall average 2.4 GHz airtime consumption curve.
+     - **Channels 1, 6, 11 (Non-Overlapping)**: Isolates the primary non-overlapping channels in Sky Blue, Amber, and Emerald.
+     - **All Channels Individual (1–13)**: Displays 13 distinct channel lines with dedicated color mapping.
+   - **Scan Duration Overlay**: Optional secondary Y-axis overlay plotting spectrum scan duration (ms) against channel utilization.
+   - **13-Channel Breakdown Matrix Table**: Expandable drawer with per-channel progress bars, frame type breakdowns, unique transmitters, and 4-tier stacked RSSI distribution mini-bars.
 
 ---
 
