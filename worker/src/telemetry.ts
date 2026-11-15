@@ -76,9 +76,17 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
           facebook_ms: typeof net.http_latencies?.facebook === "number" ? net.http_latencies.facebook : null,
           netflix_ms: typeof net.http_latencies?.netflix === "number" ? net.http_latencies.netflix : null,
           apple_ms: typeof net.http_latencies?.apple === "number" ? net.http_latencies.apple : null,
+          gateway_ms: typeof net.gateway_ms === "number" ? net.gateway_ms : null,
+          dns_ipv4_ms: typeof net.dns_ipv4_ms === "number" ? net.dns_ipv4_ms : null,
+          dns_ipv6_ms: typeof net.dns_ipv6_ms === "number" ? net.dns_ipv6_ms : null,
           status: net.status || "connected"
         });
       }
+    }
+
+    // Process daily network diagnostics if present in this cycle
+    if (cycle.diagnostics) {
+      await db.saveNetworkDiagnostics(station.station_id, cycleTime, cycle.diagnostics);
     }
 
     // Process scan surveys

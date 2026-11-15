@@ -27,6 +27,9 @@ export interface MeasurementRecord {
   facebook_ms: number | null;
   netflix_ms: number | null;
   apple_ms: number | null;
+  gateway_ms?: number | null;
+  dns_ipv4_ms?: number | null;
+  dns_ipv6_ms?: number | null;
   status: string | null;
 }
 
@@ -96,7 +99,50 @@ export interface NetworkPayload {
     netflix?: number;
     apple?: number;
   };
+  gateway_ms?: number;
+  dns_ipv4_ms?: number;
+  dns_ipv6_ms?: number;
   status?: string;
+}
+
+export interface NetworkDiagnosticsPayload {
+  ssid?: string;
+  gateway_ip?: string;
+  gateway_vendor?: string;
+  web_exposed?: boolean;
+  login_url?: string;
+  https_redirect?: boolean;
+  mtu_1500_ok?: boolean;
+  mtu_1492_ok?: boolean;
+  mtu_1420_ok?: boolean;
+  dns_ipv4_ms?: number;
+  dns_ipv6_ms?: number;
+  dns_ipv6_timeout?: boolean;
+  dns_rebind_blocked?: boolean;
+  captive_portal_detected?: boolean;
+  open_ports?: string;
+  details_json?: string;
+}
+
+export interface NetworkDiagnosticsRecord {
+  station_id: string;
+  ssid: string;
+  timestamp: number;
+  gateway_ip: string | null;
+  gateway_vendor: string | null;
+  web_exposed: number;
+  login_url: string | null;
+  https_redirect: number;
+  mtu_1500_ok: number;
+  mtu_1492_ok: number;
+  mtu_1420_ok: number;
+  dns_ipv4_ms: number | null;
+  dns_ipv6_ms: number | null;
+  dns_ipv6_timeout: number;
+  dns_rebind_blocked: number;
+  captive_portal_detected: number;
+  open_ports: string | null;
+  details_json: string | null;
 }
 
 export interface SurveyPayload {
@@ -115,6 +161,7 @@ export interface TelemetryCyclePayload {
   timestamp?: number;
   networks?: NetworkPayload[];
   scan_survey?: SurveyPayload[];
+  diagnostics?: NetworkDiagnosticsPayload;
 }
 
 export interface StationOverviewCacheRecord {

@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -19,7 +19,7 @@ Both the Cloudflare Worker and GitHub Pages support deep-linking directly to spe
 
 ## Evolution from `kreier/T18`
 
-| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.6.0`) |
+| Architectural Area | Previous `kreier/T18` | Current `kreier/wifi` (`0.7.0`) |
 | :--- | :--- | :--- |
 | **Telemetry Storage** | Explored direct Git commits / GitHub API pushes | **Cloudflare D1** (Serverless SQLite at edge) with automated 30-day retention and daily rollup summaries ([ADR 0001](docs/adr/0001-d1-over-git-storage.md)) |
 | **Device Provisioning** | Manual credential baking or shared keys | **Zero-Trust Token Provisioning**: `MASTER_PHRASE` is erased from Flash and RAM after one-time token exchange ([ADR 0002](docs/adr/0002-per-device-token-provisioning.md)) |
@@ -310,6 +310,28 @@ Returns detailed station metadata, latest monitored network measurements, visibl
 
 ### `GET /api/export?station_id=:id&format=csv|json`
 Downloads recent telemetry for analysis or archival into the `data/` repository directory.
+
+---
+
+## Network Diagnostics & Firewall Monitoring (v0.7.0)
+
+Version `0.7.0` introduces real-time gateway and dual-stack DNS monitoring alongside automated daily security and firewall audits:
+
+1. **Real-Time Measurement Additions (Every 10-Minute Polling Cycle)**:
+   - **Gateway RTT**: Measures local TCP SYN-ACK RTT to default gateway (`WiFi.gatewayIP()`). Immediately differentiates local AP/firewall bottlenecks from ISP uplink degradation.
+   - **Dual-Stack DNS Resolution (IPv4 `A` vs IPv6 `AAAA`)**: Measures latency to resolve hostnames via IPv4 vs IPv6. Accurately detects broken dual-stack networks where upstream routers advertise IPv6 DNS but blackhole traffic, causing 30-second application timeouts.
+   - **Captive Portal / HTTP Canary Trap**: Detects HTTP redirection or 302/200 hijack when probing standard canary endpoints (`connectivitycheck.gstatic.com/generate_204`).
+
+2. **Automated Daily In-Depth Diagnostics (Every 24 Hours)**:
+   - **Gateway & Firewall Inspection**: Probes gateway port 80 & 443 to detect web management interfaces (`pfSense`, `OpenWrt`, `OPNsense`, or generic router WebUIs) and checks whether HTTP-to-HTTPS redirect traps are present.
+   - **Path MTU (PMTUD) & MSS Clamping**: Sweeps packet reachability across 1500 (Standard), 1492 (PPPoE), and 1420 (VPN) MTUs to diagnose silent packet drops and TLS handshake stalls.
+   - **DNS Rebinding Protection**: Audits whether public queries resolving to private RFC 1918 ranges are suppressed.
+   - **Egress Firewall Rules**: Validates outbound connectivity to critical ports (DNS 53, HTTP 80, HTTPS 443, NTP 123, SSH 22, DoT 853).
+
+3. **Dashboard Summary & Expandable View**:
+   - High-level status bar with color-coded pills for Gateway RTT, Firewall Detection (e.g. pfSense Exposed vs Secured Gateway), Dual-Stack DNS Health, and Captive Interception.
+   - Expandable **Detailed Audit Drawer** displaying comprehensive 4-quadrant diagnostic breakdowns for all station types.
+   - Integrated **Gateway RTT** plotted alongside Google, Cloudflare, Microsoft, Apple, Netflix, and Facebook on the 24-hour latency trend graphs.
 
 ---
 

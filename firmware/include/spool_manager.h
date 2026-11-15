@@ -39,6 +39,10 @@ public:
             o["channel"] = net.channel;
             o["assoc_ms"] = net.assoc_ms;
             o["dhcp_ms"] = net.dhcp_ms;
+            o["gateway_ms"] = net.gateway_ms;
+            o["dns_ipv4_ms"] = net.dns_ipv4_ms;
+            o["dns_ipv6_ms"] = net.dns_ipv6_ms;
+            o["captive_detected"] = net.captive_detected;
             
             JsonObject lat = o["http_latencies"].to<JsonObject>();
             lat["google"] = net.google_ms;
@@ -62,6 +66,26 @@ public:
             s["phy_mode"] = item.phy_mode;
             s["channel"] = item.channel;
             s["band"] = item.band;
+        }
+
+        if (cycle.has_diagnostics) {
+            JsonObject d = doc["diagnostics"].to<JsonObject>();
+            d["ssid"] = cycle.diagnostics.ssid;
+            d["gateway_ip"] = cycle.diagnostics.gateway_ip;
+            d["gateway_vendor"] = cycle.diagnostics.gateway_vendor;
+            d["web_exposed"] = cycle.diagnostics.web_exposed;
+            d["login_url"] = cycle.diagnostics.login_url;
+            d["https_redirect"] = cycle.diagnostics.https_redirect;
+            d["mtu_1500_ok"] = cycle.diagnostics.mtu_1500_ok;
+            d["mtu_1492_ok"] = cycle.diagnostics.mtu_1492_ok;
+            d["mtu_1420_ok"] = cycle.diagnostics.mtu_1420_ok;
+            d["dns_ipv4_ms"] = cycle.diagnostics.dns_ipv4_ms;
+            d["dns_ipv6_ms"] = cycle.diagnostics.dns_ipv6_ms;
+            d["dns_ipv6_timeout"] = cycle.diagnostics.dns_ipv6_timeout;
+            d["dns_rebind_blocked"] = cycle.diagnostics.dns_rebind_blocked;
+            d["captive_portal_detected"] = cycle.diagnostics.captive_portal_detected;
+            d["open_ports"] = cycle.diagnostics.open_ports;
+            d["details_json"] = cycle.diagnostics.details_json;
         }
 
         String jsonLine;

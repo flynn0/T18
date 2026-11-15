@@ -1,4 +1,4 @@
-import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord } from "./types";
+import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord } from "./types";
 
 export class Database {
   private db: D1Database;
@@ -59,8 +59,9 @@ export class Database {
             INSERT INTO measurements (
               station_id, timestamp, ssid, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
-              microsoft_ms, facebook_ms, netflix_ms, apple_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              microsoft_ms, facebook_ms, netflix_ms, apple_ms,
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid, timestamp) DO UPDATE SET
               bssid = excluded.bssid,
               channel = excluded.channel,
@@ -72,6 +73,9 @@ export class Database {
               facebook_ms = excluded.facebook_ms,
               netflix_ms = excluded.netflix_ms,
               apple_ms = excluded.apple_ms,
+              gateway_ms = excluded.gateway_ms,
+              dns_ipv4_ms = excluded.dns_ipv4_ms,
+              dns_ipv6_ms = excluded.dns_ipv6_ms,
               status = excluded.status
           `)
           .bind(
@@ -88,6 +92,9 @@ export class Database {
             m.facebook_ms ?? null,
             m.netflix_ms ?? null,
             m.apple_ms ?? null,
+            m.gateway_ms ?? null,
+            m.dns_ipv4_ms ?? null,
+            m.dns_ipv6_ms ?? null,
             m.status ?? "unknown"
           )
       );
@@ -99,8 +106,9 @@ export class Database {
             INSERT INTO station_latest_measurements (
               station_id, ssid, timestamp, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
-              microsoft_ms, facebook_ms, netflix_ms, apple_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              microsoft_ms, facebook_ms, netflix_ms, apple_ms,
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid) DO UPDATE SET
               timestamp = excluded.timestamp,
               bssid = excluded.bssid,
@@ -113,6 +121,9 @@ export class Database {
               facebook_ms = excluded.facebook_ms,
               netflix_ms = excluded.netflix_ms,
               apple_ms = excluded.apple_ms,
+              gateway_ms = excluded.gateway_ms,
+              dns_ipv4_ms = excluded.dns_ipv4_ms,
+              dns_ipv6_ms = excluded.dns_ipv6_ms,
               status = excluded.status
           `)
           .bind(
@@ -129,6 +140,9 @@ export class Database {
             m.facebook_ms ?? null,
             m.netflix_ms ?? null,
             m.apple_ms ?? null,
+            m.gateway_ms ?? null,
+            m.dns_ipv4_ms ?? null,
+            m.dns_ipv6_ms ?? null,
             m.status ?? "unknown"
           )
       );
@@ -332,5 +346,65 @@ export class Database {
       .prepare("DELETE FROM station_overview_cache WHERE station_id = ?")
       .bind(stationId)
       .run();
+  }
+
+  async saveNetworkDiagnostics(stationId: string, timestamp: number, diag: NetworkDiagnosticsPayload): Promise<void> {
+    const ssid = diag.ssid || "primary";
+    await this.db
+      .prepare(`
+        INSERT INTO station_network_diagnostics (
+          station_id, ssid, timestamp, gateway_ip, gateway_vendor,
+          web_exposed, login_url, https_redirect,
+          mtu_1500_ok, mtu_1492_ok, mtu_1420_ok,
+          dns_ipv4_ms, dns_ipv6_ms, dns_ipv6_timeout,
+          dns_rebind_blocked, captive_portal_detected, open_ports, details_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(station_id, ssid) DO UPDATE SET
+          timestamp = excluded.timestamp,
+          gateway_ip = excluded.gateway_ip,
+          gateway_vendor = excluded.gateway_vendor,
+          web_exposed = excluded.web_exposed,
+          login_url = excluded.login_url,
+          https_redirect = excluded.https_redirect,
+          mtu_1500_ok = excluded.mtu_1500_ok,
+          mtu_1492_ok = excluded.mtu_1492_ok,
+          mtu_1420_ok = excluded.mtu_1420_ok,
+          dns_ipv4_ms = excluded.dns_ipv4_ms,
+          dns_ipv6_ms = excluded.dns_ipv6_ms,
+          dns_ipv6_timeout = excluded.dns_ipv6_timeout,
+          dns_rebind_blocked = excluded.dns_rebind_blocked,
+          captive_portal_detected = excluded.captive_portal_detected,
+          open_ports = excluded.open_ports,
+          details_json = excluded.details_json
+      `)
+      .bind(
+        stationId,
+        ssid,
+        timestamp,
+        diag.gateway_ip ?? null,
+        diag.gateway_vendor ?? "Unknown",
+        diag.web_exposed ? 1 : 0,
+        diag.login_url ?? null,
+        diag.https_redirect ? 1 : 0,
+        diag.mtu_1500_ok ? 1 : 0,
+        diag.mtu_1492_ok ? 1 : 0,
+        diag.mtu_1420_ok ? 1 : 0,
+        diag.dns_ipv4_ms ?? null,
+        diag.dns_ipv6_ms ?? null,
+        diag.dns_ipv6_timeout ? 1 : 0,
+        diag.dns_rebind_blocked ? 1 : 0,
+        diag.captive_portal_detected ? 1 : 0,
+        diag.open_ports ?? null,
+        diag.details_json ?? null
+      )
+      .run();
+  }
+
+  async getLatestDiagnostics(stationId: string): Promise<NetworkDiagnosticsRecord[]> {
+    const result = await this.db
+      .prepare("SELECT * FROM station_network_diagnostics WHERE station_id = ? ORDER BY timestamp DESC")
+      .bind(stationId)
+      .all<NetworkDiagnosticsRecord>();
+    return result.results || [];
   }
 }

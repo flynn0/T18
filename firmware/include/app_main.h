@@ -17,7 +17,7 @@
 
 class AppMain {
 public:
-    AppMain() : _led(STATUS_LED_PIN), _portal(_configMgr, _led) {}
+    AppMain() : _led(STATUS_LED_PIN), _portal(_configMgr, _led), _lastDailyCheckEpoch(0) {}
 
     void setup() {
         Serial.begin(115200);
@@ -68,9 +68,24 @@ public:
 
         // 3. Sequentially probe configured monitored networks
         std::vector<NetworkMeasurement> measurements;
+        bool shouldRunDaily = false;
+        uint64_t currentEpoch = _ntp.getCurrentEpoch();
+        if (_lastDailyCheckEpoch == 0 || (currentEpoch > _lastDailyCheckEpoch + 86400)) {
+            shouldRunDaily = true;
+        }
+
+        NetworkDiagnostics dailyDiag;
+        bool diagCaptured = false;
+
         for (uint8_t i = 0; i < _config.network_count; i++) {
             NetworkMeasurement m = LatencyProber::probeNetwork(_config.networks[i], 15000);
             measurements.push_back(m);
+
+            if (shouldRunDaily && !diagCaptured && m.status == "connected") {
+                dailyDiag = LatencyProber::runDailyDiagnostics(_config.networks[i]);
+                diagCaptured = true;
+                _lastDailyCheckEpoch = currentEpoch;
+            }
             delay(200);
         }
         _led.setOff();
@@ -78,9 +93,11 @@ public:
         // 4. Package cycle telemetry and append to LittleFS spool ring buffer
         CycleTelemetry cycle;
         cycle.station_id = _config.station_id;
-        cycle.timestamp = _ntp.getCurrentEpoch();
+        cycle.timestamp = currentEpoch;
         cycle.measurements = measurements;
         cycle.survey = scanResults;
+        cycle.has_diagnostics = diagCaptured;
+        cycle.diagnostics = dailyDiag;
 
         SpoolManager::appendCycle(cycle);
 
@@ -255,6 +272,7 @@ private:
     LedController _led;
     CaptivePortalManager _portal;
     NtpSyncManager _ntp;
+    uint64_t _lastDailyCheckEpoch;
 };
 
 // Global singleton helper for setup & loop

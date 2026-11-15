@@ -1,6 +1,6 @@
 // kreier/wifi - ESP32 Wi-Fi Monitoring Node
 // Arduino IDE Sketch Entry Point
-// Version: 0.6.0
+// Version: 0.7.0
 //
 // Dual-compatible build with PlatformIO.
 // Select your target board below if building in Arduino IDE:
@@ -13,7 +13,7 @@
 #endif
 
 #ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "0.6.0"
+#define FIRMWARE_VERSION "0.7.0"
 #endif
 
 #include "../include/app_main.h"
