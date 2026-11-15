@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include "board_pins.h"
 #include "app_state.h"
 #include "app_config.h"
 #include "led_controller.h"
@@ -53,6 +54,12 @@ public:
             _server.handleClient();
             _led.update();
 
+            // Check if BOOT button is clicked to skip setup portal immediately
+            if (digitalRead(BOOT_BUTTON_PIN) == LOW && !_clientConnected) {
+                Serial.println(F("[Portal] BOOT button pressed. Skipping setup portal."));
+                break;
+            }
+
             // Check if any station connected to Soft-AP
             int stationNum = WiFi.softAPgetStationNum();
             if (stationNum > 0 && !_clientConnected) {
@@ -60,6 +67,15 @@ public:
                 _timeoutPaused = true;
                 _led.setSolid(true); // Switch to solid ON
                 Serial.printf("[Portal] Client connected! (%d active). Paused AP timeout.\n", stationNum);
+            }
+
+            // Periodic countdown log in Serial
+            static uint32_t lastLogSec = 0;
+            uint32_t elapsedSec = (millis() - _apStartTime) / 1000;
+            if (!_timeoutPaused && (elapsedSec != lastLogSec) && (elapsedSec > 0) && (elapsedSec % 10 == 0)) {
+                lastLogSec = elapsedSec;
+                Serial.printf("[Portal] Waiting for setup client (%u/%u s remaining, press BOOT to skip)...\n",
+                              (unsigned)(timeoutSeconds - elapsedSec), (unsigned)timeoutSeconds);
             }
 
             // Check timeout if no client has connected yet

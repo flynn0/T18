@@ -1,6 +1,6 @@
 // kreier/wifi - ESP32 Wi-Fi Monitoring Node
 // PlatformIO Entry Point
-// Version: 1.0.2
+// Version: 1.0.3
 
 #include <Arduino.h>
 #include "app_main.h"

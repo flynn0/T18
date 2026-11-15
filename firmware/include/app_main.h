@@ -42,15 +42,13 @@ public:
                       _config.hw.status_led_pin, _config.hw.battery_pin);
         Serial.println(F("========================================"));
 
-        // Check if BOOT button is held for 3 seconds on boot
-        bool forcePortal = checkBootButtonHold(3000);
-
-        if (!hasConfig || forcePortal) {
-            Serial.println(F("[Main] Launching setup captive portal..."));
-            _portal.startPortal(_config, 60);
-            _configMgr.loadConfig(_config);
-            _led.setPin(_config.hw.status_led_pin);
-        }
+        // Always launch the 60-second captive portal on power-on / reset
+        // If a client connects to WIFI-Mon-XXXX, timeout pauses so the user can reconfigure station name/SSIDs.
+        // If no client connects within 60s (or user taps BOOT button), it automatically proceeds to monitoring.
+        Serial.println(F("[Main] Launching setup captive portal (60s window, or press BOOT to skip)..."));
+        _portal.startPortal(_config, 60);
+        _configMgr.loadConfig(_config);
+        _led.setPin(_config.hw.status_led_pin);
 
         // Attempt zero-trust token registration if needed
         ensureDeviceRegistered();
