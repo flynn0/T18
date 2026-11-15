@@ -45,10 +45,15 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
   const measurementsToInsert: MeasurementRecord[] = [];
   const surveysToInsert: ScanSurveyRecord[] = [];
+  const serverNow = Math.floor(Date.now() / 1000);
   let latestTimestamp = station.last_seen || 0;
 
   for (const cycle of cycles) {
-    const cycleTime = cycle.timestamp || Math.floor(Date.now() / 1000);
+    let cycleTime = cycle.timestamp || serverNow;
+    // Guard against future timestamps caused by NTP / clock skew on IoT probe
+    if (cycleTime > serverNow + 30) {
+      cycleTime = serverNow;
+    }
     if (cycleTime > latestTimestamp) {
       latestTimestamp = cycleTime;
     }
@@ -98,7 +103,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
   // 3. Batch insert into D1 with optimized storage
   const insertedM = await db.insertMeasurements(measurementsToInsert);
   const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert);
-  await db.updateStationLastSeen(station.station_id, latestTimestamp);
+  await db.updateStationLastSeen(station.station_id, serverNow);
 
   // 4. Invalidate overview caches so fresh data is visible immediately
   invalidateMemoryCache(station.station_id);

@@ -797,14 +797,15 @@
         const statusText = document.getElementById("stStatusText");
         const nowSec = Math.floor(Date.now() / 1000);
         const lastSeen = st.last_seen || 0;
-        const diffMinutes = Math.floor((nowSec - lastSeen) / 60);
+        const diffSec = nowSec - lastSeen;
+        const isOnline = lastSeen > 0 && diffSec <= 20 * 60;
 
-        if (lastSeen > 0 && diffMinutes <= 20) {
+        if (isOnline) {
           badge.className = "status-badge online";
-          statusText.innerText = "Online (" + diffMinutes + "m ago)";
+          statusText.innerText = "Online (" + formatLastSeen(lastSeen) + ")";
         } else {
           badge.className = "status-badge offline";
-          statusText.innerText = lastSeen > 0 ? "Offline (" + diffMinutes + "m ago)" : "Never Seen";
+          statusText.innerText = lastSeen > 0 ? "Offline (" + formatLastSeen(lastSeen) + ")" : "Never Seen";
         }
 
         // 2. Render Monitored Network Cards
