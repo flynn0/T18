@@ -54,8 +54,7 @@ static void IRAM_ATTR promiscuousRxCallback(void* buf, wifi_promiscuous_pkt_type
     }
 
     // 3. Frame Airtime Estimation
-    uint16_t frame_len = rx_ctrl->sig_mode ? rx_ctrl->HT_length : rx_ctrl->legacy_length;
-    if (frame_len == 0) frame_len = rx_ctrl->legacy_length;
+    uint16_t frame_len = rx_ctrl->sig_len;
     if (frame_len == 0) frame_len = 60; // minimum fallback estimate
 
     uint32_t rate_kbps = 24000; // default 24 Mbps

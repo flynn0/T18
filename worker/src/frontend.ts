@@ -710,7 +710,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.6.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.8.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -803,11 +803,11 @@ export function renderDashboardHtml(): string {
 
       // 2. Direct path routing: e.g. /9E1-9 or /wifi/9E1-9
       let path = window.location.pathname || "";
-      path = path.replace(/\\/+$/, ""); // trim trailing slash
+      while (path.endsWith("/")) path = path.slice(0, -1);
       if (path.startsWith("/wifi")) {
         path = path.substring(5);
       }
-      path = path.replace(/^\\/+/, ""); // trim leading slash
+      while (path.startsWith("/")) path = path.slice(1);
 
       if (path && path !== "index.html" && path !== "404.html") {
         return decodeURIComponent(path);
