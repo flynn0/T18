@@ -48,65 +48,157 @@ export class Database {
   async insertMeasurements(measurements: MeasurementRecord[]): Promise<number> {
     if (measurements.length === 0) return 0;
     
-    // D1 supports batch executions
-    const statements = measurements.map(m =>
-      this.db
-        .prepare(`
-          INSERT INTO measurements (
-            station_id, timestamp, ssid, bssid, channel,
-            assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
-            microsoft_ms, facebook_ms, netflix_ms, apple_ms, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-        .bind(
-          m.station_id,
-          m.timestamp,
-          m.ssid,
-          m.bssid ?? null,
-          m.channel ?? null,
-          m.assoc_ms ?? null,
-          m.dhcp_ms ?? null,
-          m.google_ms ?? null,
-          m.cloudflare_ms ?? null,
-          m.microsoft_ms ?? null,
-          m.facebook_ms ?? null,
-          m.netflix_ms ?? null,
-          m.apple_ms ?? null,
-          m.status ?? "unknown"
-        )
-    );
+    // Batch insert historical measurements and upsert latest measurements
+    const statements: D1PreparedStatement[] = [];
+
+    for (const m of measurements) {
+      // 1. Append to historical measurements (144/day per SSID, deduplicating retries)
+      statements.push(
+        this.db
+          .prepare(`
+            INSERT INTO measurements (
+              station_id, timestamp, ssid, bssid, channel,
+              assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
+              microsoft_ms, facebook_ms, netflix_ms, apple_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(station_id, ssid, timestamp) DO UPDATE SET
+              bssid = excluded.bssid,
+              channel = excluded.channel,
+              assoc_ms = excluded.assoc_ms,
+              dhcp_ms = excluded.dhcp_ms,
+              google_ms = excluded.google_ms,
+              cloudflare_ms = excluded.cloudflare_ms,
+              microsoft_ms = excluded.microsoft_ms,
+              facebook_ms = excluded.facebook_ms,
+              netflix_ms = excluded.netflix_ms,
+              apple_ms = excluded.apple_ms,
+              status = excluded.status
+          `)
+          .bind(
+            m.station_id,
+            m.timestamp,
+            m.ssid,
+            m.bssid ?? null,
+            m.channel ?? null,
+            m.assoc_ms ?? null,
+            m.dhcp_ms ?? null,
+            m.google_ms ?? null,
+            m.cloudflare_ms ?? null,
+            m.microsoft_ms ?? null,
+            m.facebook_ms ?? null,
+            m.netflix_ms ?? null,
+            m.apple_ms ?? null,
+            m.status ?? "unknown"
+          )
+      );
+
+      // 2. Fast upsert into station_latest_measurements (1 row per SSID)
+      statements.push(
+        this.db
+          .prepare(`
+            INSERT INTO station_latest_measurements (
+              station_id, ssid, timestamp, bssid, channel,
+              assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
+              microsoft_ms, facebook_ms, netflix_ms, apple_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(station_id, ssid) DO UPDATE SET
+              timestamp = excluded.timestamp,
+              bssid = excluded.bssid,
+              channel = excluded.channel,
+              assoc_ms = excluded.assoc_ms,
+              dhcp_ms = excluded.dhcp_ms,
+              google_ms = excluded.google_ms,
+              cloudflare_ms = excluded.cloudflare_ms,
+              microsoft_ms = excluded.microsoft_ms,
+              facebook_ms = excluded.facebook_ms,
+              netflix_ms = excluded.netflix_ms,
+              apple_ms = excluded.apple_ms,
+              status = excluded.status
+          `)
+          .bind(
+            m.station_id,
+            m.ssid,
+            m.timestamp,
+            m.bssid ?? null,
+            m.channel ?? null,
+            m.assoc_ms ?? null,
+            m.dhcp_ms ?? null,
+            m.google_ms ?? null,
+            m.cloudflare_ms ?? null,
+            m.microsoft_ms ?? null,
+            m.facebook_ms ?? null,
+            m.netflix_ms ?? null,
+            m.apple_ms ?? null,
+            m.status ?? "unknown"
+          )
+      );
+    }
 
     await this.db.batch(statements);
     return measurements.length;
   }
 
-  async insertSurveys(surveys: ScanSurveyRecord[]): Promise<number> {
+  async saveSurveys(stationId: string, timestamp: number, surveys: ScanSurveyRecord[]): Promise<number> {
     if (surveys.length === 0) return 0;
 
-    const statements = surveys.map(s =>
+    const statements: D1PreparedStatement[] = [];
+
+    // 1. Snapshot the latest survey as a single compact JSON document (1 row instead of 70+ rows!)
+    statements.push(
       this.db
         .prepare(`
-          INSERT INTO scan_surveys (
-            station_id, timestamp, ssid, bssid, rssi,
-            quality, encryption, phy_mode, channel, band
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO station_latest_scan (station_id, timestamp, scan_json)
+          VALUES (?, ?, ?)
+          ON CONFLICT(station_id) DO UPDATE SET
+            timestamp = excluded.timestamp,
+            scan_json = excluded.scan_json
         `)
-        .bind(
-          s.station_id,
-          s.timestamp,
-          s.ssid ?? null,
-          s.bssid ?? null,
-          s.rssi ?? null,
-          s.quality ?? null,
-          s.encryption ?? null,
-          s.phy_mode ?? null,
-          s.channel ?? null,
-          s.band ?? "2.4 GHz"
-        )
+        .bind(stationId, timestamp, JSON.stringify(surveys))
     );
+
+    // 2. Upsert each AP into station_discovered_aps for tracking unique APs and inactive detection
+    for (const s of surveys) {
+      if (!s.bssid) continue;
+      statements.push(
+        this.db
+          .prepare(`
+            INSERT INTO station_discovered_aps (
+              station_id, bssid, ssid, channel, rssi, quality, encryption, phy_mode, band, last_seen
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(station_id, bssid) DO UPDATE SET
+              ssid = excluded.ssid,
+              channel = excluded.channel,
+              rssi = excluded.rssi,
+              quality = excluded.quality,
+              encryption = excluded.encryption,
+              phy_mode = excluded.phy_mode,
+              band = excluded.band,
+              last_seen = excluded.last_seen
+          `)
+          .bind(
+            stationId,
+            s.bssid,
+            s.ssid ?? null,
+            s.channel ?? null,
+            s.rssi ?? null,
+            s.quality ?? null,
+            s.encryption ?? null,
+            s.phy_mode ?? null,
+            s.band ?? "2.4 GHz",
+            timestamp
+          )
+      );
+    }
 
     await this.db.batch(statements);
     return surveys.length;
+  }
+
+  // Deprecated legacy insertSurveys kept for backward compatibility
+  async insertSurveys(surveys: ScanSurveyRecord[]): Promise<number> {
+    if (surveys.length === 0) return 0;
+    const first = surveys[0];
+    return await this.saveSurveys(first.station_id, first.timestamp, surveys);
   }
 
   async listStations(): Promise<StationRecord[]> {
@@ -117,6 +209,17 @@ export class Database {
   }
 
   async getLatestMeasurements(stationId: string): Promise<MeasurementRecord[]> {
+    // 1. Fast path: lookup from station_latest_measurements (1-3 rows read)
+    const fastResult = await this.db
+      .prepare("SELECT * FROM station_latest_measurements WHERE station_id = ? ORDER BY ssid ASC")
+      .bind(stationId)
+      .all<MeasurementRecord>();
+
+    if (fastResult.results && fastResult.results.length > 0) {
+      return fastResult.results;
+    }
+
+    // 2. Fallback to legacy query if fast table has not been populated yet
     const result = await this.db
       .prepare(`
         SELECT m.* FROM measurements m
@@ -135,55 +238,43 @@ export class Database {
   }
 
   async getLatestSurvey(stationId: string): Promise<ScanSurveyRecord[]> {
-    const latestTime = await this.db
-      .prepare("SELECT MAX(timestamp) as max_t FROM scan_surveys WHERE station_id = ?")
+    const cached = await this.db
+      .prepare("SELECT scan_json FROM station_latest_scan WHERE station_id = ?")
       .bind(stationId)
-      .first<{ max_t: number | null }>();
+      .first<{ scan_json: string }>();
 
-    if (!latestTime || !latestTime.max_t) return [];
+    if (cached && cached.scan_json) {
+      try {
+        return JSON.parse(cached.scan_json);
+      } catch {}
+    }
 
-    const result = await this.db
-      .prepare("SELECT * FROM scan_surveys WHERE station_id = ? AND timestamp = ? ORDER BY rssi DESC")
-      .bind(stationId, latestTime.max_t)
-      .all<ScanSurveyRecord>();
-    return result.results;
+    return [];
   }
 
   async getInactiveSurveys(stationId: string): Promise<InactiveSurveyRecord[]> {
-    const latestTime = await this.db
-      .prepare("SELECT MAX(timestamp) as max_t FROM scan_surveys WHERE station_id = ?")
+    const latestScan = await this.db
+      .prepare("SELECT timestamp FROM station_latest_scan WHERE station_id = ?")
       .bind(stationId)
-      .first<{ max_t: number | null }>();
+      .first<{ timestamp: number }>();
 
-    if (!latestTime || !latestTime.max_t) return [];
+    if (latestScan && latestScan.timestamp) {
+      const since24h = latestScan.timestamp - 86400;
+      const result = await this.db
+        .prepare(`
+          SELECT ssid, bssid, channel, phy_mode, encryption, band, rssi, quality, last_seen
+          FROM station_discovered_aps
+          WHERE station_id = ?
+            AND last_seen >= ?
+            AND last_seen < ?
+          ORDER BY last_seen DESC
+        `)
+        .bind(stationId, since24h, latestScan.timestamp)
+        .all<InactiveSurveyRecord>();
+      return result.results;
+    }
 
-    const since24h = latestTime.max_t - 86400; // Prior 24 hours of scan history
-
-    const result = await this.db
-      .prepare(`
-        SELECT 
-          s.ssid,
-          s.bssid,
-          s.channel,
-          s.phy_mode,
-          s.encryption,
-          s.band,
-          MAX(s.rssi) AS rssi,
-          MAX(s.quality) AS quality,
-          MAX(s.timestamp) AS last_seen
-        FROM scan_surveys s
-        WHERE s.station_id = ?
-          AND s.bssid IS NOT NULL
-          AND s.timestamp >= ?
-          AND s.bssid NOT IN (
-            SELECT bssid FROM scan_surveys WHERE station_id = ? AND timestamp = ? AND bssid IS NOT NULL
-          )
-        GROUP BY s.bssid
-        ORDER BY last_seen DESC
-      `)
-      .bind(stationId, since24h, stationId, latestTime.max_t)
-      .all<InactiveSurveyRecord>();
-    return result.results;
+    return [];
   }
 
   async getRecentMeasurements(stationId: string, limit: number = 288): Promise<MeasurementRecord[]> {
@@ -210,5 +301,36 @@ export class Database {
       .bind(stationId, limitDays * 5)
       .all();
     return result.results;
+  }
+
+  // 10-minute Overview Temporary Dataset Cache
+  async getOverviewCache(stationId: string, maxAgeSec: number = 600): Promise<string | null> {
+    const minCachedAt = Math.floor(Date.now() / 1000) - maxAgeSec;
+    const result = await this.db
+      .prepare("SELECT data FROM station_overview_cache WHERE station_id = ? AND cached_at >= ?")
+      .bind(stationId, minCachedAt)
+      .first<{ data: string }>();
+    return result?.data ?? null;
+  }
+
+  async setOverviewCache(stationId: string, data: string): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    await this.db
+      .prepare(`
+        INSERT INTO station_overview_cache (station_id, cached_at, data)
+        VALUES (?, ?, ?)
+        ON CONFLICT(station_id) DO UPDATE SET
+          cached_at = excluded.cached_at,
+          data = excluded.data
+      `)
+      .bind(stationId, now, data)
+      .run();
+  }
+
+  async invalidateOverviewCache(stationId: string): Promise<void> {
+    await this.db
+      .prepare("DELETE FROM station_overview_cache WHERE station_id = ?")
+      .bind(stationId)
+      .run();
   }
 }

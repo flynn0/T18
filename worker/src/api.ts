@@ -1,21 +1,88 @@
 import { Env } from "./types";
 import { Database } from "./db";
 
+// In-memory cache for ultra-fast isolate hits (< 1ms, 0 D1 reads)
+const ISOLATE_CACHE = new Map<string, { cachedAt: number; data: string }>();
+let STATIONS_CACHE: { cachedAt: number; data: string } | null = null;
+const CACHE_TTL_SEC = 600; // 10 minutes temporary dataset cache (matching 10-minute reporting interval)
+const STATIONS_CACHE_TTL_SEC = 60; // 1 minute cache for station list
+
+export function invalidateMemoryCache(stationId?: string) {
+  if (stationId) {
+    ISOLATE_CACHE.delete(stationId);
+  } else {
+    ISOLATE_CACHE.clear();
+  }
+  STATIONS_CACHE = null;
+}
+
 export async function handleApiStations(_request: Request, env: Env): Promise<Response> {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (STATIONS_CACHE && (now - STATIONS_CACHE.cachedAt) < STATIONS_CACHE_TTL_SEC) {
+    return new Response(STATIONS_CACHE.data, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "X-Cache": "HIT-ISOLATE",
+        "Cache-Control": "public, max-age=60"
+      }
+    });
+  }
+
   const db = new Database(env);
   const stations = await db.listStations();
+  const payload = JSON.stringify({ stations });
 
-  return new Response(JSON.stringify({ stations }), {
+  STATIONS_CACHE = { cachedAt: now, data: payload };
+
+  return new Response(payload, {
     status: 200,
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
+      "Access-Control-Allow-Origin": "*",
+      "X-Cache": "MISS",
+      "Cache-Control": "public, max-age=60"
     }
   });
 }
 
 export async function handleApiStationDetail(stationId: string, _request: Request, env: Env): Promise<Response> {
+  const now = Math.floor(Date.now() / 1000);
+
+  // 1. Level 1 Cache: In-memory Map in Worker isolate (0 D1 reads, < 1ms)
+  const memCached = ISOLATE_CACHE.get(stationId);
+  if (memCached && (now - memCached.cachedAt) < CACHE_TTL_SEC) {
+    return new Response(memCached.data, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "X-Cache": "HIT-ISOLATE",
+        "Cache-Control": "public, max-age=60, s-maxage=600"
+      }
+    });
+  }
+
   const db = new Database(env);
+
+  // 2. Level 2 Cache: D1 temporary dataset table (costs only 1 row read on cold isolate!)
+  const d1Cached = await db.getOverviewCache(stationId, CACHE_TTL_SEC);
+  if (d1Cached) {
+    ISOLATE_CACHE.set(stationId, { cachedAt: now, data: d1Cached });
+    return new Response(d1Cached, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "X-Cache": "HIT-D1",
+        "Cache-Control": "public, max-age=60, s-maxage=600"
+      }
+    });
+  }
+
+  // 3. Cache Miss: Query raw data and generate overview
   const station = await db.getStationById(stationId);
 
   if (!station) {
@@ -39,26 +106,31 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const latestMeasurements = await db.getLatestMeasurements(stationId);
   const latestSurvey = await db.getLatestSurvey(stationId);
   const inactiveSurvey = await db.getInactiveSurveys(stationId);
-  const recentMeasurements = await db.getRecentMeasurements(stationId, 500); // 24 hours of 10-min samples across monitored networks
+  const recentMeasurements = await db.getRecentMeasurements(stationId, 1000); // 24-48h across all monitored SSIDs (144 samples/day per SSID)
   const dailySummaries = await db.getDailySummaries(stationId, 30);
 
-  return new Response(
-    JSON.stringify({
-      station: publicMeta,
-      latest_measurements: latestMeasurements,
-      latest_survey: latestSurvey,
-      inactive_survey: inactiveSurvey,
-      recent_history: recentMeasurements,
-      daily_summaries: dailySummaries
-    }),
-    {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      }
+  const overviewPayload = JSON.stringify({
+    station: publicMeta,
+    latest_measurements: latestMeasurements,
+    latest_survey: latestSurvey,
+    inactive_survey: inactiveSurvey,
+    recent_history: recentMeasurements,
+    daily_summaries: dailySummaries
+  });
+
+  // Store in Level 1 & Level 2 cache
+  ISOLATE_CACHE.set(stationId, { cachedAt: now, data: overviewPayload });
+  await db.setOverviewCache(stationId, overviewPayload);
+
+  return new Response(overviewPayload, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "X-Cache": "MISS",
+      "Cache-Control": "public, max-age=60, s-maxage=600"
     }
-  );
+  });
 }
 
 export async function handleApiExport(request: Request, env: Env): Promise<Response> {

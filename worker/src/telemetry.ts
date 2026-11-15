@@ -1,5 +1,6 @@
 import { Env, TelemetryCyclePayload, MeasurementRecord, ScanSurveyRecord } from "./types";
 import { Database } from "./db";
+import { invalidateMemoryCache } from "./api";
 
 export async function handleTelemetry(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
@@ -94,10 +95,14 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
     }
   }
 
-  // 3. Batch insert into D1
+  // 3. Batch insert into D1 with optimized storage
   const insertedM = await db.insertMeasurements(measurementsToInsert);
-  const insertedS = await db.insertSurveys(surveysToInsert);
+  const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert);
   await db.updateStationLastSeen(station.station_id, latestTimestamp);
+
+  // 4. Invalidate overview caches so fresh data is visible immediately
+  invalidateMemoryCache(station.station_id);
+  await db.invalidateOverviewCache(station.station_id);
 
   return new Response(
     JSON.stringify({

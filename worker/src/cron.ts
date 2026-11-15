@@ -65,10 +65,18 @@ export async function handleScheduledMaintenance(_event: ScheduledEvent, env: En
       .run();
     console.log(`[Cron] Purged ${purgeM.meta?.changes ?? 0} expired measurements.`);
 
-    const purgeS = await env.DB.prepare("DELETE FROM scan_surveys WHERE timestamp < ?")
+    // Purge discovered APs not seen in 30 days
+    const purgeAps = await env.DB.prepare("DELETE FROM station_discovered_aps WHERE last_seen < ?")
       .bind(retentionCutoff)
       .run();
-    console.log(`[Cron] Purged ${purgeS.meta?.changes ?? 0} expired scan surveys.`);
+    console.log(`[Cron] Purged ${purgeAps.meta?.changes ?? 0} expired discovered APs.`);
+
+    // Purge cached overviews older than 1 day
+    const purgeCache = await env.DB.prepare("DELETE FROM station_overview_cache WHERE cached_at < ?")
+      .bind(now - 86400)
+      .run();
+    console.log(`[Cron] Purged ${purgeCache.meta?.changes ?? 0} expired cached overviews.`);
+
   } catch (err) {
     console.error("[Cron] Error purging old telemetry records:", err);
   }

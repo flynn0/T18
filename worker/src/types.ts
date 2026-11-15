@@ -116,3 +116,23 @@ export interface TelemetryCyclePayload {
   networks?: NetworkPayload[];
   scan_survey?: SurveyPayload[];
 }
+
+export interface StationOverviewCacheRecord {
+  station_id: string;
+  cached_at: number;
+  data: string;
+}
+
+export interface DiscoveredApRecord {
+  station_id: string;
+  bssid: string;
+  ssid: string | null;
+  channel: number | null;
+  rssi: number | null;
+  quality: number | null;
+  encryption: string | null;
+  phy_mode: string | null;
+  band: string | null;
+  last_seen: number;
+}
+
