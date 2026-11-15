@@ -61,9 +61,9 @@
     ],
     "monitored_network": "HCMUE-WIFI 2.4G",
     "first_seen": "2026-11-13T01:58:04.600Z",
-    "last_seen": "2026-11-15T20:46:46.380Z",
-    "battery_mv": 3985,
-    "battery_pct": 82,
+    "last_seen": "2026-11-15T23:27:08.563Z",
+    "battery_mv": 3982,
+    "battery_pct": 80,
     "visible_networks": 7,
     "status": "online"
   },
