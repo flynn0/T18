@@ -397,6 +397,56 @@ export function renderDashboardHtml(): string {
     .rssi-seg {
       height: 100%;
     }
+    .heatmap-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+    .heatmap-row-label {
+      width: 44px;
+      min-width: 44px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: right;
+      padding-right: 6px;
+    }
+    .heatmap-cells-wrap {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+    .heatmap-cell {
+      flex: 1;
+      height: 18px;
+      min-width: 13px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: transform 0.1s ease, outline 0.1s ease;
+      background: rgba(100, 116, 139, 0.15);
+    }
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+      z-index: 10;
+      outline: 1.5px solid #fff;
+    }
+    .heatmap-header-wrap {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+      margin-bottom: 4px;
+    }
+    .heatmap-header-col {
+      flex: 1;
+      min-width: 13px;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: center;
+      overflow: visible;
+      white-space: nowrap;
+      position: relative;
+    }
     footer {
       border-top: 1px solid var(--card-border);
       padding: 1.25rem;
@@ -621,6 +671,43 @@ export function renderDashboardHtml(): string {
               <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No channel utilization data available yet.</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- 24-Hour Channel Utilization Heatmap Drawer -->
+      <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelHeatmap()">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Channel Utilization Heatmap (13 Channels)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, Dynamic Nuance Scale)</span>
+          </div>
+          <span id="channelHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+        </div>
+        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+          <!-- Heatmap Legend & Hover Info Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;">
+            <div style="display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap;">
+              <span style="color: var(--text-muted); margin-right: 3px;">Airtime:</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="&le; 2% (Quiet)"></span>
+              <span style="color:var(--text-muted); margin-right:2px;">&le;2%</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0284c7; border-radius:2px;" title="2% - 5%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#06b6d4; border-radius:2px;" title="5% - 8%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0d9488; border-radius:2px;" title="8% - 12%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#10b981; border-radius:2px;" title="12% - 16%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#22c55e; border-radius:2px;" title="16% - 20%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#84cc16; border-radius:2px;" title="20% - 25%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#eab308; border-radius:2px;" title="25% - 30%"></span>
+              <span style="color:var(--text-muted); margin-left:1px; margin-right:3px;">5–30%</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#f97316; border-radius:2px;" title="30% - 40%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#ef4444; border-radius:2px;" title="40% - 55%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#dc2626; border-radius:2px;" title="55% - 70%"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 70% (Outlier Spike)"></span>
+              <span style="color:#d946ef; font-weight:600; margin-left:2px;">&gt;70% Spike</span>
+            </div>
+            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">Hover over a cell to inspect metrics</div>
+          </div>
+          <!-- Heatmap Container -->
+          <div id="channelHeatmapContainer" style="min-width: 760px;"></div>
         </div>
       </div>
     </div>
@@ -1123,8 +1210,25 @@ export function renderDashboardHtml(): string {
           // 4. Render Spectrum Survey Table
         const tbody = document.getElementById("surveyTableBody");
         tbody.innerHTML = "";
-        const surveys = data.latest_survey || [];
-        const inactive = data.inactive_survey || [];
+        const rawSurveys = data.latest_survey || [];
+        const surveys = rawSurveys.map(s => ({
+          ...s,
+          bssid: s.bssid ? s.bssid.trim().toUpperCase() : ""
+        }));
+        const activeBssids = new Set(surveys.map(s => s.bssid).filter(Boolean));
+        const seenInactive = new Set();
+        const inactive = (data.inactive_survey || [])
+          .map(s => ({
+            ...s,
+            bssid: s.bssid ? s.bssid.trim().toUpperCase() : ""
+          }))
+          .filter(s => {
+            if (!s.bssid) return false;
+            if (activeBssids.has(s.bssid)) return false;
+            if (seenInactive.has(s.bssid)) return false;
+            seenInactive.add(s.bssid);
+            return true;
+          });
         const totalAps = surveys.length + inactive.length;
 
         if (inactive.length > 0) {
@@ -1723,6 +1827,181 @@ export function renderDashboardHtml(): string {
       if (icon) icon.innerText = isHidden ? "▲" : "▼";
     }
 
+    function toggleChannelHeatmap() {
+      const drawer = document.getElementById("channelHeatmapDrawer");
+      const icon = document.getElementById("channelHeatmapExpandIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▲" : "▼";
+      if (isHidden) {
+        renderChannelHeatmap();
+      }
+    }
+
+    function getAirtimeHeatmapColor(pct) {
+      if (pct === null || pct === undefined || isNaN(pct)) return 'rgba(100, 116, 139, 0.15)';
+      if (pct <= 2) return '#0f2942'; // near idle
+      if (pct <= 5) return '#0284c7'; // 2-5%
+      if (pct <= 8) return '#06b6d4'; // 5-8%
+      if (pct <= 12) return '#0d9488'; // 8-12%
+      if (pct <= 16) return '#10b981'; // 12-16%
+      if (pct <= 20) return '#22c55e'; // 16-20%
+      if (pct <= 25) return '#84cc16'; // 20-25%
+      if (pct <= 30) return '#eab308'; // 25-30%
+      if (pct <= 40) return '#f97316'; // 30-40%
+      if (pct <= 55) return '#ef4444'; // 40-55%
+      if (pct <= 70) return '#dc2626'; // 55-70%
+      return '#d946ef'; // > 70% outlier spike
+    }
+
+    function renderChannelHeatmap() {
+      const container = document.getElementById("channelHeatmapContainer");
+      if (!container || !currentStationData) return;
+
+      const utilHistory = currentStationData.channel_utilization || [];
+      container.innerHTML = "";
+
+      if (utilHistory.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:1.2rem;">No 24-hour channel utilization data available yet.</div>';
+        return;
+      }
+
+      // Compute time boundaries for 48 half-hour slots
+      const nowSec = Math.floor(Date.now() / 1000);
+      let maxTs = 0;
+      for (let i = 0; i < utilHistory.length; i++) {
+        if (utilHistory[i].timestamp > maxTs) maxTs = utilHistory[i].timestamp;
+      }
+      const refTime = (maxTs > 0) ? Math.max(nowSec, maxTs) : nowSec;
+      const endSlot = Math.floor(refTime / 1800) * 1800;
+      const startSlot = endSlot - (47 * 1800); // 48 slots: 0 to 47
+
+      const slots = [];
+      for (let i = 0; i < 48; i++) {
+        slots.push(startSlot + (i * 1800));
+      }
+
+      // Initialize 13 channels matrix
+      const matrix = {};
+      for (let ch = 1; ch <= 13; ch++) {
+        matrix[ch] = new Array(48).fill(null);
+      }
+
+      for (let i = 0; i < utilHistory.length; i++) {
+        const u = utilHistory[i];
+        if (u.channel < 1 || u.channel > 13) continue;
+        const slotIdx = Math.round((u.timestamp - startSlot) / 1800);
+        if (slotIdx >= 0 && slotIdx < 48) {
+          if (!matrix[u.channel][slotIdx]) {
+            matrix[u.channel][slotIdx] = {
+              count: 1,
+              sumAirtime: (u.airtime_pct || 0),
+              dataFrames: (u.data_frames || 0),
+              mgmtFrames: (u.mgmt_frames || 0),
+              ctrlFrames: (u.ctrl_frames || 0),
+              transmitters: (u.unique_transmitters || 0)
+            };
+          } else {
+            const cellData = matrix[u.channel][slotIdx];
+            cellData.count++;
+            cellData.sumAirtime += (u.airtime_pct || 0);
+            cellData.dataFrames += (u.data_frames || 0);
+            cellData.mgmtFrames += (u.mgmt_frames || 0);
+            cellData.ctrlFrames += (u.ctrl_frames || 0);
+            cellData.transmitters = Math.max(cellData.transmitters, (u.unique_transmitters || 0));
+          }
+        }
+      }
+
+      const hoverInfo = document.getElementById("heatmapHoverInfo");
+
+      // 1. Header row with time labels
+      const headerRow = document.createElement("div");
+      headerRow.className = "heatmap-row";
+      const spacer = document.createElement("div");
+      spacer.className = "heatmap-row-label";
+      spacer.style.fontSize = "0.65rem";
+      spacer.innerText = "Time";
+      headerRow.appendChild(spacer);
+
+      const headerCols = document.createElement("div");
+      headerCols.className = "heatmap-header-wrap";
+      for (let i = 0; i < 48; i++) {
+        const col = document.createElement("div");
+        col.className = "heatmap-header-col";
+        if (i === 47) {
+          col.innerText = "Now";
+          col.style.fontWeight = "600";
+          col.style.color = "var(--primary)";
+        } else if (i % 4 === 0) {
+          col.innerText = new Date(slots[i] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (i % 2 === 0) {
+          col.innerHTML = "&middot;";
+        }
+        headerCols.appendChild(col);
+      }
+      headerRow.appendChild(headerCols);
+      container.appendChild(headerRow);
+
+      // 2. Render 13 Channel Rows
+      for (let ch = 1; ch <= 13; ch++) {
+        const row = document.createElement("div");
+        row.className = "heatmap-row";
+
+        const chLabel = document.createElement("div");
+        chLabel.className = "heatmap-row-label";
+        chLabel.innerText = "Ch " + ch;
+        row.appendChild(chLabel);
+
+        const cellsWrap = document.createElement("div");
+        cellsWrap.className = "heatmap-cells-wrap";
+
+        for (let i = 0; i < 48; i++) {
+          const cell = document.createElement("div");
+          cell.className = "heatmap-cell";
+
+          const cellData = matrix[ch][i];
+          const slotTime = slots[i];
+          const timeLabel = new Date(slotTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const endTimeLabel = new Date((slotTime + 1800) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          if (cellData) {
+            const avgAir = cellData.sumAirtime / cellData.count;
+            const color = getAirtimeHeatmapColor(avgAir);
+            cell.style.background = color;
+            const tipText = 'Ch ' + ch + ' (' + timeLabel + ' - ' + endTimeLabel + '): ' + avgAir.toFixed(1) + '% airtime, ' + cellData.dataFrames.toLocaleString() + ' data, ' + cellData.mgmtFrames.toLocaleString() + ' mgmt, ' + cellData.ctrlFrames.toLocaleString() + ' ctrl, ' + cellData.transmitters + ' transmitters';
+            cell.title = tipText;
+
+            cell.addEventListener("mouseenter", function() {
+              if (hoverInfo) {
+                hoverInfo.innerHTML = '<span style="color:#fff; font-weight:600;">Ch ' + ch + '</span> &bull; <span style="color:var(--primary);">' + timeLabel + ' - ' + endTimeLabel + '</span> &bull; Airtime: <span style="color:' + color + '; font-weight:700;">' + avgAir.toFixed(1) + '%</span> | Data: ' + cellData.dataFrames.toLocaleString() + ' | Mgmt: ' + cellData.mgmtFrames.toLocaleString() + ' | Ctrl: ' + cellData.ctrlFrames.toLocaleString() + ' | <span style="color:#10b981; font-weight:600;">' + cellData.transmitters + ' Tx</span>';
+              }
+            });
+          } else {
+            cell.style.background = "rgba(100, 116, 139, 0.15)";
+            cell.title = 'Ch ' + ch + ' (' + timeLabel + ' - ' + endTimeLabel + '): No telemetry data';
+            cell.addEventListener("mouseenter", function() {
+              if (hoverInfo) {
+                hoverInfo.innerHTML = '<span style="color:var(--text-muted);">Ch ' + ch + ' &bull; ' + timeLabel + ' - ' + endTimeLabel + ' &bull; No telemetry data recorded</span>';
+              }
+            });
+          }
+
+          cell.addEventListener("mouseleave", function() {
+            if (hoverInfo) {
+              hoverInfo.innerText = "Hover over a cell to inspect metrics";
+            }
+          });
+
+          cellsWrap.appendChild(cell);
+        }
+
+        row.appendChild(cellsWrap);
+        container.appendChild(row);
+      }
+    }
+
     const CHANNEL_COLORS_13 = [
       '#38bdf8', '#06b6d4', '#14b8a6', '#10b981', '#84cc16',
       '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#d946ef',
@@ -2062,6 +2341,9 @@ export function renderDashboardHtml(): string {
           tbody.innerHTML = \`<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>\`;
         }
       }
+
+      // Render 24-Hour Channel Utilization Heatmap
+      renderChannelHeatmap();
     }
 
     function voltageToPercentage(mv) {

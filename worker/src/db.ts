@@ -210,6 +210,11 @@ export class Database {
   async saveSurveys(stationId: string, timestamp: number, surveys: ScanSurveyRecord[], scanDurationMs?: number | null): Promise<number> {
     if (surveys.length === 0) return 0;
 
+    const normalizedSurveys = surveys.map(s => ({
+      ...s,
+      bssid: s.bssid ? s.bssid.trim().toUpperCase() : null
+    }));
+
     const statements: D1PreparedStatement[] = [];
 
     // 1. Snapshot the latest survey as a single compact JSON document (1 row instead of 70+ rows!)
@@ -223,11 +228,11 @@ export class Database {
             scan_json = excluded.scan_json,
             scan_duration_ms = excluded.scan_duration_ms
         `)
-        .bind(stationId, timestamp, JSON.stringify(surveys), scanDurationMs ?? null)
+        .bind(stationId, timestamp, JSON.stringify(normalizedSurveys), scanDurationMs ?? null)
     );
 
     // 2. Upsert each AP into station_discovered_aps for tracking unique APs and inactive detection
-    for (const s of surveys) {
+    for (const s of normalizedSurveys) {
       if (!s.bssid) continue;
       statements.push(
         this.db
@@ -315,7 +320,11 @@ export class Database {
 
     if (cached && cached.scan_json) {
       try {
-        return JSON.parse(cached.scan_json);
+        const list = JSON.parse(cached.scan_json) as ScanSurveyRecord[];
+        return list.map(item => ({
+          ...item,
+          bssid: item.bssid ? item.bssid.trim().toUpperCase() : item.bssid
+        }));
       } catch {}
     }
 
@@ -324,15 +333,25 @@ export class Database {
 
   async getInactiveSurveys(stationId: string): Promise<InactiveSurveyRecord[]> {
     const latestScan = await this.db
-      .prepare("SELECT timestamp FROM station_latest_scan WHERE station_id = ?")
+      .prepare("SELECT timestamp, scan_json FROM station_latest_scan WHERE station_id = ?")
       .bind(stationId)
-      .first<{ timestamp: number }>();
+      .first<{ timestamp: number; scan_json?: string }>();
 
     if (latestScan && latestScan.timestamp) {
+      const activeBssids = new Set<string>();
+      if (latestScan.scan_json) {
+        try {
+          const parsed = JSON.parse(latestScan.scan_json) as ScanSurveyRecord[];
+          for (const item of parsed) {
+            if (item.bssid) activeBssids.add(item.bssid.trim().toUpperCase());
+          }
+        } catch {}
+      }
+
       const since24h = latestScan.timestamp - 86400;
       const result = await this.db
         .prepare(`
-          SELECT ssid, bssid, channel, phy_mode, encryption, band, rssi, quality, last_seen
+          SELECT ssid, UPPER(bssid) AS bssid, channel, phy_mode, encryption, band, rssi, quality, last_seen
           FROM station_discovered_aps
           WHERE station_id = ?
             AND last_seen >= ?
@@ -341,7 +360,18 @@ export class Database {
         `)
         .bind(stationId, since24h, latestScan.timestamp)
         .all<InactiveSurveyRecord>();
-      return result.results;
+
+      const seenInactive = new Set<string>();
+      const filtered: InactiveSurveyRecord[] = [];
+      for (const row of (result.results || [])) {
+        const upBssid = (row.bssid || '').trim().toUpperCase();
+        if (!upBssid || activeBssids.has(upBssid) || seenInactive.has(upBssid)) {
+          continue;
+        }
+        seenInactive.add(upBssid);
+        filtered.push({ ...row, bssid: upBssid });
+      }
+      return filtered;
     }
 
     return [];

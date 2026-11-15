@@ -36,6 +36,7 @@ public:
                 item.ssid = "<Hidden>";
             }
             item.bssid = WiFi.BSSIDstr(i);
+            item.bssid.toUpperCase();
             item.rssi = WiFi.RSSI(i);
             item.quality = calculateQuality(item.rssi);
             item.encryption = getEncryptionString(WiFi.encryptionType(i));

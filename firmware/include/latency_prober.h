@@ -66,6 +66,7 @@ public:
                 associated = true;
                 result.assoc_ms = (int32_t)(millis() - tAssocStart);
                 result.bssid = WiFi.BSSIDstr();
+                result.bssid.toUpperCase();
                 result.channel = (uint8_t)WiFi.channel();
                 break;
             }

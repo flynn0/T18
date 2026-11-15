@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Web**: Expandable **24-Hour Channel Utilization Heatmap** drawer displaying all 13 channels across 48 half-hour slots (2 boxes per hour) with an adaptive 13-step nuance color scale emphasizing 5%–30% airtime variation and distinctly highlighting outlier spikes (60% and 80%+).
+- **Web**: Interactive hover inspector banner displaying time interval, airtime %, exact data/mgmt/ctrl frame counts, and active transmitter count per cell.
+- **Database (Migration 0009)**: Deduplicated and normalized all BSSIDs to uppercase across `station_discovered_aps`, `measurements`, and `station_latest_measurements`.
+
+### Fixed
+- **BSSID Normalization & Ghost Inactive APs**: Resolved case mismatch bug where mixed lowercase/uppercase hex BSSIDs caused identical physical APs to be split and falsely flagged as "absent" / "missing".
+  - **Firmware**: Enforced uppercase conversion (`item.bssid.toUpperCase()`) in both `WifiScanner` (`wifi_scanner.h`) and `LatencyProber` (`latency_prober.h`).
+  - **Backend**: Sanitized all incoming BSSIDs with `.trim().toUpperCase()` in `telemetry.ts` and `db.ts`.
+  - **Web Frontend**: Normalized BSSIDs to uppercase and dynamically deduplicated inactive networks against active scan BSSIDs.
+
 ---
 
 ## [2.0.4 / 1.0.4] - 2026-11-15
