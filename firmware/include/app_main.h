@@ -233,6 +233,7 @@ private:
         if (cycle.battery_mv > 0) doc["battery_mv"] = cycle.battery_mv;
         doc["board_type"] = cycle.board_type;
         doc["firmware_version"] = FIRMWARE_VERSION;
+        if (strlen(_config.station_desc) > 0) doc["description"] = _config.station_desc;
 
         JsonArray arrNet = doc["networks"].to<JsonArray>();
         for (const auto &net : cycle.measurements) {

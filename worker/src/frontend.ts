@@ -838,9 +838,8 @@ export function renderDashboardHtml(): string {
         data.stations.forEach(st => {
           const opt = document.createElement("option");
           opt.value = st.station_id;
-          const fwStr = st.firmware_version ? " [v" + st.firmware_version + "]" : "";
           const descStr = st.description ? " (" + st.description + ")" : "";
-          opt.innerText = st.station_id + fwStr + descStr;
+          opt.innerText = st.station_id + descStr;
           if (reqStation && st.station_id.toLowerCase() === reqStation.toLowerCase()) {
             opt.selected = true;
             matched = true;

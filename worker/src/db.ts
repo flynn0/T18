@@ -54,6 +54,13 @@ export class Database {
     await this.db.batch(statements);
   }
 
+  async updateStationDescription(stationId: string, description: string): Promise<void> {
+    await this.db
+      .prepare("UPDATE stations SET description = ? WHERE station_id = ?")
+      .bind(description, stationId)
+      .run();
+  }
+
   async updateStationLastSeen(
     stationId: string,
     timestamp: number,

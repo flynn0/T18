@@ -191,6 +191,7 @@ export interface ChannelUtilizationRecord {
 
 export interface TelemetryCyclePayload {
   station_id?: string;
+  description?: string;
   timestamp?: number;
   scan_duration_ms?: number;
   battery_mv?: number;
