@@ -407,7 +407,7 @@ private:
     AppConfig _config;
     LedController _led;
     CaptivePortalManager _portal;
-    NtpSync _ntp;
+    NtpSyncManager _ntp;
     uint64_t _lastDailyCheckEpoch;
     uint64_t _lastChannelAnalysisEpoch;
     uint64_t _lastOtaCheckEpoch;

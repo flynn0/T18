@@ -52,3 +52,5 @@ private:
     time_t _lastSyncTime;
     uint32_t _syncIntervalSeconds;
 };
+
+using NtpSync = NtpSyncManager;
