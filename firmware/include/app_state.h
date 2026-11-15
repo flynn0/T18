@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
+#include "board_pins.h"
 
 #define MAX_MONITORED_NETWORKS 5
 #define DEFAULT_WORKER_URL "https://wifi.kreier.workers.dev"
@@ -19,6 +20,7 @@ struct AppConfig {
     WifiNetworkConfig networks[MAX_MONITORED_NETWORKS];
     uint8_t network_count;
     bool is_configured;
+    HardwareProfile hw;
 
     AppConfig() {
         memset(station_id, 0, sizeof(station_id));
@@ -28,6 +30,7 @@ struct AppConfig {
         memset(networks, 0, sizeof(networks));
         network_count = 0;
         is_configured = false;
+        hw.setPreset(BOARD_T18);
     }
 };
 
@@ -110,6 +113,8 @@ struct CycleTelemetry {
     String station_id;
     uint64_t timestamp; // UTC epoch seconds
     uint32_t scan_duration_ms;
+    uint16_t battery_mv;
+    String board_type;
     std::vector<NetworkMeasurement> measurements;
     std::vector<SurveyItem> survey;
     bool has_diagnostics;
@@ -117,5 +122,7 @@ struct CycleTelemetry {
     bool has_channel_utilization;
     std::vector<ChannelUtilizationItem> channel_utilization;
 
-    CycleTelemetry() : timestamp(0), scan_duration_ms(0), has_diagnostics(false), has_channel_utilization(false) {}
+    CycleTelemetry() :
+        timestamp(0), scan_duration_ms(0), battery_mv(0), board_type("T18"),
+        has_diagnostics(false), has_channel_utilization(false) {}
 };

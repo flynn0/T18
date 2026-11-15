@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -366,6 +366,34 @@ Version `0.8.0` introduces RF channel utilization and contention measurement via
      - **All Channels Individual (1–13)**: Displays 13 distinct channel lines with dedicated color mapping.
    - **Scan Duration Overlay**: Optional secondary Y-axis overlay plotting spectrum scan duration (ms) against channel utilization.
    - **13-Channel Breakdown Matrix Table**: Expandable drawer with per-channel progress bars, frame type breakdowns, unique transmitters, and 4-tier stacked RSSI distribution mini-bars.
+
+---
+
+## Over-The-Air (OTA) Updates & In-Memory Offline Buffering (v0.9.0)
+
+Version `0.9.0` introduces automated Over-The-Air firmware updates, single unified ESP32 binary distribution, and in-memory zero-wear flash buffering:
+
+1. **Dual-OTA with Large APP Partition Scheme (`min_spiffs.csv`)**:
+   - Each OTA application slot (`app0` and `app1`) is expanded to **1.9 MB (1,966,080 bytes)**, providing ample headroom for feature additions.
+   - Preserves 192 KB for an ultra-compact raw binary offline data buffer.
+
+2. **Single Unified ESP32 Binary with Runtime Hardware Configuration**:
+   - Compiles a single universal `.bin` for all ESP32 nodes.
+   - Hardware target profiles (LILYGO T18, LILYGO T8, ESP32 DevKit V1, and Custom) are selected at runtime during first-boot Captive Portal setup and saved to **NVS (`Preferences`)**.
+   - Dynamically configures:
+     - Status LED GPIO pin (e.g. GPIO 5 for T18, GPIO 21 for T8, GPIO 2 for DevKit).
+     - Battery ADC pin and LiPo voltage divider ratio (0.5 for T8/T18, 0.33 for future ESP32-C5).
+     - Future capabilities (5 GHz band, Wi-Fi 6 flags).
+
+3. **In-Memory-First Telemetry (Zero Flash Wear)**:
+   - When the internet connection is healthy, telemetry is transmitted directly from RAM to Cloudflare. **Flash memory is never touched**, preventing flash wear.
+   - **Offline Binary Spooling**: If Wi-Fi or API upload fails, records are serialized into a packed binary format (no LittleFS code overhead) in the raw flash partition. Holds over **50+ hours of full telemetry** (13 channels + Wi-Fi surveys) before wrapping.
+   - When network connectivity is restored, backlog records are automatically transmitted and the flash buffer is cleared.
+
+4. **Automated CI/CD & Dual-Hosting OTA Distribution**:
+   - **GitHub Actions Workflow**: Automatically compiles firmware on tag push (`v*`), generating `.bin` binaries and SHA256 checksums attached to GitHub Releases.
+   - **Cloudflare R2 Bucket**: Primary zero-egress binary storage (`wifi-ota`), with automatic HTTP 302 fallback to GitHub Releases.
+   - **Canary Staged Rollouts**: The `/api/ota` endpoint queries Cloudflare D1 to enable per-station canary testing before pushing updates to the full fleet.
 
 ---
 

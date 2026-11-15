@@ -13,29 +13,34 @@
 #include "spool_manager.h"
 #include "api_client.h"
 #include "channel_analyzer.h"
+#include "ota_manager.h"
 
 #define MEASUREMENT_INTERVAL_SEC 600 // 10 minutes
 
 class AppMain {
 public:
-    AppMain() : _led(STATUS_LED_PIN), _portal(_configMgr, _led), _lastDailyCheckEpoch(0), _lastChannelAnalysisEpoch(0) {}
+    AppMain() : _led(5), _portal(_configMgr, _led), _lastDailyCheckEpoch(0),
+                _lastChannelAnalysisEpoch(0), _lastOtaCheckEpoch(0) {}
 
     void setup() {
         Serial.begin(115200);
         delay(500);
 
-        Serial.println(F("\n========================================"));
-        Serial.printf(" kreier/wifi Firmware v%s (%s)\n", FIRMWARE_VERSION, BOARD_NAME);
-        Serial.printf(" Target LED Pin: GPIO %d\n", STATUS_LED_PIN);
-        Serial.println(F("========================================"));
-
-        _led.begin();
-        pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
-
         _configMgr.begin();
         SpoolManager::begin();
 
         bool hasConfig = _configMgr.loadConfig(_config);
+
+        // Configure LED pin from saved hardware profile
+        _led.setPin(_config.hw.status_led_pin);
+        _led.begin();
+        pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+
+        Serial.println(F("\n========================================"));
+        Serial.printf(" kreier/wifi Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
+        Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
+                      _config.hw.status_led_pin, _config.hw.battery_pin);
+        Serial.println(F("========================================"));
 
         // Check if BOOT button is held for 3 seconds on boot
         bool forcePortal = checkBootButtonHold(3000);
@@ -44,6 +49,7 @@ public:
             Serial.println(F("[Main] Launching setup captive portal..."));
             _portal.startPortal(_config, 60);
             _configMgr.loadConfig(_config);
+            _led.setPin(_config.hw.status_led_pin);
         }
 
         // Attempt zero-trust token registration if needed
@@ -81,7 +87,13 @@ public:
             _lastChannelAnalysisEpoch = currentEpoch;
         }
 
-        // 4. Sequentially probe configured monitored networks
+        // 4. Read battery voltage
+        uint16_t batteryMv = BatteryReader::readBatteryMilliVolts(_config.hw);
+        if (batteryMv > 0) {
+            Serial.printf("[Main] Battery Voltage: %u mV (Divider: %.2f)\n", batteryMv, _config.hw.battery_divider);
+        }
+
+        // 5. Sequentially probe configured monitored networks
         std::vector<NetworkMeasurement> measurements;
         bool shouldRunDaily = false;
         if (_lastDailyCheckEpoch == 0 || (currentEpoch > _lastDailyCheckEpoch + 86400)) {
@@ -104,11 +116,13 @@ public:
         }
         _led.setOff();
 
-        // 5. Package cycle telemetry and append to LittleFS spool ring buffer
+        // 6. Package cycle telemetry
         CycleTelemetry cycle;
         cycle.station_id = _config.station_id;
         cycle.timestamp = currentEpoch;
         cycle.scan_duration_ms = scanDurationMs;
+        cycle.battery_mv = batteryMv;
+        cycle.board_type = _config.hw.board_name;
         cycle.measurements = measurements;
         cycle.survey = scanResults;
         cycle.has_diagnostics = diagCaptured;
@@ -116,12 +130,10 @@ public:
         cycle.has_channel_utilization = shouldRunChannelAnalysis;
         cycle.channel_utilization = chanResults;
 
-        SpoolManager::appendCycle(cycle);
+        // 7. Check OTA & Upload Telemetry (In-Memory-First)
+        processCycleUploadAndOta(cycle, currentEpoch);
 
-        // 6. Connect to network and upload pending telemetry spool
-        uploadSpooledData();
-
-        // 6. Calculate sleep duration and enter ESP32 Light Sleep
+        // 8. Calculate sleep duration and enter ESP32 Light Sleep
         uint32_t elapsedMs = millis() - cycleStartMs;
         uint32_t sleepMs = 10000; // minimum 10s fallback
         if (elapsedMs < (MEASUREMENT_INTERVAL_SEC * 1000)) {
@@ -137,12 +149,159 @@ public:
                 Serial.println(F("[Main] BOOT button held! Launching captive portal..."));
                 _portal.startPortal(_config, 60);
                 _configMgr.loadConfig(_config);
+                _led.setPin(_config.hw.status_led_pin);
                 ensureDeviceRegistered();
             }
         }
     }
 
 private:
+    void processCycleUploadAndOta(const CycleTelemetry &cycle, uint64_t currentEpoch) {
+        if (!_configMgr.hasDeviceToken()) {
+            Serial.println(F("[Main] Missing device token. Attempting registration..."));
+            ensureDeviceRegistered();
+            if (!_configMgr.hasDeviceToken()) {
+                // Buffer to raw flash
+                Serial.println(F("[Main] No token; spooling to raw flash offline buffer."));
+                SpoolManager::appendCycle(cycle);
+                return;
+            }
+        }
+
+        bool connected = connectFirstAvailableWifi();
+        if (!connected) {
+            Serial.println(F("[Main] Offline: No Wi-Fi available. Spooling to raw flash binary buffer."));
+            SpoolManager::appendCycle(cycle);
+            return;
+        }
+
+        // Check for OTA firmware updates (check every 6 hours or on initial boot)
+        if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 21600)) {
+            _lastOtaCheckEpoch = currentEpoch;
+            bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
+                                                       FIRMWARE_VERSION, _config.hw);
+            if (updating) {
+                // If update is proceeding, ESP will reboot. Return here.
+                return;
+            }
+        }
+
+        String token = _configMgr.getDeviceToken();
+
+        // If there is pending data from past offline cycles, upload it first
+        if (SpoolManager::hasPendingData()) {
+            Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
+                          (unsigned)SpoolManager::getRecordCount());
+            String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
+            if (spooledBatch.length() > 2) {
+                if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
+                    SpoolManager::clearSpool();
+                    Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
+                }
+            }
+        }
+
+        // Transmit current cycle directly from RAM (ZERO FLASH WEAR)
+        String currentPayload = serializeCycleJson(cycle);
+        bool uploadOk = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
+
+        if (uploadOk) {
+            Serial.println(F("[Main] Telemetry uploaded directly from RAM. Zero flash wear."));
+        } else {
+            Serial.println(F("[Main] Upload failed! Writing cycle to raw flash binary buffer."));
+            SpoolManager::appendCycle(cycle);
+        }
+
+        WiFi.disconnect(true);
+    }
+
+    String serializeCycleJson(const CycleTelemetry &cycle) {
+        JsonDocument doc;
+        doc["station_id"] = cycle.station_id;
+        doc["timestamp"] = cycle.timestamp;
+        doc["scan_duration_ms"] = cycle.scan_duration_ms;
+        if (cycle.battery_mv > 0) doc["battery_mv"] = cycle.battery_mv;
+        doc["board_type"] = cycle.board_type;
+
+        JsonArray arrNet = doc["networks"].to<JsonArray>();
+        for (const auto &net : cycle.measurements) {
+            JsonObject o = arrNet.add<JsonObject>();
+            o["ssid"] = net.ssid;
+            o["bssid"] = net.bssid;
+            o["channel"] = net.channel;
+            o["assoc_ms"] = net.assoc_ms;
+            o["dhcp_ms"] = net.dhcp_ms;
+            o["gateway_ms"] = net.gateway_ms;
+            o["dns_ipv4_ms"] = net.dns_ipv4_ms;
+            o["dns_ipv6_ms"] = net.dns_ipv6_ms;
+            o["captive_detected"] = net.captive_detected;
+
+            JsonObject lat = o["http_latencies"].to<JsonObject>();
+            lat["google"] = net.google_ms;
+            lat["cloudflare"] = net.cloudflare_ms;
+            lat["microsoft"] = net.microsoft_ms;
+            lat["facebook"] = net.facebook_ms;
+            lat["netflix"] = net.netflix_ms;
+
+            o["status"] = net.status;
+        }
+
+        JsonArray arrSurvey = doc["scan_survey"].to<JsonArray>();
+        for (const auto &item : cycle.survey) {
+            JsonObject s = arrSurvey.add<JsonObject>();
+            s["ssid"] = item.ssid;
+            s["bssid"] = item.bssid;
+            s["rssi"] = item.rssi;
+            s["quality"] = item.quality;
+            s["encryption"] = item.encryption;
+            s["phy_mode"] = item.phy_mode;
+            s["channel"] = item.channel;
+            s["band"] = item.band;
+        }
+
+        if (cycle.has_diagnostics) {
+            JsonObject d = doc["diagnostics"].to<JsonObject>();
+            d["ssid"] = cycle.diagnostics.ssid;
+            d["gateway_ip"] = cycle.diagnostics.gateway_ip;
+            d["gateway_vendor"] = cycle.diagnostics.gateway_vendor;
+            d["web_exposed"] = cycle.diagnostics.web_exposed;
+            d["login_url"] = cycle.diagnostics.login_url;
+            d["https_redirect"] = cycle.diagnostics.https_redirect;
+            d["mtu_1500_ok"] = cycle.diagnostics.mtu_1500_ok;
+            d["mtu_1492_ok"] = cycle.diagnostics.mtu_1492_ok;
+            d["mtu_1420_ok"] = cycle.diagnostics.mtu_1420_ok;
+            d["dns_ipv4_ms"] = cycle.diagnostics.dns_ipv4_ms;
+            d["dns_ipv6_ms"] = cycle.diagnostics.dns_ipv6_ms;
+            d["dns_ipv6_timeout"] = cycle.diagnostics.dns_ipv6_timeout;
+            d["dns_rebind_blocked"] = cycle.diagnostics.dns_rebind_blocked;
+            d["captive_portal_detected"] = cycle.diagnostics.captive_portal_detected;
+            d["open_ports"] = cycle.diagnostics.open_ports;
+            d["details_json"] = cycle.diagnostics.details_json;
+        }
+
+        if (cycle.has_channel_utilization) {
+            JsonArray arrChan = doc["channel_utilization"].to<JsonArray>();
+            for (const auto &item : cycle.channel_utilization) {
+                JsonObject co = arrChan.add<JsonObject>();
+                co["channel"] = item.channel;
+                co["mgmt_frames"] = item.mgmt_frames;
+                co["data_frames"] = item.data_frames;
+                co["ctrl_frames"] = item.ctrl_frames;
+                JsonArray rh = co["rssi_hist"].to<JsonArray>();
+                rh.add(item.rssi_hist[0]);
+                rh.add(item.rssi_hist[1]);
+                rh.add(item.rssi_hist[2]);
+                rh.add(item.rssi_hist[3]);
+                co["unique_transmitters"] = item.unique_transmitters;
+                co["airtime_pct"] = round(item.airtime_pct * 10.0f) / 10.0f;
+            }
+        }
+
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
+        return jsonPayload;
+    }
+
     bool checkBootButtonHold(uint32_t holdTimeMs) {
         if (digitalRead(BOOT_BUTTON_PIN) != LOW) {
             return false;
@@ -162,11 +321,7 @@ private:
 
     void ensureDeviceRegistered() {
         if (!_config.is_configured) return;
-
-        if (_configMgr.hasDeviceToken()) {
-            Serial.println(F("[Main] Device token is already provisioned in NVS."));
-            return;
-        }
+        if (_configMgr.hasDeviceToken()) return;
 
         if (strlen(_config.master_phrase) == 0) {
             Serial.println(F("[Main] No device token and no MASTER_PHRASE present. Re-run portal to configure."));
@@ -188,9 +343,7 @@ private:
                                             receivedToken);
 
         if (ok) {
-            // Save token to NVS
             _configMgr.saveDeviceToken(receivedToken);
-            // Permanently erase MASTER_PHRASE from LittleFS and RAM
             _configMgr.eraseMasterPhrase(_config);
             Serial.println(F("[Main] Zero-Trust provisioning complete. Device token secured."));
         } else {
@@ -233,64 +386,31 @@ private:
         return false;
     }
 
-    void uploadSpooledData() {
-        if (!SpoolManager::hasPendingData()) return;
-
-        if (!_configMgr.hasDeviceToken()) {
-            Serial.println(F("[Main] Cannot upload telemetry: Missing device token."));
-            ensureDeviceRegistered();
-            if (!_configMgr.hasDeviceToken()) return;
-        }
-
-        if (!connectFirstAvailableWifi()) {
-            Serial.println(F("[Main] Cannot upload: Unable to connect to any monitored Wi-Fi network. Data retained in spool."));
-            return;
-        }
-
-        String token = _configMgr.getDeviceToken();
-        String payload = SpoolManager::readNextBatchJson();
-
-        if (payload.length() > 2) {
-            bool success = ApiClient::uploadTelemetry(_config.worker_url, token, payload);
-            if (success) {
-                SpoolManager::clearSpool();
-            } else {
-                Serial.println(F("[Main] Telemetry upload failed; spool preserved for next cycle."));
-            }
-        }
-
-        WiFi.disconnect(true);
-    }
-
     void enterLightSleep(uint32_t sleepDurationMs) {
         Serial.printf("[Main] Entering Light Sleep for %u seconds...\n", (unsigned)(sleepDurationMs / 1000));
         Serial.flush();
 
-        // Cleanly shut down radio subsystems
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
         _led.setOff();
 
-        // Configure timer wake-up (in microseconds)
         uint64_t sleepUs = ((uint64_t)sleepDurationMs) * 1000ULL;
         esp_sleep_enable_timer_wakeup(sleepUs);
-
-        // Configure external wake-up on GPIO 0 (BOOT button LOW)
         esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
 
-        // Enter light sleep (retains SRAM state)
         esp_light_sleep_start();
 
         Serial.println(F("[Main] Woke up from Light Sleep."));
     }
 
-    AppConfig _config;
     AppConfigManager _configMgr;
+    AppConfig _config;
     LedController _led;
     CaptivePortalManager _portal;
-    NtpSyncManager _ntp;
+    NtpSync _ntp;
     uint64_t _lastDailyCheckEpoch;
     uint64_t _lastChannelAnalysisEpoch;
+    uint64_t _lastOtaCheckEpoch;
 };
 
 // Global singleton helper for setup & loop
@@ -306,3 +426,4 @@ inline void app_setup() {
 inline void app_loop() {
     getAppInstance().loop();
 }
+

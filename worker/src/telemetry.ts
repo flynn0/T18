@@ -129,7 +129,22 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
   // 3. Batch insert into D1 with optimized storage
   const insertedM = await db.insertMeasurements(measurementsToInsert);
   const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert, latestScanDuration);
-  await db.updateStationLastSeen(station.station_id, serverNow);
+
+  // Extract latest hardware & firmware metadata if present
+  let latestBattery: number | undefined;
+  let latestBoard: string | undefined;
+  let latestFw: string | undefined;
+  for (const c of cycles) {
+    if (typeof c.battery_mv === "number" && c.battery_mv > 0) latestBattery = c.battery_mv;
+    if (c.board_type) latestBoard = c.board_type;
+    if (c.firmware_version) latestFw = c.firmware_version;
+  }
+
+  await db.updateStationLastSeen(station.station_id, serverNow, {
+    battery_mv: latestBattery,
+    board_type: latestBoard,
+    firmware_version: latestFw
+  });
 
   // 4. Invalidate overview caches so fresh data is visible immediately
   invalidateMemoryCache(station.station_id);

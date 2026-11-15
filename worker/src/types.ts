@@ -2,6 +2,8 @@ export interface Env {
   DB: D1Database;
   MASTER_PHRASE: string;
   ENVIRONMENT?: string;
+  STABLE_VERSION?: string;
+  OTA_BUCKET?: R2Bucket;
 }
 
 export interface StationRecord {
@@ -10,6 +12,12 @@ export interface StationRecord {
   device_token: string;
   created_at: number;
   last_seen: number | null;
+  firmware_version?: string | null;
+  target_version?: string | null;
+  board_type?: string | null;
+  battery_mv?: number | null;
+  is_canary?: number | null;
+  ota_url?: string | null;
 }
 
 export interface MeasurementRecord {
@@ -185,6 +193,9 @@ export interface TelemetryCyclePayload {
   station_id?: string;
   timestamp?: number;
   scan_duration_ms?: number;
+  battery_mv?: number;
+  board_type?: string;
+  firmware_version?: string;
   networks?: NetworkPayload[];
   scan_survey?: SurveyPayload[];
   diagnostics?: NetworkDiagnosticsPayload;

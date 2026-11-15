@@ -1,131 +1,129 @@
 #pragma once
 
 #include <Arduino.h>
-#include <LittleFS.h>
 #include <Preferences.h>
-#include <ArduinoJson.h>
 #include "app_state.h"
 
-#define CONFIG_FILE_PATH "/config.json"
 #define NVS_NAMESPACE "wifi_mon"
 #define NVS_KEY_TOKEN "device_token"
 
 class AppConfigManager {
 public:
-    AppConfigManager() : _fsMounted(false) {}
+    AppConfigManager() {}
 
     bool begin() {
-        if (!_fsMounted) {
-            _fsMounted = LittleFS.begin(true);
-            if (!_fsMounted) {
-                Serial.println(F("[Config] ERROR: Failed to mount LittleFS"));
-                return false;
-            }
-        }
         return true;
     }
 
     bool loadConfig(AppConfig &config) {
-        if (!begin()) return false;
-
-        if (!LittleFS.exists(CONFIG_FILE_PATH)) {
-            Serial.println(F("[Config] No config file found on LittleFS"));
+        Preferences prefs;
+        if (!prefs.begin(NVS_NAMESPACE, true)) {
+            Serial.println(F("[Config] No NVS configuration found."));
             config.is_configured = false;
             return false;
         }
 
-        File file = LittleFS.open(CONFIG_FILE_PATH, "r");
-        if (!file) {
-            Serial.println(F("[Config] Failed to open config file for reading"));
+        String stId = prefs.getString("st_id", "");
+        if (stId.length() == 0) {
+            prefs.end();
+            config.is_configured = false;
             return false;
         }
 
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, file);
-        file.close();
+        strlcpy(config.station_id, stId.c_str(), sizeof(config.station_id));
+        strlcpy(config.station_desc, prefs.getString("st_desc", "").c_str(), sizeof(config.station_desc));
+        strlcpy(config.worker_url, prefs.getString("worker_url", DEFAULT_WORKER_URL).c_str(), sizeof(config.worker_url));
+        strlcpy(config.master_phrase, prefs.getString("master", "").c_str(), sizeof(config.master_phrase));
 
-        if (error) {
-            Serial.printf("[Config] JSON deserialize error: %s\n", error.c_str());
-            return false;
+        config.network_count = prefs.getUChar("net_cnt", 0);
+        if (config.network_count > MAX_MONITORED_NETWORKS) {
+            config.network_count = MAX_MONITORED_NETWORKS;
         }
 
-        strlcpy(config.station_id, doc["station_id"] | "", sizeof(config.station_id));
-        strlcpy(config.station_desc, doc["station_desc"] | "", sizeof(config.station_desc));
-        strlcpy(config.worker_url, doc["worker_url"] | DEFAULT_WORKER_URL, sizeof(config.worker_url));
-        strlcpy(config.master_phrase, doc["master_phrase"] | "", sizeof(config.master_phrase));
-
-        JsonArray networks = doc["networks"].as<JsonArray>();
-        config.network_count = 0;
-        for (JsonObject net : networks) {
-            if (config.network_count >= MAX_MONITORED_NETWORKS) break;
-            const char *ssid = net["ssid"] | "";
-            const char *pass = net["password"] | "";
-            if (strlen(ssid) > 0) {
-                strlcpy(config.networks[config.network_count].ssid, ssid, sizeof(config.networks[0].ssid));
-                strlcpy(config.networks[config.network_count].password, pass, sizeof(config.networks[0].password));
-                config.network_count++;
-            }
+        for (uint8_t i = 0; i < config.network_count; i++) {
+            String ssidKey = "ssid_" + String(i);
+            String passKey = "pass_" + String(i);
+            strlcpy(config.networks[i].ssid, prefs.getString(ssidKey.c_str(), "").c_str(), sizeof(config.networks[0].ssid));
+            strlcpy(config.networks[i].password, prefs.getString(passKey.c_str(), "").c_str(), sizeof(config.networks[0].password));
         }
 
-        config.is_configured = (strlen(config.station_id) > 0 && config.network_count > 0);
-        Serial.printf("[Config] Loaded station '%s' with %d networks configured\n",
-                      config.station_id, config.network_count);
+        // Hardware Profile
+        uint8_t hwType = prefs.getUChar("hw_type", (uint8_t)BOARD_T18);
+        config.hw.setPreset((BoardType)hwType);
+
+        String hwName = prefs.getString("hw_name", "");
+        if (hwName.length() > 0) {
+            strlcpy(config.hw.board_name, hwName.c_str(), sizeof(config.hw.board_name));
+        }
+        config.hw.status_led_pin = prefs.getChar("led_pin", config.hw.status_led_pin);
+        config.hw.rgb_led_pin = prefs.getChar("rgb_pin", config.hw.rgb_led_pin);
+        config.hw.battery_pin = prefs.getChar("bat_pin", config.hw.battery_pin);
+        config.hw.battery_divider = prefs.getFloat("bat_div", config.hw.battery_divider);
+        config.hw.has_5ghz = prefs.getBool("has_5g", config.hw.has_5ghz);
+        config.hw.has_wifi6 = prefs.getBool("has_w6", config.hw.has_wifi6);
+
+        config.is_configured = prefs.getBool("is_cfg", (strlen(config.station_id) > 0 && config.network_count > 0));
+        prefs.end();
+
+        Serial.printf("[Config] Loaded station '%s' (%s) with %d networks configured from NVS\n",
+                      config.station_id, config.hw.board_name, config.network_count);
         return true;
     }
 
     bool saveConfig(const AppConfig &config) {
-        if (!begin()) return false;
+        Preferences prefs;
+        if (!prefs.begin(NVS_NAMESPACE, false)) {
+            Serial.println(F("[Config] Failed to open NVS for writing"));
+            return false;
+        }
 
-        JsonDocument doc;
-        doc["station_id"] = config.station_id;
-        doc["station_desc"] = config.station_desc;
-        doc["worker_url"] = config.worker_url;
-        
-        // Only write master_phrase if not empty
+        prefs.putString("st_id", config.station_id);
+        prefs.putString("st_desc", config.station_desc);
+        prefs.putString("worker_url", config.worker_url);
+
         if (strlen(config.master_phrase) > 0) {
-            doc["master_phrase"] = config.master_phrase;
+            prefs.putString("master", config.master_phrase);
         } else {
-            doc["master_phrase"] = "";
+            prefs.remove("master");
         }
 
-        JsonArray networks = doc["networks"].to<JsonArray>();
+        prefs.putUChar("net_cnt", config.network_count);
         for (uint8_t i = 0; i < config.network_count; i++) {
-            JsonObject net = networks.add<JsonObject>();
-            net["ssid"] = config.networks[i].ssid;
-            net["password"] = config.networks[i].password;
+            String ssidKey = "ssid_" + String(i);
+            String passKey = "pass_" + String(i);
+            prefs.putString(ssidKey.c_str(), config.networks[i].ssid);
+            prefs.putString(passKey.c_str(), config.networks[i].password);
         }
 
-        File file = LittleFS.open(CONFIG_FILE_PATH, "w");
-        if (!file) {
-            Serial.println(F("[Config] Failed to open config file for writing"));
-            return false;
-        }
+        // Hardware Profile
+        prefs.putUChar("hw_type", config.hw.board_type);
+        prefs.putString("hw_name", config.hw.board_name);
+        prefs.putChar("led_pin", config.hw.status_led_pin);
+        prefs.putChar("rgb_pin", config.hw.rgb_led_pin);
+        prefs.putChar("bat_pin", config.hw.battery_pin);
+        prefs.putFloat("bat_div", config.hw.battery_divider);
+        prefs.putBool("has_5g", config.hw.has_5ghz);
+        prefs.putBool("has_w6", config.hw.has_wifi6);
 
-        if (serializeJson(doc, file) == 0) {
-            Serial.println(F("[Config] Failed to write JSON to file"));
-            file.close();
-            return false;
-        }
+        prefs.putBool("is_cfg", config.is_configured);
+        prefs.end();
 
-        file.close();
-        Serial.println(F("[Config] Successfully saved configuration to LittleFS"));
+        Serial.println(F("[Config] Successfully saved configuration to NVS"));
         return true;
     }
 
-    // Zero-Trust erasure of MASTER_PHRASE
     bool eraseMasterPhrase(AppConfig &config) {
-        // 1. Wipe in-memory master_phrase
         memset(config.master_phrase, 0, sizeof(config.master_phrase));
-
-        // 2. Re-save config to LittleFS without master_phrase
-        bool saved = saveConfig(config);
-        if (saved) {
-            Serial.println(F("[Config] Zero-Trust: MASTER_PHRASE permanently erased from LittleFS and RAM"));
+        Preferences prefs;
+        if (prefs.begin(NVS_NAMESPACE, false)) {
+            prefs.remove("master");
+            prefs.end();
+            Serial.println(F("[Config] Zero-Trust: MASTER_PHRASE permanently erased from NVS and RAM"));
+            return true;
         }
-        return saved;
+        return false;
     }
 
-    // NVS Device Token Management
     bool saveDeviceToken(const String &token) {
         Preferences prefs;
         if (!prefs.begin(NVS_NAMESPACE, false)) {
@@ -160,7 +158,4 @@ public:
             Serial.println(F("[NVS] Cleared stored device token"));
         }
     }
-
-private:
-    bool _fsMounted;
 };

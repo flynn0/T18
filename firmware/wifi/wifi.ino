@@ -1,19 +1,16 @@
 // kreier/wifi - ESP32 Wi-Fi Monitoring Node
 // Arduino IDE Sketch Entry Point
-// Version: 0.8.0
+// Version: 0.9.0
 //
-// Dual-compatible build with PlatformIO.
-// Select your target board below if building in Arduino IDE:
-// #define STATUS_LED_PIN 5   // T18 board (Default)
-// #define STATUS_LED_PIN 2   // ESP32 DevKit V1
-// #define STATUS_LED_PIN 21  // T8 board
-
-#ifndef STATUS_LED_PIN
-#define STATUS_LED_PIN 5 // Default for T18
-#endif
+// Single Unified ESP32 Firmware:
+// Hardware target (T18, T8, DevKit V1, Custom) is dynamically selected
+// on first boot in the Captive Portal and persisted to NVS.
+//
+// In Arduino IDE:
+// Tools -> Partition Scheme -> "Minimal SPIFFS (Large APPS with OTA)"
 
 #ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "0.8.0"
+#define FIRMWARE_VERSION "0.9.0"
 #endif
 
 #include "../include/app_main.h"

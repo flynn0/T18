@@ -125,47 +125,74 @@ private:
             ".section-title{font-size:1rem;font-weight:600;margin:1.25rem 0 0.75rem;color:var(--primary);"
             "border-bottom:1px solid var(--border);padding-bottom:0.25rem}"
             ".field{margin-bottom:1rem}"
-            "label{display:block;font-size:0.825rem;font-weight:500;margin-bottom:0.35rem;color:var(--muted)}"
-            "input[type='text'],input[type='password'],input[type='url']{"
-            "width:100%;background:#090d16;border:1px solid var(--border);border-radius:0.5rem;"
-            "color:var(--text);padding:0.65rem 0.75rem;font-size:0.9rem;outline:none;transition:border-color 0.2s}"
-            "input:focus{border-color:var(--primary)}"
-            ".net-row{background:#131c2e;border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem;margin-bottom:0.75rem}"
-            ".net-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;font-size:0.8rem;color:var(--muted)}"
-            ".pwd-wrap{position:relative}"
-            ".toggle-btn{position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;"
-            "border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;user-select:none}"
-            "button[type='submit']{background:var(--primary);color:#0f172a;font-weight:600;width:100%;"
-            "padding:0.85rem;border:none;border-radius:0.5rem;font-size:1rem;cursor:pointer;margin-top:1.25rem;"
-            "transition:background 0.2s}"
+            "label{display:block;font-size:0.875rem;font-weight:500;margin-bottom:0.25rem;color:var(--text)}"
+            "input,select{width:100%;padding:0.625rem;border-radius:0.5rem;border:1px solid var(--border);"
+            "background:#0f172a;color:#fff;font-size:0.875rem}"
+            "input:focus,select:focus{outline:none;border-color:var(--primary)}"
+            ".row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}"
+            ".net-box{background:#111827;border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem;margin-bottom:0.75rem}"
+            ".pwd-wrap{position:relative;display:flex}"
+            ".pwd-wrap input{padding-right:3rem}"
+            ".toggle-btn{position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);background:none;"
+            "border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.25rem}"
+            "button[type='submit']{width:100%;background:var(--primary);color:#0f172a;font-weight:600;padding:0.75rem;"
+            "border:none;border-radius:0.5rem;cursor:pointer;font-size:1rem;margin-top:1.5rem;transition:background 0.2s}"
             "button[type='submit']:hover{background:var(--primary-hover)}"
             "</style></head><body><div class='card'>"
-            "<h1><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>"
-            "<path d='M5 12.55a11 11 0 0 1 14.08 0'/><path d='M1.42 9a16 16 0 0 1 21.16 0'/>"
-            "<path d='M8.53 16.11a6 6 0 0 1 6.95 0'/><line x1='12' y1='20' x2='12.01' y2='20'/></svg>"
-            "WIFI Monitor</h1>"
-            "<p class='sub'>Configure device station ID, monitored networks, and worker telemetry.</p>"
-            "<form action='/save' method='POST'>");
+            "<h1>&#128246; Wi-Fi Monitor Setup (v0.9.0)</h1>"
+            "<p class='sub'>Configure device identity, hardware board profile, and network credentials.</p>"
+            "<form method='POST' action='/save'>");
 
-        // Station Metadata
+        // Identity
+        html += F("<div class='section-title'>Device Identity</div>");
         html += F("<div class='field'><label for='station_id'>Station ID *</label>"
                   "<input type='text' id='station_id' name='station_id' required maxlength='63' value='");
         html += String(config.station_id);
-        html += F("' placeholder='e.g. lab-building-a'></div>");
+        html += F("' placeholder='e.g. 9E1-9 or office-node-1'></div>");
 
-        html += F("<div class='field'><label for='station_desc'>Station Description</label>"
+        html += F("<div class='field'><label for='station_desc'>Description</label>"
                   "<input type='text' id='station_desc' name='station_desc' maxlength='127' value='");
         html += String(config.station_desc);
-        html += F("' placeholder='e.g. 2nd Floor Server Room Ceiling'></div>");
+        html += F("' placeholder='e.g. 2nd Floor Server Room'></div>");
 
-        // Monitored Networks (up to 5)
-        html += F("<div class='section-title'>Monitored Wi-Fi Networks (Up to 5)</div>");
+        // Hardware Profile
+        html += F("<div class='section-title'>Hardware Board Profile</div>");
+        html += F("<div class='field'><label for='hw_type'>Target Board Preset</label>"
+                  "<select id='hw_type' name='hw_type' onchange='updateHwPreset()'>");
+        html += "<option value='0'" + String(config.hw.board_type == BOARD_T18 ? " selected" : "") + ">LILYGO T18 (LED: GPIO 5, Battery: GPIO 35, 100k/100k)</option>";
+        html += "<option value='1'" + String(config.hw.board_type == BOARD_T8 ? " selected" : "") + ">LILYGO T8 (LED: GPIO 21, Battery: GPIO 35, 100k/100k)</option>";
+        html += "<option value='2'" + String(config.hw.board_type == BOARD_DEVKIT ? " selected" : "") + ">ESP32 DevKit V1 (LED: GPIO 2, No Battery)</option>";
+        html += "<option value='3'" + String(config.hw.board_type == BOARD_CUSTOM ? " selected" : "") + ">Custom / ESP32-C5 (Manual Configuration)</option>";
+        html += F("</select></div>");
+
+        html += F("<div class='row'>"
+                  "<div class='field'><label for='led_pin'>Status LED Pin (GPIO)</label>"
+                  "<input type='number' id='led_pin' name='led_pin' value='");
+        html += String(config.hw.status_led_pin);
+        html += F("'></div>"
+                  "<div class='field'><label for='bat_pin'>Battery ADC Pin (-1 to disable)</label>"
+                  "<input type='number' id='bat_pin' name='bat_pin' value='");
+        html += String(config.hw.battery_pin);
+        html += F("'></div></div>");
+
+        html += F("<div class='row'>"
+                  "<div class='field'><label for='bat_div'>Battery Divider Ratio</label>"
+                  "<input type='number' step='0.01' id='bat_div' name='bat_div' value='");
+        html += String(config.hw.battery_divider, 2);
+        html += F("'></div>"
+                  "<div class='field'><label for='hw_name'>Hardware Label</label>"
+                  "<input type='text' id='hw_name' name='hw_name' value='");
+        html += String(config.hw.board_name);
+        html += F("'></div></div>");
+
+        // Monitored Networks
+        html += F("<div class='section-title'>Monitored Wi-Fi Networks</div>");
         for (int i = 0; i < MAX_MONITORED_NETWORKS; i++) {
-            String netSSID = (i < config.network_count) ? String(config.networks[i].ssid) : "";
+            String netSsid = (i < config.network_count) ? String(config.networks[i].ssid) : "";
             String netPass = (i < config.network_count) ? String(config.networks[i].password) : "";
-            html += "<div class='net-row'><div class='net-hdr'><span>Network #" + String(i + 1) + "</span></div>";
-            html += "<div class='field'><label>SSID" + String(i == 0 ? " *" : "") + "</label>";
-            html += "<input type='text' name='ssid_" + String(i) + "' value='" + netSSID + "' placeholder='Network SSID'" + String(i == 0 ? " required" : "") + "></div>";
+            html += "<div class='net-box'>";
+            html += "<div class='field'><label>Network " + String(i + 1) + " SSID</label>";
+            html += "<input type='text' name='ssid_" + String(i) + "' value='" + netSsid + "' placeholder='Network SSID (Leave blank to omit)'></div>";
             html += "<div class='field'><label>Password</label><div class='pwd-wrap'>";
             html += "<input type='password' id='pwd_" + String(i) + "' name='pass_" + String(i) + "' value='" + netPass + "' placeholder='Password (or leave blank for Open)'>";
             html += "<button type='button' class='toggle-btn' onclick='togglePwd(\"pwd_" + String(i) + "\")'>Show</button></div></div></div>";
@@ -193,6 +220,17 @@ private:
                   "  const btn = event.target;"
                   "  if(inp.type==='password'){inp.type='text';btn.innerText='Hide';}"
                   "  else{inp.type='password';btn.innerText='Show';}"
+                  "}"
+                  "function updateHwPreset(){"
+                  "  const t = parseInt(document.getElementById('hw_type').value);"
+                  "  const led = document.getElementById('led_pin');"
+                  "  const bat = document.getElementById('bat_pin');"
+                  "  const div = document.getElementById('bat_div');"
+                  "  const lbl = document.getElementById('hw_name');"
+                  "  if(t===0){led.value=5;bat.value=35;div.value='0.50';lbl.value='T18';}"
+                  "  else if(t===1){led.value=21;bat.value=35;div.value='0.50';lbl.value='T8';}"
+                  "  else if(t===2){led.value=2;bat.value=-1;div.value='0.50';lbl.value='DevKitV1';}"
+                  "  else if(t===3){lbl.value='Custom';}"
                   "}"
                   "</script></body></html>");
 
@@ -222,6 +260,23 @@ private:
             strlcpy(config.master_phrase, masterPhrase.c_str(), sizeof(config.master_phrase));
         }
 
+        // Hardware Profile
+        uint8_t hwType = (uint8_t)_server.arg("hw_type").toInt();
+        config.hw.board_type = hwType;
+        String hwName = _server.arg("hw_name");
+        hwName.trim();
+        if (hwName.length() > 0) {
+            strlcpy(config.hw.board_name, hwName.c_str(), sizeof(config.hw.board_name));
+        }
+        config.hw.status_led_pin = (int8_t)_server.arg("led_pin").toInt();
+        config.hw.battery_pin = (int8_t)_server.arg("bat_pin").toInt();
+        config.hw.battery_divider = _server.arg("bat_div").toFloat();
+        if (config.hw.battery_divider <= 0.01f) config.hw.battery_divider = 0.5f;
+
+        // Apply new LED pin immediately
+        _led.setPin(config.hw.status_led_pin);
+
+        // Networks
         config.network_count = 0;
         for (int i = 0; i < MAX_MONITORED_NETWORKS; i++) {
             String ssid = _server.arg("ssid_" + String(i));
@@ -249,7 +304,8 @@ private:
                         "</div></body></html>");
 
         _server.send(200, "text/html", resp);
-        Serial.printf("[Portal] Saved configuration for station '%s'. Closing AP...\n", config.station_id);
+        Serial.printf("[Portal] Saved configuration for station '%s' (%s). Closing AP...\n",
+                      config.station_id, config.hw.board_name);
 
         delay(1000);
         _portalDone = true;

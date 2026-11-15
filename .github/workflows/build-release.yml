@@ -1,0 +1,99 @@
+name: Build and Release ESP32 Firmware
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release Version Tag (e.g. v0.9.0)"
+        required: true
+        default: "v0.9.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ESP32 Unified Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Clean version: ${TAG}"
+
+      - name: Build Firmware with PlatformIO
+        run: |
+          cd firmware
+          pio run -e esp32dev
+
+      - name: Package Firmware Assets
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          mkdir -p release_assets
+          cp firmware/.pio/build/esp32dev/firmware.bin release_assets/firmware-esp32-${TAG}.bin
+          cp firmware/.pio/build/esp32dev/partitions.bin release_assets/partitions-esp32-${TAG}.bin
+          cp firmware/.pio/build/esp32dev/bootloader.bin release_assets/bootloader-esp32-${TAG}.bin
+          
+          cd release_assets
+          sha256sum firmware-esp32-${TAG}.bin > checksums.txt
+          sha256sum partitions-esp32-${TAG}.bin >> checksums.txt
+          sha256sum bootloader-esp32-${TAG}.bin >> checksums.txt
+          cat checksums.txt
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Release ${{ steps.vars.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release_assets/firmware-esp32-${{ steps.vars.outputs.tag }}.bin
+            release_assets/partitions-esp32-${{ steps.vars.outputs.tag }}.bin
+            release_assets/bootloader-esp32-${{ steps.vars.outputs.tag }}.bin
+            release_assets/checksums.txt
+
+      - name: Upload to Cloudflare R2 (Backup / Zero-Egress Primary)
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          BIN_FILE="release_assets/firmware-esp32-${TAG}.bin"
+
+          if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] && [ -n "$CF_ACCOUNT_ID" ]; then
+            echo "[R2] Uploading firmware binary to Cloudflare R2 bucket 'wifi-ota'..."
+            pip install awscli
+            aws s3 cp "$BIN_FILE" "s3://wifi-ota/firmware-esp32-${TAG}.bin" \
+              --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            echo "[R2] Successfully uploaded to Cloudflare R2!"
+          else
+            echo "[R2] Notice: Cloudflare R2 secrets not configured in repository. GitHub Releases will serve as primary download source."
+          fi

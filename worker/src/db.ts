@@ -38,11 +38,35 @@ export class Database {
       .run();
   }
 
-  async updateStationLastSeen(stationId: string, timestamp: number): Promise<void> {
-    await this.db
-      .prepare("UPDATE stations SET last_seen = ? WHERE station_id = ?")
-      .bind(timestamp, stationId)
-      .run();
+  async updateStationLastSeen(
+    stationId: string,
+    timestamp: number,
+    meta?: { firmware_version?: string; board_type?: string; battery_mv?: number }
+  ): Promise<void> {
+    if (meta && (meta.firmware_version || meta.board_type || meta.battery_mv !== undefined)) {
+      await this.db
+        .prepare(`
+          UPDATE stations SET
+            last_seen = ?,
+            firmware_version = COALESCE(?, firmware_version),
+            board_type = COALESCE(?, board_type),
+            battery_mv = COALESCE(?, battery_mv)
+          WHERE station_id = ?
+        `)
+        .bind(
+          timestamp,
+          meta.firmware_version ?? null,
+          meta.board_type ?? null,
+          meta.battery_mv ?? null,
+          stationId
+        )
+        .run();
+    } else {
+      await this.db
+        .prepare("UPDATE stations SET last_seen = ? WHERE station_id = ?")
+        .bind(timestamp, stationId)
+        .run();
+    }
   }
 
   async insertMeasurements(measurements: MeasurementRecord[]): Promise<number> {

@@ -2,6 +2,7 @@ import { Env } from "./types";
 import { handleRegister } from "./register";
 import { handleTelemetry } from "./telemetry";
 import { handleApiStations, handleApiStationDetail, handleApiExport } from "./api";
+import { handleOta, handleSetStationTargetVersion } from "./ota";
 import { handleScheduledMaintenance } from "./cron";
 import { renderDashboardHtml } from "./frontend";
 
@@ -32,6 +33,17 @@ export default {
       // 2. Telemetry Ingestion
       if (path === "/data") {
         return await handleTelemetry(request, env);
+      }
+
+      // 3. OTA Firmware Updates and Downloads
+      if (path === "/api/ota" || path.startsWith("/api/ota/")) {
+        return await handleOta(request, env);
+      }
+
+      if (path.startsWith("/api/station/") && path.endsWith("/target-version")) {
+        const parts = path.split("/");
+        const stationId = decodeURIComponent(parts[3]);
+        return await handleSetStationTargetVersion(stationId, request, env);
       }
 
       // 3. Public Read-only APIs
