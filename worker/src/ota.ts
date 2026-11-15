@@ -35,20 +35,13 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
     .bind(stationId)
     .first()) as (StationRecord & { is_canary?: number; ota_url?: string }) | null;
 
-  if (!station) {
-    return new Response(JSON.stringify({ error: "Station not registered", station_id: stationId }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-
   // Check if station has an explicit target_version assigned (e.g. for Canary testing)
-  let targetVersion = station.target_version?.trim();
+  let targetVersion = station?.target_version?.trim();
 
   // If no canary/custom target version is assigned:
   if (!targetVersion) {
     // If station is designated as canary only and has no target, hold updates
-    if (station.is_canary === 1) {
+    if (station && station.is_canary === 1) {
       return new Response(
         JSON.stringify({
           update_available: false,
@@ -59,7 +52,7 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
-    // Otherwise use stable production version
+    // Otherwise use stable production version (fleet default)
     targetVersion = env.STABLE_VERSION || "1.0.0";
   }
 
@@ -82,12 +75,12 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
 
   // Determine binary download URL:
   // Primary: Cloudflare R2 bucket proxy via Worker
-  // Fallback: GitHub Releases direct link
+  // Fallback: GitHub Releases direct link or Worker proxy
   const filename = `firmware-esp32-v${targetVersion}.bin`;
-  let downloadUrl = station.ota_url?.trim();
+  let downloadUrl = station?.ota_url?.trim();
 
   if (!downloadUrl) {
-    // Worker download route that serves from R2 or redirects to GitHub
+    // Worker download route that serves from R2 or proxies from GitHub Releases
     downloadUrl = `${url.origin}/api/ota/download/${filename}`;
   }
 
@@ -135,14 +128,40 @@ async function handleFirmwareDownload(filename: string, request: Request, env: E
     }
   }
 
-  // 2. Backup / Fallback: Redirect to GitHub Releases
+  // 2. Backup / Fallback: Fetch directly from GitHub Releases and stream to ESP32 (Zero redirects for microcontroller)
   // Pattern: firmware-esp32-v0.9.0.bin -> tag v0.9.0
   const match = filename.match(/v(\d+\.\d+\.\d+)/);
   const tag = match ? `v${match[1]}` : "latest";
   const githubUrl = `https://github.com/kreier/wifi/releases/download/${tag}/${filename}`;
 
-  console.log(`[OTA] Redirecting firmware download for ${filename} to GitHub Releases: ${githubUrl}`);
-  return Response.redirect(githubUrl, 302);
+  console.log(`[OTA] Fetching firmware binary for ${filename} from GitHub Releases: ${githubUrl}`);
+  try {
+    const ghResponse = await fetch(githubUrl, {
+      redirect: "follow",
+      headers: { "User-Agent": "kreier-wifi-worker" }
+    });
+
+    if (!ghResponse.ok) {
+      console.warn(`[OTA] GitHub Releases returned status ${ghResponse.status} for ${githubUrl}`);
+      // Fallback to direct redirect if fetch failed
+      return Response.redirect(githubUrl, 302);
+    }
+
+    const headers = new Headers();
+    headers.set("Content-Type", "application/octet-stream");
+    const len = ghResponse.headers.get("Content-Length");
+    if (len) headers.set("Content-Length", len);
+    headers.set("Content-Disposition", `attachment; filename="${filename}"`);
+    headers.set("Cache-Control", "public, max-age=86400");
+
+    return new Response(ghResponse.body, {
+      status: 200,
+      headers
+    });
+  } catch (fetchErr) {
+    console.error("[OTA] Error proxying GitHub Releases binary:", fetchErr);
+    return Response.redirect(githubUrl, 302);
+  }
 }
 
 // Admin / Canary API: Set or clear canary target version for a station

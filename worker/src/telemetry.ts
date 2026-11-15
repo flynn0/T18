@@ -43,6 +43,17 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
   const cycles: TelemetryCyclePayload[] = Array.isArray(rawBody) ? rawBody : [rawBody as TelemetryCyclePayload];
 
+  // Auto-sync station name if changed in captive portal (e.g. renamed from C-103 to 9E1-9)
+  for (const c of cycles) {
+    if (c.station_id && c.station_id.trim() && c.station_id.trim() !== station.station_id) {
+      const newStationId = c.station_id.trim();
+      console.log(`[Telemetry] Station rename detected from '${station.station_id}' to '${newStationId}'`);
+      await db.renameStation(station.station_id, newStationId);
+      station.station_id = newStationId;
+      break;
+    }
+  }
+
   const measurementsToInsert: MeasurementRecord[] = [];
   const surveysToInsert: ScanSurveyRecord[] = [];
   const serverNow = Math.floor(Date.now() / 1000);

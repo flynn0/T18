@@ -38,6 +38,22 @@ export class Database {
       .run();
   }
 
+  async renameStation(oldId: string, newId: string): Promise<void> {
+    if (!oldId || !newId || oldId === newId) return;
+    const statements = [
+      this.db.prepare("UPDATE stations SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE measurements SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_latest_measurements SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_latest_scan SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_discovered_aps SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_channel_utilization SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_network_diagnostics SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE daily_summaries SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_overview_cache SET station_id = ? WHERE station_id = ?").bind(newId, oldId)
+    ];
+    await this.db.batch(statements);
+  }
+
   async updateStationLastSeen(
     stationId: string,
     timestamp: number,
