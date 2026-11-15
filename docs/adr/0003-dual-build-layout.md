@@ -24,17 +24,18 @@ firmware/
 ├── wifi/
 │   └── wifi.ino           # Arduino IDE sketch: imports shared modular logic
 └── include/
-    ├── app_config.h       # Configuration schemas & LittleFS persistence
+    ├── app_config.h       # Configuration schemas & NVS (Preferences) persistence
     ├── app_state.h        # Runtime state & metrics data structures
-    ├── board_pins.h       # Board-specific pin mappings (T18, DevKit V1, T8)
+    ├── board_pins.h       # Dynamic hardware profiles (T18, DevKit V1, T8) & ADC battery sensing
     ├── captive_portal.h   # Soft-AP, captive DNS server, & setup web UI
     ├── led_controller.h   # Non-blocking LED status indicator (2 Hz blink / solid ON)
     ├── ntp_sync.h         # SNTP synchronization engine (24-hour cycle)
     ├── wifi_scanner.h     # 802.11 Wi-Fi scan engine & phy mode analysis
     ├── latency_prober.h   # Association, DHCP, and HTTP HEAD/204 probe engine
     ├── channel_analyzer.h # Promiscuous 13-channel utilization & airtime analyzer
-    ├── spool_manager.h    # LittleFS JSONL ring buffer with 500 KB ceiling
+    ├── spool_manager.h    # In-memory first, raw SPI flash partition circular binary spool
     ├── api_client.h       # HTTPS client for /register and /data endpoints
+    ├── ota_manager.h      # Over-the-air firmware updater & streaming binary client
     └── app_main.h         # Master state machine orchestrating boot, setup, & sleep
 ```
 

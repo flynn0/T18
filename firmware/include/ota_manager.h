@@ -29,7 +29,8 @@ public:
         client.setInsecure(); // Cloudflare TLS validation
 
         HTTPClient http;
-        http.setTimeout(12000);
+        http.setTimeout(15000);
+        http.setReuse(false);
 
         if (!http.begin(client, checkEndpoint)) {
             Serial.println(F("[OTA] Failed to initialize HTTPS connection for update check"));
@@ -37,6 +38,11 @@ public:
         }
 
         int httpCode = http.GET();
+        if (httpCode < 0) {
+            Serial.printf("[OTA] Initial connection failed (%d). Retrying HTTPS check in 1000 ms...\n", httpCode);
+            delay(1000);
+            httpCode = http.GET();
+        }
         Serial.printf("[OTA] Server check response: HTTP %d\n", httpCode);
 
         if (httpCode == 200) {

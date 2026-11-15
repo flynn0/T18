@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Latest Release](https://img.shields.io/github/v/release/kreier/wifi?color=blue&label=version)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)
@@ -33,8 +33,10 @@ The `kreier/wifi` platform is built on an edge-native, zero-trust, and power-opt
   Monitors the duration of full-spectrum scans in milliseconds on every 10-minute cycle, correlating scan latency with RF contention.
 - **Local Network & Dual-Stack Diagnostics**:
   Measures local gateway TCP SYN round-trip time, performs IPv4 vs. IPv6 DNS resolution benchmarking, detects captive portal HTTP canary hijacking, and executes automated daily gateway firewall audits.
-- **Offline Resilience via LittleFS Ring Buffer**:
-  When Wi-Fi connectivity is unavailable, cycles are appended as JSONL into a dedicated LittleFS spool ring buffer (capped at 500 KB FIFO), ensuring zero data loss during network outages.
+- **Automated Fleet OTA & Battery Telemetry ([ADR 0004: Fleet OTA & Battery History](docs/adr/0004-fleet-ota-and-battery-monitoring.md))**:
+  Automated edge OTA dispatch with zero-redirect streaming proxies from GitHub Releases and Cloudflare R2. Time-series battery voltage monitoring (Migration 0008) on ADC pin IO35 with discharge trend analysis and remaining runtime modeling.
+- **Offline Resilience via Raw SPI Flash Partition Buffer**:
+  When Wi-Fi connectivity is unavailable, cycles are binary-buffered into a dedicated 192 KB raw flash circular spool, with in-memory zero-flash-wear fast path during normal connectivity.
 - **Dual Web Dashboards**:
   Edge-hosted server-rendered dashboard on Cloudflare Worker (`wifi.kreier.workers.dev`) coupled with a GitHub Pages static client mirror (`kreier.github.io/wifi`), both supporting client-side station deep-linking and theme switching.
 

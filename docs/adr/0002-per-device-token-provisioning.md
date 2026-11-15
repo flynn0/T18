@@ -18,7 +18,7 @@ We implement a **Zero-Trust Per-Device Token Provisioning** model using a tempor
 1. **Captive Portal Bootstrap**:
    - During initial commissioning (or when forced via the 3-second `BOOT` button hold), the device operator connects to the soft-AP (`WIFI-Mon-XXXX`) captive portal at `192.168.4.1`.
    - The operator inputs `STATION_ID`, `STATION_DESC`, monitored Wi-Fi SSIDs/passwords, Worker base URL, and a transient `MASTER_PHRASE`.
-   - The `MASTER_PHRASE` is held only temporarily in volatile memory / temporary LittleFS config.
+   - The `MASTER_PHRASE` is held only temporarily in volatile memory / setup portal state.
 
 2. **One-Time Registration Handshake (`POST /register`)**:
    - The ESP32 connects to the first configured Wi-Fi network and makes an HTTPS request to `POST /register` with:
@@ -39,7 +39,7 @@ We implement a **Zero-Trust Per-Device Token Provisioning** model using a tempor
 
 3. **Secure Persistence & Secret Erasure**:
    - On receiving `200 OK` with the token, the ESP32 writes `device_token` to hardware Non-Volatile Storage (NVS) using the ESP32 `Preferences` API.
-   - The ESP32 **permanently erases** `MASTER_PHRASE` from LittleFS storage (`config.json`) and zeroes out the string in RAM.
+   - The ESP32 **permanently erases** `MASTER_PHRASE` and zeroes out the string in RAM, storing only `device_token` in NVS.
    - If registration fails (e.g. invalid bootstrap secret or offline network), `MASTER_PHRASE` is retained only to retry on the next cycle or can be re-entered in the portal.
 
 4. **Telemetry Ingestion (`POST /data`)**:
