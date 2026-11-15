@@ -252,6 +252,7 @@ public:
             // Reconstruct JSON cycle doc
             JsonDocument doc;
             doc["station_id"] = stationId;
+            doc["firmware_version"] = FIRMWARE_VERSION;
 
             uint32_t ts = 0;
             memcpy(&ts, buffer + 4, 4);

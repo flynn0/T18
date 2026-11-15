@@ -382,6 +382,18 @@ export function renderDashboardHtml(): string {
       flex-wrap: wrap;
     }
     footer a { color: var(--primary); text-decoration: none; }
+    .fw-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -390,7 +402,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.8.0</span>
+        <span class="brand-tag">v1.0.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -695,7 +707,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.8.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v1.0.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -826,7 +838,9 @@ export function renderDashboardHtml(): string {
         data.stations.forEach(st => {
           const opt = document.createElement("option");
           opt.value = st.station_id;
-          opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
+          const fwStr = st.firmware_version ? " [v" + st.firmware_version + "]" : "";
+          const descStr = st.description ? " (" + st.description + ")" : "";
+          opt.innerText = st.station_id + fwStr + descStr;
           if (reqStation && st.station_id.toLowerCase() === reqStation.toLowerCase()) {
             opt.selected = true;
             matched = true;
@@ -894,7 +908,14 @@ export function renderDashboardHtml(): string {
 
         // 1. Update Header Banner
         const st = data.station;
-        document.getElementById("stTitle").innerText = "Station: " + st.station_id;
+        const titleEl = document.getElementById("stTitle");
+        titleEl.textContent = "Station: " + st.station_id;
+        if (st.firmware_version) {
+          const badge = document.createElement("span");
+          badge.className = "fw-badge";
+          badge.textContent = "v" + st.firmware_version;
+          titleEl.appendChild(badge);
+        }
         document.getElementById("stDesc").innerText = st.description || "No description configured";
 
         const badge = document.getElementById("stStatusBadge");

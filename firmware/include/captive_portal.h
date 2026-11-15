@@ -139,7 +139,7 @@ private:
             "border:none;border-radius:0.5rem;cursor:pointer;font-size:1rem;margin-top:1.5rem;transition:background 0.2s}"
             "button[type='submit']:hover{background:var(--primary-hover)}"
             "</style></head><body><div class='card'>"
-            "<h1>&#128246; Wi-Fi Monitor Setup (v0.9.0)</h1>"
+            "<h1>&#128246; Wi-Fi Monitor Setup (v1.0.0)</h1>"
             "<p class='sub'>Configure device identity, hardware board profile, and network credentials.</p>"
             "<form method='POST' action='/save'>");
 
@@ -253,6 +253,9 @@ private:
             return;
         }
 
+        // Check if Station ID has changed
+        bool stationIdChanged = (strcmp(config.station_id, stId.c_str()) != 0);
+
         strlcpy(config.station_id, stId.c_str(), sizeof(config.station_id));
         strlcpy(config.station_desc, stDesc.c_str(), sizeof(config.station_desc));
         strlcpy(config.worker_url, workerUrl.c_str(), sizeof(config.worker_url));
@@ -292,6 +295,11 @@ private:
         config.is_configured = (config.network_count > 0);
         bool saved = _configMgr.saveConfig(config);
 
+        if (stationIdChanged) {
+            Serial.println(F("[Portal] Station ID changed! Clearing device token so station re-registers under new ID."));
+            _configMgr.clearDeviceToken();
+        }
+
         String resp = F("<!DOCTYPE html><html><head><meta charset='utf-8'>"
                         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                         "<title>Configuration Saved</title><style>"
@@ -300,15 +308,16 @@ private:
                         "h2{color:#22c55e;margin-bottom:1rem}p{color:#94a3b8;line-height:1.5}"
                         "</style></head><body><div class='box'>"
                         "<h2>Settings Saved!</h2>"
-                        "<p>The ESP32 is now switching to monitoring mode and connecting to your network.</p>"
+                        "<p>The ESP32 is now rebooting and switching to monitoring mode with the new settings.</p>"
                         "</div></body></html>");
 
         _server.send(200, "text/html", resp);
-        Serial.printf("[Portal] Saved configuration for station '%s' (%s). Closing AP...\n",
+        Serial.printf("[Portal] Saved configuration for station '%s' (%s). Rebooting ESP...\n",
                       config.station_id, config.hw.board_name);
 
-        delay(1000);
+        delay(1500);
         _portalDone = true;
+        ESP.restart();
     }
 
     AppConfigManager &_configMgr;

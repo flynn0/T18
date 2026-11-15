@@ -60,7 +60,7 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
       );
     }
     // Otherwise use stable production version
-    targetVersion = env.STABLE_VERSION || "0.9.0";
+    targetVersion = env.STABLE_VERSION || "1.0.0";
   }
 
   // Check if already running the target version

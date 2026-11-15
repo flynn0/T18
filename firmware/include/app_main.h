@@ -175,8 +175,8 @@ private:
             return;
         }
 
-        // Check for OTA firmware updates (check every 6 hours or on initial boot)
-        if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 21600)) {
+        // Check for OTA firmware updates (check every 1 hour or on initial boot)
+        if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
             _lastOtaCheckEpoch = currentEpoch;
             bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
                                                        FIRMWARE_VERSION, _config.hw);
@@ -222,6 +222,7 @@ private:
         doc["scan_duration_ms"] = cycle.scan_duration_ms;
         if (cycle.battery_mv > 0) doc["battery_mv"] = cycle.battery_mv;
         doc["board_type"] = cycle.board_type;
+        doc["firmware_version"] = FIRMWARE_VERSION;
 
         JsonArray arrNet = doc["networks"].to<JsonArray>();
         for (const auto &net : cycle.measurements) {

@@ -1,6 +1,6 @@
 # kreier/wifi
 
-[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](https://github.com/kreier/wifi/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/kreier/wifi/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-wifi.kreier.workers.dev-F38020?logo=cloudflare)](https://wifi.kreier.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2Fwifi-22c55e?logo=github)](https://kreier.github.io/wifi/)

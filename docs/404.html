@@ -381,6 +381,18 @@
       flex-wrap: wrap;
     }
     footer a { color: var(--primary); text-decoration: none; }
+    .fw-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -389,7 +401,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v0.8.0</span>
+        <span class="brand-tag">v1.0.0</span>
       </div>
     </a>
     <div class="header-controls">
@@ -694,7 +706,7 @@
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v0.8.0)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v1.0.0)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -825,7 +837,9 @@
         data.stations.forEach(st => {
           const opt = document.createElement("option");
           opt.value = st.station_id;
-          opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
+          const fwStr = st.firmware_version ? " [v" + st.firmware_version + "]" : "";
+          const descStr = st.description ? " (" + st.description + ")" : "";
+          opt.innerText = st.station_id + fwStr + descStr;
           if (reqStation && st.station_id.toLowerCase() === reqStation.toLowerCase()) {
             opt.selected = true;
             matched = true;
@@ -893,7 +907,14 @@
 
         // 1. Update Header Banner
         const st = data.station;
-        document.getElementById("stTitle").innerText = "Station: " + st.station_id;
+        const titleEl = document.getElementById("stTitle");
+        titleEl.textContent = "Station: " + st.station_id;
+        if (st.firmware_version) {
+          const badge = document.createElement("span");
+          badge.className = "fw-badge";
+          badge.textContent = "v" + st.firmware_version;
+          titleEl.appendChild(badge);
+        }
         document.getElementById("stDesc").innerText = st.description || "No description configured";
 
         const badge = document.getElementById("stStatusBadge");
@@ -938,50 +959,50 @@
                 }
               }
 
-              card.innerHTML = `
+              card.innerHTML = \`
                 <div class="card-header">
                   <div>
-                    <div class="card-title">${net.ssid}</div>
+                    <div class="card-title">\${net.ssid}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
-                      BSSID: ${net.bssid || "N/A"} | Ch ${net.channel || "?"}
+                      BSSID: \${net.bssid || "N/A"} | Ch \${net.channel || "?"}
                     </div>
                   </div>
-                  <span class="status-badge ${net.status === 'connected' ? 'online' : 'offline'}" style="font-size:0.7rem; padding:0.15rem 0.5rem;">
-                    ${net.status}
+                  <span class="status-badge \${net.status === 'connected' ? 'online' : 'offline'}" style="font-size:0.7rem; padding:0.15rem 0.5rem;">
+                    \${net.status}
                   </span>
                 </div>
 
                 <div class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));">
                   <div class="metric-box">
                     <div class="metric-label">Association</div>
-                    <div class="metric-val">${(net.assoc_ms !== null && net.assoc_ms >= 0) ? net.assoc_ms : '—'}<span>ms</span></div>
+                    <div class="metric-val">\${(net.assoc_ms !== null && net.assoc_ms >= 0) ? net.assoc_ms : '—'}<span>ms</span></div>
                   </div>
                   <div class="metric-box">
                     <div class="metric-label">DHCP Lease</div>
-                    <div class="metric-val">${(net.dhcp_ms !== null && net.dhcp_ms >= 0) ? net.dhcp_ms : '—'}<span>ms</span></div>
+                    <div class="metric-val">\${(net.dhcp_ms !== null && net.dhcp_ms >= 0) ? net.dhcp_ms : '—'}<span>ms</span></div>
                   </div>
                   <div class="metric-box">
                     <div class="metric-label">Gateway RTT</div>
-                    <div class="metric-val" style="color: #06b6d4;">${gwVal}</div>
+                    <div class="metric-val" style="color: #06b6d4;">\${gwVal}</div>
                   </div>
                   <div class="metric-box">
                     <div class="metric-label">DNS v4 / v6</div>
-                    <div class="metric-val" style="font-size: 0.82rem; color: ${net.dns_ipv6_ms === -1 ? '#ef4444' : 'inherit'};">${dnsVal}</div>
+                    <div class="metric-val" style="font-size: 0.82rem; color: \${net.dns_ipv6_ms === -1 ? '#ef4444' : 'inherit'};">\${dnsVal}</div>
                   </div>
                 </div>
 
                 <div>
                   <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem; text-transform:uppercase; font-weight:600;">HTTP Probe Latencies</div>
                   <div class="latency-pills">
-                    <div class="pill">Gateway: <span class="pill-val ${getPillClass(net.gateway_ms)}">${fmtMs(net.gateway_ms)}</span></div>
-                    <div class="pill">Cloudflare: <span class="pill-val ${getPillClass(net.cloudflare_ms)}">${fmtMs(net.cloudflare_ms)}</span></div>
-                    <div class="pill">Google: <span class="pill-val ${getPillClass(net.google_ms)}">${fmtMs(net.google_ms)}</span></div>
-                    <div class="pill">Microsoft: <span class="pill-val ${getPillClass(net.microsoft_ms)}">${fmtMs(net.microsoft_ms)}</span></div>
-                    <div class="pill">Fast/Netflix: <span class="pill-val ${getPillClass(net.netflix_ms)}">${fmtMs(net.netflix_ms)}</span></div>
-                    <div class="pill">Facebook: <span class="pill-val ${getPillClass(net.facebook_ms)}">${fmtMs(net.facebook_ms)}</span></div>
+                    <div class="pill">Gateway: <span class="pill-val \${getPillClass(net.gateway_ms)}">\${fmtMs(net.gateway_ms)}</span></div>
+                    <div class="pill">Cloudflare: <span class="pill-val \${getPillClass(net.cloudflare_ms)}">\${fmtMs(net.cloudflare_ms)}</span></div>
+                    <div class="pill">Google: <span class="pill-val \${getPillClass(net.google_ms)}">\${fmtMs(net.google_ms)}</span></div>
+                    <div class="pill">Microsoft: <span class="pill-val \${getPillClass(net.microsoft_ms)}">\${fmtMs(net.microsoft_ms)}</span></div>
+                    <div class="pill">Fast/Netflix: <span class="pill-val \${getPillClass(net.netflix_ms)}">\${fmtMs(net.netflix_ms)}</span></div>
+                    <div class="pill">Facebook: <span class="pill-val \${getPillClass(net.facebook_ms)}">\${fmtMs(net.facebook_ms)}</span></div>
                   </div>
                 </div>
-              `;
+              \`;
               netContainer.appendChild(card);
             });
           } else {
@@ -1011,21 +1032,21 @@
             const q = s.quality || 0;
             const barColor = rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444");
 
-            tr.innerHTML = `
-              <td style="font-weight: 600;">${s.ssid}</td>
-              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
+            tr.innerHTML = \`
+              <td style="font-weight: 600;">\${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">\${s.bssid || "N/A"}</td>
               <td>
                 <div class="rssi-bar-wrap">
-                  <div class="rssi-bar"><div class="rssi-fill" style="width: ${q}%; background: ${barColor};"></div></div>
-                  <span>${rssi} dBm</span>
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: \${q}%; background: \${barColor};"></div></div>
+                  <span>\${rssi} dBm</span>
                 </div>
               </td>
-              <td>${q}%</td>
-              <td>Ch ${s.channel || "?"}</td>
-              <td><span style="background:var(--badge-bg); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
-              <td>${s.encryption || 'Open'}</td>
+              <td>\${q}%</td>
+              <td>Ch \${s.channel || "?"}</td>
+              <td><span style="background:var(--badge-bg); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
+              <td>\${s.encryption || 'Open'}</td>
               <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600; font-size: 0.75rem;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>Active</span></td>
-            `;
+            \`;
             tbody.appendChild(tr);
           });
         } else {
@@ -1046,22 +1067,22 @@
             const q = (s.quality !== null && s.quality !== undefined) ? s.quality : (rssi !== null ? Math.min(100, Math.max(0, 2 * (rssi + 100))) : null);
             const barColor = rssi !== null ? (rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444")) : "#9ca3af";
 
-            tr.innerHTML = `
-              <td style="font-weight: 500; color: var(--text-muted);">${s.ssid}</td>
-              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
+            tr.innerHTML = \`
+              <td style="font-weight: 500; color: var(--text-muted);">\${s.ssid}</td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">\${s.bssid || "N/A"}</td>
               <td>
-                ${rssi !== null ? `
+                \${rssi !== null ? \`
                 <div class="rssi-bar-wrap">
-                  <div class="rssi-bar"><div class="rssi-fill" style="width: ${q}%; background: ${barColor};"></div></div>
-                  <span title="Max signal recorded">${rssi} dBm</span>
-                </div>` : '<span style="color: var(--text-muted);">—</span>'}
+                  <div class="rssi-bar"><div class="rssi-fill" style="width: \${q}%; background: \${barColor};"></div></div>
+                  <span title="Max signal recorded">\${rssi} dBm</span>
+                </div>\` : '<span style="color: var(--text-muted);">—</span>'}
               </td>
-              <td>${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
-              <td>Ch ${s.channel || "?"}</td>
-              <td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
-              <td style="color: var(--text-muted);">${s.encryption || 'Open'}</td>
-              <td><span title="${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">${formatLastSeen(s.last_seen)}</span></td>
-            `;
+              <td>\${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
+              <td>Ch \${s.channel || "?"}</td>
+              <td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">\${s.phy_mode || 'WIFI_4'}</span></td>
+              <td style="color: var(--text-muted);">\${s.encryption || 'Open'}</td>
+              <td><span title="\${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">\${formatLastSeen(s.last_seen)}</span></td>
+            \`;
             inactiveBody.appendChild(tr);
           });
         } else if (inactiveSection) {
@@ -1147,29 +1168,29 @@
       // Status pill configs
       let vendorPill = "";
       if (isPfSense) {
-        vendorPill = `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">🛡️ pfSense Detected (WebGUI Port 80/443 Exposed)</span>`;
+        vendorPill = \`<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">🛡️ pfSense Detected (WebGUI Port 80/443 Exposed)</span>\`;
       } else if (isWebExposed) {
-        vendorPill = `<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 600;">⚠️ ${vendor} WebUI Exposed</span>`;
+        vendorPill = \`<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 600;">⚠️ \${vendor} WebUI Exposed</span>\`;
       } else {
-        vendorPill = `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">🔒 Gateway WebUI Not Exposed / Secured</span>`;
+        vendorPill = \`<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">🔒 Gateway WebUI Not Exposed / Secured</span>\`;
       }
 
       let dnsPill = "";
       if (isIpv6Timeout) {
-        dnsPill = `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">⚠️ IPv6 DNS Timeout (~30s delay)</span>`;
+        dnsPill = \`<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 600;">⚠️ IPv6 DNS Timeout (~30s delay)</span>\`;
       } else if (latestNet && latestNet.dns_ipv4_ms >= 0 && latestNet.dns_ipv6_ms >= 0) {
-        dnsPill = `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Dual-Stack DNS Healthy (IPv4 + IPv6)</span>`;
+        dnsPill = \`<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Dual-Stack DNS Healthy (IPv4 + IPv6)</span>\`;
       } else {
-        dnsPill = `<span class="pill" style="background: var(--primary-dim); color: var(--primary); font-weight: 600;">DNS: Active</span>`;
+        dnsPill = \`<span class="pill" style="background: var(--primary-dim); color: var(--primary); font-weight: 600;">DNS: Active</span>\`;
       }
 
       let captivePill = isCaptive
-        ? `<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 600;">⚠️ Captive Interception Active</span>`
-        : `<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Direct Internet (No Captive Trap)</span>`;
+        ? \`<span class="pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 600;">⚠️ Captive Interception Active</span>\`
+        : \`<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">✓ Direct Internet (No Captive Trap)</span>\`;
 
       const auditTime = diag ? (new Date(diag.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + formatLastSeen(diag.timestamp) + ')') : 'Pending Next Cycle';
 
-      container.innerHTML = `
+      container.innerHTML = \`
         <div class="card" style="padding: 1.15rem 1.35rem; gap: 0.85rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1180,7 +1201,7 @@
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span class="pill" style="font-size: 0.7rem; color: var(--text-muted);">Daily Audit: ${auditTime}</span>
+              <span class="pill" style="font-size: 0.7rem; color: var(--text-muted);">Daily Audit: \${auditTime}</span>
               <button onclick="toggleDiagnosticsDetails()" style="background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary); padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
                 <span>Detailed Audit</span> <span id="diagExpandIcon">▼</span>
               </button>
@@ -1189,10 +1210,10 @@
 
           <!-- Summary Badges -->
           <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
-            <span class="pill" style="color: #06b6d4; font-weight: 600;">Gateway: ${gwIp} (${gwMs})</span>
-            ${vendorPill}
-            ${dnsPill}
-            ${captivePill}
+            <span class="pill" style="color: #06b6d4; font-weight: 600;">Gateway: \${gwIp} (\${gwMs})</span>
+            \${vendorPill}
+            \${dnsPill}
+            \${captivePill}
           </div>
 
           <!-- Expandable Detailed View -->
@@ -1202,12 +1223,12 @@
               <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
                 <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">1. Gateway & Firewall Exposure</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                  <div><strong>Gateway IP:</strong> ${gwIp}</div>
-                  <div><strong>Identified Vendor:</strong> ${vendor}</div>
-                  <div><strong>Web Management:</strong> ${isWebExposed ? (diag?.login_url || 'Exposed (Port 80/443)') : 'Not exposed / Filtered'}</div>
-                  <div><strong>HTTPS Redirect:</strong> ${diag?.https_redirect ? 'Yes (Forces port 443)' : 'No'}</div>
-                  <div style="margin-top: 0.35rem; color: ${isPfSense ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
-                    ${isPfSense ? '⚠️ Security advisory: pfSense WebConfigurator is accessible to Wi-Fi clients. Restrict management access to a secure VLAN.' : '✓ No vulnerable gateway management interface exposed to this Wi-Fi network.'}
+                  <div><strong>Gateway IP:</strong> \${gwIp}</div>
+                  <div><strong>Identified Vendor:</strong> \${vendor}</div>
+                  <div><strong>Web Management:</strong> \${isWebExposed ? (diag?.login_url || 'Exposed (Port 80/443)') : 'Not exposed / Filtered'}</div>
+                  <div><strong>HTTPS Redirect:</strong> \${diag?.https_redirect ? 'Yes (Forces port 443)' : 'No'}</div>
+                  <div style="margin-top: 0.35rem; color: \${isPfSense ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
+                    \${isPfSense ? '⚠️ Security advisory: pfSense WebConfigurator is accessible to Wi-Fi clients. Restrict management access to a secure VLAN.' : '✓ No vulnerable gateway management interface exposed to this Wi-Fi network.'}
                   </div>
                 </div>
               </div>
@@ -1216,12 +1237,12 @@
               <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
                 <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">2. DNS Dual-Stack Audit</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                  <div><strong>IPv4 Resolution (A):</strong> ${diag?.dns_ipv4_ms !== null && diag?.dns_ipv4_ms !== undefined && diag?.dns_ipv4_ms >= 0 ? diag.dns_ipv4_ms + ' ms' : 'Passed'}</div>
-                  <div><strong>IPv6 Resolution (AAAA):</strong> ${diag?.dns_ipv6_ms !== null && diag?.dns_ipv6_ms !== undefined && diag?.dns_ipv6_ms >= 0 ? diag.dns_ipv6_ms + ' ms' : (isIpv6Timeout ? '<span style=\"color:#ef4444; font-weight:600;\">Timeout (>3500 ms)</span>' : 'N/A')}</div>
-                  <div><strong>IPv6 DNS Timeout:</strong> ${isIpv6Timeout ? '<span style=\"color:#ef4444; font-weight:600;\">Triggered (Causes ~30s delay)</span>' : 'None detected'}</div>
-                  <div><strong>DNS Rebinding Protection:</strong> ${diag?.dns_rebind_blocked ? 'Active (RFC 1918 filtered)' : 'Standard'}</div>
-                  <div style="margin-top: 0.35rem; color: ${isIpv6Timeout ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
-                    ${isIpv6Timeout ? '⚠️ Notice: Upstream router advertises IPv6 DNS but drops traffic, causing applications to stall for 30s before falling back to IPv4.' : '✓ Dual-stack DNS resolves cleanly without fallback penalties.'}
+                  <div><strong>IPv4 Resolution (A):</strong> \${diag?.dns_ipv4_ms !== null && diag?.dns_ipv4_ms !== undefined && diag?.dns_ipv4_ms >= 0 ? diag.dns_ipv4_ms + ' ms' : 'Passed'}</div>
+                  <div><strong>IPv6 Resolution (AAAA):</strong> \${diag?.dns_ipv6_ms !== null && diag?.dns_ipv6_ms !== undefined && diag?.dns_ipv6_ms >= 0 ? diag.dns_ipv6_ms + ' ms' : (isIpv6Timeout ? '<span style=\"color:#ef4444; font-weight:600;\">Timeout (>3500 ms)</span>' : 'N/A')}</div>
+                  <div><strong>IPv6 DNS Timeout:</strong> \${isIpv6Timeout ? '<span style=\"color:#ef4444; font-weight:600;\">Triggered (Causes ~30s delay)</span>' : 'None detected'}</div>
+                  <div><strong>DNS Rebinding Protection:</strong> \${diag?.dns_rebind_blocked ? 'Active (RFC 1918 filtered)' : 'Standard'}</div>
+                  <div style="margin-top: 0.35rem; color: \${isIpv6Timeout ? '#ef4444' : 'var(--text-muted)'}; font-size: 0.72rem;">
+                    \${isIpv6Timeout ? '⚠️ Notice: Upstream router advertises IPv6 DNS but drops traffic, causing applications to stall for 30s before falling back to IPv4.' : '✓ Dual-stack DNS resolves cleanly without fallback penalties.'}
                   </div>
                 </div>
               </div>
@@ -1230,12 +1251,12 @@
               <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
                 <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">3. Path MTU & MSS Clamping</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                  <div><strong>MTU 1500 (Standard):</strong> ${diag?.mtu_1500_ok ? '✓ Passed' : '<span style=\"color:#ef4444;\">Failed / Blackhole</span>'}</div>
-                  <div><strong>MTU 1492 (PPPoE / DSL):</strong> ${diag?.mtu_1492_ok ? '✓ Passed' : 'Failed'}</div>
-                  <div><strong>MTU 1420 (VPN / WireGuard):</strong> ${diag?.mtu_1420_ok ? '✓ Passed' : 'Failed'}</div>
-                  <div><strong>Captive Portal Trap:</strong> ${isCaptive ? '<span style=\"color:#ef4444; font-weight:600;\">Intercepted</span>' : 'Clear / Direct'}</div>
+                  <div><strong>MTU 1500 (Standard):</strong> \${diag?.mtu_1500_ok ? '✓ Passed' : '<span style=\"color:#ef4444;\">Failed / Blackhole</span>'}</div>
+                  <div><strong>MTU 1492 (PPPoE / DSL):</strong> \${diag?.mtu_1492_ok ? '✓ Passed' : 'Failed'}</div>
+                  <div><strong>MTU 1420 (VPN / WireGuard):</strong> \${diag?.mtu_1420_ok ? '✓ Passed' : 'Failed'}</div>
+                  <div><strong>Captive Portal Trap:</strong> \${isCaptive ? '<span style=\"color:#ef4444; font-weight:600;\">Intercepted</span>' : 'Clear / Direct'}</div>
                   <div style="margin-top: 0.35rem; font-size: 0.72rem;">
-                    ${diag?.mtu_1500_ok ? '✓ PMTUD and MSS clamping operational. Large packet transmissions and TLS handshakes succeed.' : '⚠️ Path MTU blackhole detected. TCP MSS clamping may be required on firewall.'}
+                    \${diag?.mtu_1500_ok ? '✓ PMTUD and MSS clamping operational. Large packet transmissions and TLS handshakes succeed.' : '⚠️ Path MTU blackhole detected. TCP MSS clamping may be required on firewall.'}
                   </div>
                 </div>
               </div>
@@ -1244,7 +1265,7 @@
               <div class="card" style="padding: 0.85rem; background: var(--bg); border: 1px solid var(--card-border); gap: 0.4rem;">
                 <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">4. Egress Firewall Rules</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                  <div><strong>Open Egress Ports:</strong> ${diag?.open_ports || '53 (DNS), 80 (HTTP), 443 (HTTPS), 123 (NTP)'}</div>
+                  <div><strong>Open Egress Ports:</strong> \${diag?.open_ports || '53 (DNS), 80 (HTTP), 443 (HTTPS), 123 (NTP)'}</div>
                   <div><strong>Web (80 / 443):</strong> Permitted</div>
                   <div><strong>DNS (53 / 853):</strong> Permitted</div>
                   <div><strong>Cadence:</strong> Daily Deep Audit (Every 24 Hours)</div>
@@ -1256,7 +1277,7 @@
             </div>
           </div>
         </div>
-      `;
+      \`;
     }
 
     function renderAllTrendCharts() {
@@ -1456,7 +1477,7 @@
           const latest = validPoints[validPoints.length - 1];
           const avg = Math.round(validPoints.reduce((sum, v) => sum + v, 0) / validPoints.length);
           const min = Math.min(...validPoints);
-          statEl.innerHTML = `<span class="pill-val ${getPillClass(latest)}">${latest} ms</span> <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">(avg ${avg} | min ${min})</span>`;
+          statEl.innerHTML = \`<span class="pill-val \${getPillClass(latest)}">\${latest} ms</span> <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">(avg \${avg} | min \${min})</span>\`;
         } else {
           statEl.innerHTML = '<span style="color:var(--text-muted);">—</span>';
         }
@@ -1544,7 +1565,7 @@
         const totalAirtime = utilHistory.reduce((s, r) => s + (r.airtime_pct || 0), 0);
         const avgAir = (totalAirtime / utilHistory.length).toFixed(1);
         const airClass = avgAir >= 50 ? '#ef4444' : (avgAir >= 25 ? '#f59e0b' : '#38bdf8');
-        if (statAvgEl) statAvgEl.innerHTML = `<span style="color:${airClass}">${avgAir}%</span>`;
+        if (statAvgEl) statAvgEl.innerHTML = \`<span style="color:\${airClass}">\${avgAir}%</span>\`;
 
         // Peak Channel
         const chanMap = {};
@@ -1566,7 +1587,7 @@
             }
           }
         }
-        if (statPeakEl) statPeakEl.innerHTML = `Ch ${peakCh} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(${peakAvg.toFixed(1)}%)</span>`;
+        if (statPeakEl) statPeakEl.innerHTML = \`Ch \${peakCh} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(\${peakAvg.toFixed(1)}%)</span>\`;
       } else {
         if (statAvgEl) statAvgEl.innerText = "—";
         if (statPeakEl) statPeakEl.innerText = "—";
@@ -1575,11 +1596,11 @@
       // Latest Scan Time
       if (statScanEl) {
         if (latestScanMs !== null && latestScanMs !== undefined && latestScanMs >= 0) {
-          statScanEl.innerHTML = `${latestScanMs.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>`;
+          statScanEl.innerHTML = \`\${latestScanMs.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>\`;
         } else {
           const latestM = (currentStationData.latest_measurements || [])[0];
           if (latestM && latestM.scan_duration_ms) {
-            statScanEl.innerHTML = `${latestM.scan_duration_ms.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>`;
+            statScanEl.innerHTML = \`\${latestM.scan_duration_ms.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>\`;
           } else {
             statScanEl.innerText = "—";
           }
@@ -1596,14 +1617,14 @@
           sumMgmt += (u.mgmt_frames || 0);
           sumCtrl += (u.ctrl_frames || 0);
         });
-        if (statTxEl) statTxEl.innerHTML = `${totalTx} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">MACs</span>`;
+        if (statTxEl) statTxEl.innerHTML = \`\${totalTx} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">MACs</span>\`;
 
         const totalFrames = sumData + sumMgmt + sumCtrl;
         if (statFramesEl && totalFrames > 0) {
           const dPct = Math.round((sumData / totalFrames) * 100);
           const mPct = Math.round((sumMgmt / totalFrames) * 100);
           const cPct = Math.round((sumCtrl / totalFrames) * 100);
-          statFramesEl.innerHTML = `<span style="color:#10b981;" title="Data Frames: ${sumData.toLocaleString()}">${dPct}% D</span> | <span style="color:#38bdf8;" title="Mgmt Frames: ${sumMgmt.toLocaleString()}">${mPct}% M</span> | <span style="color:#f59e0b;" title="Ctrl Frames: ${sumCtrl.toLocaleString()}">${cPct}% C</span>`;
+          statFramesEl.innerHTML = \`<span style="color:#10b981;" title="Data Frames: \${sumData.toLocaleString()}">\${dPct}% D</span> | <span style="color:#38bdf8;" title="Mgmt Frames: \${sumMgmt.toLocaleString()}">\${mPct}% M</span> | <span style="color:#f59e0b;" title="Ctrl Frames: \${sumCtrl.toLocaleString()}">\${cPct}% C</span>\`;
         }
       } else {
         if (statTxEl) statTxEl.innerText = "—";
@@ -1808,50 +1829,50 @@
             const [lt80, b80_71, b70_61, gte60] = hist;
             const totalHist = lt80 + b80_71 + b70_61 + gte60;
 
-            let histHtml = `<span style="color:var(--text-muted);">—</span>`;
+            let histHtml = \`<span style="color:var(--text-muted);">—</span>\`;
             if (totalHist > 0) {
               const w0 = Math.round((lt80 / totalHist) * 100);
               const w1 = Math.round((b80_71 / totalHist) * 100);
               const w2 = Math.round((b70_61 / totalHist) * 100);
               const w3 = Math.max(0, 100 - (w0 + w1 + w2));
-              histHtml = `
+              histHtml = \`
                 <div style="display:inline-flex; align-items:center; gap:6px;">
-                  <div class="rssi-stacked-bar" title="<-80dBm: ${lt80} | -80..-71: ${b80_71} | -70..-61: ${b70_61} | >=-60: ${gte60}">
-                    <div class="rssi-seg" style="width:${w0}%; background:#1e293b;"></div>
-                    <div class="rssi-seg" style="width:${w1}%; background:#06b6d4;"></div>
-                    <div class="rssi-seg" style="width:${w2}%; background:#f59e0b;"></div>
-                    <div class="rssi-seg" style="width:${w3}%; background:#10b981;"></div>
+                  <div class="rssi-stacked-bar" title="<-80dBm: \${lt80} | -80..-71: \${b80_71} | -70..-61: \${b70_61} | >=-60: \${gte60}">
+                    <div class="rssi-seg" style="width:\${w0}%; background:#1e293b;"></div>
+                    <div class="rssi-seg" style="width:\${w1}%; background:#06b6d4;"></div>
+                    <div class="rssi-seg" style="width:\${w2}%; background:#f59e0b;"></div>
+                    <div class="rssi-seg" style="width:\${w3}%; background:#10b981;"></div>
                   </div>
-                  <span style="font-size:0.7rem; color:var(--text-muted);">${totalHist} pkts</span>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">\${totalHist} pkts</span>
                 </div>
-              `;
+              \`;
             }
 
             const statusBadge = airNum >= 50
-              ? `<span style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Congested</span>`
+              ? \`<span style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Congested</span>\`
               : (airNum >= 20
-                ? `<span style="background:rgba(245, 158, 11, 0.15); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Moderate</span>`
-                : `<span style="background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Low</span>`);
+                ? \`<span style="background:rgba(245, 158, 11, 0.15); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Moderate</span>\`
+                : \`<span style="background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Low</span>\`);
 
-            tr.innerHTML = `
-              <td style="font-weight:600; padding:6px 10px;">Ch ${row.channel}</td>
+            tr.innerHTML = \`
+              <td style="font-weight:600; padding:6px 10px;">Ch \${row.channel}</td>
               <td style="padding:6px 10px;">
                 <div class="rssi-bar-wrap" style="min-width:110px;">
-                  <div class="rssi-bar"><div class="rssi-fill" style="width:${Math.min(100, airNum)}%; background:${barColor};"></div></div>
-                  <span style="font-weight:600; min-width:38px;">${air}%</span>
+                  <div class="rssi-bar"><div class="rssi-fill" style="width:\${Math.min(100, airNum)}%; background:\${barColor};"></div></div>
+                  <span style="font-weight:600; min-width:38px;">\${air}%</span>
                 </div>
               </td>
-              <td style="padding:6px 10px; color:#10b981; font-weight:500;">${(row.data_frames || 0).toLocaleString()}</td>
-              <td style="padding:6px 10px; color:#38bdf8;">${(row.mgmt_frames || 0).toLocaleString()}</td>
-              <td style="padding:6px 10px; color:#f59e0b;">${(row.ctrl_frames || 0).toLocaleString()}</td>
-              <td style="padding:6px 10px; font-weight:600;">${row.unique_transmitters || 0}</td>
-              <td style="padding:6px 10px;">${histHtml}</td>
-              <td style="padding:6px 10px;">${statusBadge}</td>
-            `;
+              <td style="padding:6px 10px; color:#10b981; font-weight:500;">\${(row.data_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#38bdf8;">\${(row.mgmt_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#f59e0b;">\${(row.ctrl_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; font-weight:600;">\${row.unique_transmitters || 0}</td>
+              <td style="padding:6px 10px;">\${histHtml}</td>
+              <td style="padding:6px 10px;">\${statusBadge}</td>
+            \`;
             tbody.appendChild(tr);
           });
         } else {
-          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>`;
+          tbody.innerHTML = \`<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>\`;
         }
       }
     }

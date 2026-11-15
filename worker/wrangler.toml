@@ -6,7 +6,7 @@ workers_dev = true
 
 [vars]
 ENVIRONMENT = "production"
-STABLE_VERSION = "0.9.0"
+STABLE_VERSION = "1.0.0"
 
 [observability.logs]
 enabled = true
@@ -19,10 +19,10 @@ database_name = "wifi-mon-db"
 database_id = "75f3f8a5-25d7-427f-a1a0-ea0be410e2f5"
 migrations_dir = "migrations"
 
-# Cloudflare R2 Bucket for Firmware OTA Storage (Free 10GB & Zero Egress)
-[[r2_buckets]]
-binding = "OTA_BUCKET"
-bucket_name = "wifi-ota"
+# Cloudflare R2 Bucket for Firmware OTA Storage (Enable on dash.cloudflare.com to activate)
+# [[r2_buckets]]
+# binding = "OTA_BUCKET"
+# bucket_name = "wifi-ota"
 
 # Cron trigger: Runs every day at 00:15 UTC for 30-day data rotation & daily summarization
 [triggers]
