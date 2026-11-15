@@ -357,6 +357,18 @@ export function renderDashboardHtml(): string {
       height: 100%;
       border-radius: 3px;
     }
+    .rssi-stacked-bar {
+      display: inline-flex;
+      height: 8px;
+      width: 110px;
+      background: var(--rssi-track);
+      border-radius: 4px;
+      overflow: hidden;
+      vertical-align: middle;
+    }
+    .rssi-seg {
+      height: 100%;
+    }
     footer {
       border-top: 1px solid var(--card-border);
       padding: 1.25rem;
@@ -414,6 +426,91 @@ export function renderDashboardHtml(): string {
     <!-- Network Environment & Firewall Diagnostics -->
     <div id="diagnosticsContainer" style="margin-bottom: 2rem;">
       <!-- Populated via JavaScript -->
+    </div>
+
+    <!-- 24-Hour Channel Utilization & Spectrum Congestion -->
+    <div id="channelUtilizationSection" class="chart-container" style="margin-bottom: 2rem;">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">24-Hour Channel Utilization & Spectrum Congestion</h3>
+            <span id="channelAirtimeBadge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">Promiscuous 2s/ch</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Measured across all 13 channels every 30 minutes with Wi-Fi spectrum scan duration</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label for="channelViewSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Channel View:</label>
+            <select id="channelViewSelect" onchange="onChannelViewChange(this.value)">
+              <option value="combined">All Channels Combined</option>
+              <option value="non_overlapping">Channels 1, 6, 11 (Non-Overlapping)</option>
+              <option value="all_individual">All Channels Individual (1–13)</option>
+            </select>
+          </div>
+          <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="toggleScanTimeCheck" onchange="onToggleScanTime(this.checked)" checked style="cursor: pointer;" />
+            <span>Show Scan Duration (ms)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick KPI Stat Boxes -->
+      <div class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 1rem;">
+        <div class="metric-box">
+          <div class="metric-label">24h Avg Airtime</div>
+          <div class="metric-val" id="stat-avg-airtime" style="color: #38bdf8;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Peak Congested Ch</div>
+          <div class="metric-val" id="stat-peak-channel" style="color: #f59e0b;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Latest Scan Time</div>
+          <div class="metric-val" id="stat-latest-scantime" style="color: #a78bfa;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Active Transmitters</div>
+          <div class="metric-val" id="stat-total-transmitters" style="color: #10b981;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Frames Breakdown</div>
+          <div class="metric-val" id="stat-frame-breakdown" style="font-size: 0.82rem;">—</div>
+        </div>
+      </div>
+
+      <div class="main-chart-wrap" style="height: 290px;">
+        <canvas id="channelUtilChart"></canvas>
+      </div>
+
+      <!-- Per-Channel Utilization Matrix Drawer / Table -->
+      <div style="margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelTable()">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Latest Channel Breakdown Table (13 Channels)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(Airtime %, Frames, Transmitters, RSSI Histogram)</span>
+          </div>
+          <span id="channelTableExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+        </div>
+        <div id="channelTableDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th style="padding: 6px 10px; text-align: left;">Channel</th>
+                <th style="padding: 6px 10px; text-align: left;">Airtime %</th>
+                <th style="padding: 6px 10px; text-align: left;">Data Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Mgmt Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Ctrl Frames</th>
+                <th style="padding: 6px 10px; text-align: left;">Unique Transmitters</th>
+                <th style="padding: 6px 10px; text-align: left;">RSSI Distribution (&lt;-80 / -80..-71 / -70..-61 / &ge;-60 dBm)</th>
+                <th style="padding: 6px 10px; text-align: left;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="channelTableBody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No channel utilization data available yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Historical Trends (Chart) -->
@@ -689,6 +786,7 @@ export function renderDashboardHtml(): string {
       const next = current === "dark" ? "light" : "dark";
       applyTheme(next);
       renderAllTrendCharts();
+      renderChannelUtilizationSection();
     }
 
     // Detect if running on GitHub Pages
@@ -1018,6 +1116,7 @@ export function renderDashboardHtml(): string {
         }
 
         renderAllTrendCharts();
+        renderChannelUtilizationSection();
 
       } catch (err) {
         console.error("Failed to load station details:", err);
@@ -1415,6 +1514,365 @@ export function renderDashboardHtml(): string {
           }
         }
       });
+    }
+
+    let channelChartInstance = null;
+    let selectedChannelView = "combined"; // 'combined', 'non_overlapping', 'all_individual'
+    let showScanTime = true;
+
+    function onChannelViewChange(view) {
+      selectedChannelView = view;
+      renderChannelUtilizationSection();
+    }
+
+    function onToggleScanTime(checked) {
+      showScanTime = checked;
+      renderChannelUtilizationSection();
+    }
+
+    function toggleChannelTable() {
+      const drawer = document.getElementById("channelTableDrawer");
+      const icon = document.getElementById("channelTableExpandIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▲" : "▼";
+    }
+
+    const CHANNEL_COLORS_13 = [
+      '#38bdf8', '#06b6d4', '#14b8a6', '#10b981', '#84cc16',
+      '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#d946ef',
+      '#8b5cf6', '#6366f1', '#3b82f6'
+    ];
+
+    function renderChannelUtilizationSection() {
+      if (!currentStationData) return;
+
+      const utilHistory = currentStationData.channel_utilization || [];
+      const latestUtil = currentStationData.latest_channel_utilization || [];
+      const latestScanMs = currentStationData.latest_scan_duration_ms;
+
+      // 1. KPI Stats
+      const statAvgEl = document.getElementById("stat-avg-airtime");
+      const statPeakEl = document.getElementById("stat-peak-channel");
+      const statScanEl = document.getElementById("stat-latest-scantime");
+      const statTxEl = document.getElementById("stat-total-transmitters");
+      const statFramesEl = document.getElementById("stat-frame-breakdown");
+
+      if (utilHistory.length > 0) {
+        const totalAirtime = utilHistory.reduce((s, r) => s + (r.airtime_pct || 0), 0);
+        const avgAir = (totalAirtime / utilHistory.length).toFixed(1);
+        const airClass = avgAir >= 50 ? '#ef4444' : (avgAir >= 25 ? '#f59e0b' : '#38bdf8');
+        if (statAvgEl) statAvgEl.innerHTML = \`<span style="color:\${airClass}">\${avgAir}%</span>\`;
+
+        // Peak Channel
+        const chanMap = {};
+        for (let ch = 1; ch <= 13; ch++) chanMap[ch] = { sum: 0, count: 0 };
+        utilHistory.forEach(r => {
+          if (chanMap[r.channel]) {
+            chanMap[r.channel].sum += (r.airtime_pct || 0);
+            chanMap[r.channel].count++;
+          }
+        });
+        let peakCh = 1;
+        let peakAvg = 0;
+        for (let ch = 1; ch <= 13; ch++) {
+          if (chanMap[ch].count > 0) {
+            const chAvg = chanMap[ch].sum / chanMap[ch].count;
+            if (chAvg > peakAvg) {
+              peakAvg = chAvg;
+              peakCh = ch;
+            }
+          }
+        }
+        if (statPeakEl) statPeakEl.innerHTML = \`Ch \${peakCh} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(\${peakAvg.toFixed(1)}%)</span>\`;
+      } else {
+        if (statAvgEl) statAvgEl.innerText = "—";
+        if (statPeakEl) statPeakEl.innerText = "—";
+      }
+
+      // Latest Scan Time
+      if (statScanEl) {
+        if (latestScanMs !== null && latestScanMs !== undefined && latestScanMs >= 0) {
+          statScanEl.innerHTML = \`\${latestScanMs.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>\`;
+        } else {
+          const latestM = (currentStationData.latest_measurements || [])[0];
+          if (latestM && latestM.scan_duration_ms) {
+            statScanEl.innerHTML = \`\${latestM.scan_duration_ms.toLocaleString()} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">ms</span>\`;
+          } else {
+            statScanEl.innerText = "—";
+          }
+        }
+      }
+
+      // Latest Transmitters & Frame Breakdown
+      if (latestUtil.length > 0) {
+        let totalTx = 0;
+        let sumData = 0, sumMgmt = 0, sumCtrl = 0;
+        latestUtil.forEach(u => {
+          totalTx += (u.unique_transmitters || 0);
+          sumData += (u.data_frames || 0);
+          sumMgmt += (u.mgmt_frames || 0);
+          sumCtrl += (u.ctrl_frames || 0);
+        });
+        if (statTxEl) statTxEl.innerHTML = \`\${totalTx} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">MACs</span>\`;
+
+        const totalFrames = sumData + sumMgmt + sumCtrl;
+        if (statFramesEl && totalFrames > 0) {
+          const dPct = Math.round((sumData / totalFrames) * 100);
+          const mPct = Math.round((sumMgmt / totalFrames) * 100);
+          const cPct = Math.round((sumCtrl / totalFrames) * 100);
+          statFramesEl.innerHTML = \`<span style="color:#10b981;" title="Data Frames: \${sumData.toLocaleString()}">\${dPct}% D</span> | <span style="color:#38bdf8;" title="Mgmt Frames: \${sumMgmt.toLocaleString()}">\${mPct}% M</span> | <span style="color:#f59e0b;" title="Ctrl Frames: \${sumCtrl.toLocaleString()}">\${cPct}% C</span>\`;
+        }
+      } else {
+        if (statTxEl) statTxEl.innerText = "—";
+        if (statFramesEl) statFramesEl.innerText = "—";
+      }
+
+      // 2. Render 24-Hour Channel Utilization Chart
+      const ctx = document.getElementById("channelUtilChart");
+      if (ctx) {
+        const tsSet = new Set();
+        utilHistory.forEach(u => tsSet.add(u.timestamp));
+        (currentStationData.recent_history || []).forEach(m => {
+          if (m.scan_duration_ms) tsSet.add(m.timestamp);
+        });
+
+        const sortedTs = Array.from(tsSet).sort((a, b) => a - b);
+        const labels = sortedTs.map(ts => new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+        const tsUtilMap = new Map();
+        utilHistory.forEach(u => {
+          if (!tsUtilMap.has(u.timestamp)) tsUtilMap.set(u.timestamp, []);
+          tsUtilMap.get(u.timestamp).push(u);
+        });
+
+        const tsScanMap = new Map();
+        utilHistory.forEach(u => {
+          if (u.scan_duration_ms) tsScanMap.set(u.timestamp, u.scan_duration_ms);
+        });
+        (currentStationData.recent_history || []).forEach(m => {
+          if (m.scan_duration_ms) tsScanMap.set(m.timestamp, m.scan_duration_ms);
+        });
+
+        const datasets = [];
+
+        if (selectedChannelView === "combined") {
+          const combinedAirtime = sortedTs.map(ts => {
+            const list = tsUtilMap.get(ts);
+            if (!list || list.length === 0) return null;
+            const avg = list.reduce((s, it) => s + (it.airtime_pct || 0), 0) / list.length;
+            return Math.round(avg * 10) / 10;
+          });
+
+          datasets.push({
+            label: 'All Channels Combined Avg (%)',
+            data: combinedAirtime,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2.5,
+            borderWidth: 2.5,
+            yAxisID: 'y'
+          });
+        } else if (selectedChannelView === "non_overlapping") {
+          const focusChans = [
+            { ch: 1, label: 'Channel 1 (2.412 GHz)', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)' },
+            { ch: 6, label: 'Channel 6 (2.437 GHz)', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+            { ch: 11, label: 'Channel 11 (2.462 GHz)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' }
+          ];
+
+          focusChans.forEach(fc => {
+            const data = sortedTs.map(ts => {
+              const list = tsUtilMap.get(ts);
+              if (!list) return null;
+              const found = list.find(it => it.channel === fc.ch);
+              return found ? Math.round(found.airtime_pct * 10) / 10 : null;
+            });
+
+            datasets.push({
+              label: fc.label,
+              data: data,
+              borderColor: fc.color,
+              backgroundColor: fc.bg,
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 2,
+              yAxisID: 'y'
+            });
+          });
+        } else {
+          for (let ch = 1; ch <= 13; ch++) {
+            const color = CHANNEL_COLORS_13[ch - 1];
+            const data = sortedTs.map(ts => {
+              const list = tsUtilMap.get(ts);
+              if (!list) return null;
+              const found = list.find(it => it.channel === ch);
+              return found ? Math.round(found.airtime_pct * 10) / 10 : null;
+            });
+
+            datasets.push({
+              label: 'Ch ' + ch,
+              data: data,
+              borderColor: color,
+              backgroundColor: 'transparent',
+              tension: 0.3,
+              pointRadius: 1.5,
+              borderWidth: 1.5,
+              yAxisID: 'y'
+            });
+          }
+        }
+
+        if (showScanTime) {
+          const scanData = sortedTs.map(ts => {
+            const val = tsScanMap.get(ts);
+            return (val !== undefined && val !== null) ? val : null;
+          });
+
+          datasets.push({
+            label: 'Spectrum Scan Time (ms)',
+            data: scanData,
+            borderColor: '#c084fc',
+            backgroundColor: 'transparent',
+            borderDash: [4, 4],
+            tension: 0.2,
+            pointRadius: 2,
+            borderWidth: 1.5,
+            yAxisID: 'y1'
+          });
+        }
+
+        if (channelChartInstance) {
+          channelChartInstance.destroy();
+        }
+
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || 'rgba(255, 255, 255, 0.05)';
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#9ca3af';
+
+        channelChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels: labels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: {
+                labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, maxTicksLimit: 12 }
+              },
+              y: {
+                type: 'linear',
+                position: 'left',
+                grid: { color: gridColor },
+                ticks: {
+                  color: textColor,
+                  callback: function(v) { return v + '%'; }
+                },
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Airtime Utilization (%)',
+                  color: textColor,
+                  font: { size: 11 }
+                }
+              },
+              y1: {
+                type: 'linear',
+                position: 'right',
+                display: showScanTime,
+                grid: { drawOnChartArea: false },
+                ticks: {
+                  color: '#c084fc',
+                  callback: function(v) { return v + ' ms'; }
+                },
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Scan Time (ms)',
+                  color: '#c084fc',
+                  font: { size: 11 }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 3. Render Per-Channel Utilization Table
+      const tbody = document.getElementById("channelTableBody");
+      if (tbody) {
+        tbody.innerHTML = "";
+        if (latestUtil && latestUtil.length > 0) {
+          const sortedChans = [...latestUtil].sort((a, b) => a.channel - b.channel);
+          sortedChans.forEach(row => {
+            const tr = document.createElement("tr");
+            const air = row.airtime_pct !== null ? Number(row.airtime_pct).toFixed(1) : 0;
+            const airNum = Number(air);
+            const barColor = airNum >= 50 ? "#ef4444" : (airNum >= 20 ? "#f59e0b" : "#10b981");
+
+            let hist = [0, 0, 0, 0];
+            try {
+              if (Array.isArray(row.rssi_hist)) hist = row.rssi_hist;
+              else if (typeof row.rssi_hist === 'string') hist = JSON.parse(row.rssi_hist);
+            } catch (e) {}
+
+            const [lt80, b80_71, b70_61, gte60] = hist;
+            const totalHist = lt80 + b80_71 + b70_61 + gte60;
+
+            let histHtml = \`<span style="color:var(--text-muted);">—</span>\`;
+            if (totalHist > 0) {
+              const w0 = Math.round((lt80 / totalHist) * 100);
+              const w1 = Math.round((b80_71 / totalHist) * 100);
+              const w2 = Math.round((b70_61 / totalHist) * 100);
+              const w3 = Math.max(0, 100 - (w0 + w1 + w2));
+              histHtml = \`
+                <div style="display:inline-flex; align-items:center; gap:6px;">
+                  <div class="rssi-stacked-bar" title="<-80dBm: \${lt80} | -80..-71: \${b80_71} | -70..-61: \${b70_61} | >=-60: \${gte60}">
+                    <div class="rssi-seg" style="width:\${w0}%; background:#1e293b;"></div>
+                    <div class="rssi-seg" style="width:\${w1}%; background:#06b6d4;"></div>
+                    <div class="rssi-seg" style="width:\${w2}%; background:#f59e0b;"></div>
+                    <div class="rssi-seg" style="width:\${w3}%; background:#10b981;"></div>
+                  </div>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">\${totalHist} pkts</span>
+                </div>
+              \`;
+            }
+
+            const statusBadge = airNum >= 50
+              ? \`<span style="background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Congested</span>\`
+              : (airNum >= 20
+                ? \`<span style="background:rgba(245, 158, 11, 0.15); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Moderate</span>\`
+                : \`<span style="background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:1px 6px; border-radius:4px; font-size:0.7rem;">Low</span>\`);
+
+            tr.innerHTML = \`
+              <td style="font-weight:600; padding:6px 10px;">Ch \${row.channel}</td>
+              <td style="padding:6px 10px;">
+                <div class="rssi-bar-wrap" style="min-width:110px;">
+                  <div class="rssi-bar"><div class="rssi-fill" style="width:\${Math.min(100, airNum)}%; background:\${barColor};"></div></div>
+                  <span style="font-weight:600; min-width:38px;">\${air}%</span>
+                </div>
+              </td>
+              <td style="padding:6px 10px; color:#10b981; font-weight:500;">\${(row.data_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#38bdf8;">\${(row.mgmt_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; color:#f59e0b;">\${(row.ctrl_frames || 0).toLocaleString()}</td>
+              <td style="padding:6px 10px; font-weight:600;">\${row.unique_transmitters || 0}</td>
+              <td style="padding:6px 10px;">\${histHtml}</td>
+              <td style="padding:6px 10px;">\${statusBadge}</td>
+            \`;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = \`<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>\`;
+        }
+      }
     }
 
     // Initialize

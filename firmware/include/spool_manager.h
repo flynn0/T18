@@ -30,6 +30,7 @@ public:
         JsonDocument doc;
         doc["station_id"] = cycle.station_id;
         doc["timestamp"] = cycle.timestamp;
+        doc["scan_duration_ms"] = cycle.scan_duration_ms;
 
         JsonArray arrNet = doc["networks"].to<JsonArray>();
         for (const auto &net : cycle.measurements) {
@@ -86,6 +87,24 @@ public:
             d["captive_portal_detected"] = cycle.diagnostics.captive_portal_detected;
             d["open_ports"] = cycle.diagnostics.open_ports;
             d["details_json"] = cycle.diagnostics.details_json;
+        }
+
+        if (cycle.has_channel_utilization) {
+            JsonArray arrChan = doc["channel_utilization"].to<JsonArray>();
+            for (const auto &item : cycle.channel_utilization) {
+                JsonObject co = arrChan.add<JsonObject>();
+                co["channel"] = item.channel;
+                co["mgmt_frames"] = item.mgmt_frames;
+                co["data_frames"] = item.data_frames;
+                co["ctrl_frames"] = item.ctrl_frames;
+                JsonArray rh = co["rssi_hist"].to<JsonArray>();
+                rh.add(item.rssi_hist[0]);
+                rh.add(item.rssi_hist[1]);
+                rh.add(item.rssi_hist[2]);
+                rh.add(item.rssi_hist[3]);
+                co["unique_transmitters"] = item.unique_transmitters;
+                co["airtime_pct"] = round(item.airtime_pct * 10.0f) / 10.0f;
+            }
         }
 
         String jsonLine;

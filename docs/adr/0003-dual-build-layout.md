@@ -32,6 +32,7 @@ firmware/
     ├── ntp_sync.h         # SNTP synchronization engine (24-hour cycle)
     ├── wifi_scanner.h     # 802.11 Wi-Fi scan engine & phy mode analysis
     ├── latency_prober.h   # Association, DHCP, and HTTP HEAD/204 probe engine
+    ├── channel_analyzer.h # Promiscuous 13-channel utilization & airtime analyzer
     ├── spool_manager.h    # LittleFS JSONL ring buffer with 500 KB ceiling
     ├── api_client.h       # HTTPS client for /register and /data endpoints
     └── app_main.h         # Master state machine orchestrating boot, setup, & sleep

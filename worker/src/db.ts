@@ -1,4 +1,4 @@
-import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord } from "./types";
+import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord, ChannelUtilizationPayload, ChannelUtilizationRecord } from "./types";
 
 export class Database {
   private db: D1Database;
@@ -60,8 +60,8 @@ export class Database {
               station_id, timestamp, ssid, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
               microsoft_ms, facebook_ms, netflix_ms, apple_ms,
-              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid, timestamp) DO UPDATE SET
               bssid = excluded.bssid,
               channel = excluded.channel,
@@ -76,6 +76,7 @@ export class Database {
               gateway_ms = excluded.gateway_ms,
               dns_ipv4_ms = excluded.dns_ipv4_ms,
               dns_ipv6_ms = excluded.dns_ipv6_ms,
+              scan_duration_ms = excluded.scan_duration_ms,
               status = excluded.status
           `)
           .bind(
@@ -95,6 +96,7 @@ export class Database {
             m.gateway_ms ?? null,
             m.dns_ipv4_ms ?? null,
             m.dns_ipv6_ms ?? null,
+            m.scan_duration_ms ?? null,
             m.status ?? "unknown"
           )
       );
@@ -107,8 +109,8 @@ export class Database {
               station_id, ssid, timestamp, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
               microsoft_ms, facebook_ms, netflix_ms, apple_ms,
-              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid) DO UPDATE SET
               timestamp = excluded.timestamp,
               bssid = excluded.bssid,
@@ -124,6 +126,7 @@ export class Database {
               gateway_ms = excluded.gateway_ms,
               dns_ipv4_ms = excluded.dns_ipv4_ms,
               dns_ipv6_ms = excluded.dns_ipv6_ms,
+              scan_duration_ms = excluded.scan_duration_ms,
               status = excluded.status
           `)
           .bind(
@@ -143,6 +146,7 @@ export class Database {
             m.gateway_ms ?? null,
             m.dns_ipv4_ms ?? null,
             m.dns_ipv6_ms ?? null,
+            m.scan_duration_ms ?? null,
             m.status ?? "unknown"
           )
       );
@@ -152,7 +156,7 @@ export class Database {
     return measurements.length;
   }
 
-  async saveSurveys(stationId: string, timestamp: number, surveys: ScanSurveyRecord[]): Promise<number> {
+  async saveSurveys(stationId: string, timestamp: number, surveys: ScanSurveyRecord[], scanDurationMs?: number | null): Promise<number> {
     if (surveys.length === 0) return 0;
 
     const statements: D1PreparedStatement[] = [];
@@ -161,13 +165,14 @@ export class Database {
     statements.push(
       this.db
         .prepare(`
-          INSERT INTO station_latest_scan (station_id, timestamp, scan_json)
-          VALUES (?, ?, ?)
+          INSERT INTO station_latest_scan (station_id, timestamp, scan_json, scan_duration_ms)
+          VALUES (?, ?, ?, ?)
           ON CONFLICT(station_id) DO UPDATE SET
             timestamp = excluded.timestamp,
-            scan_json = excluded.scan_json
+            scan_json = excluded.scan_json,
+            scan_duration_ms = excluded.scan_duration_ms
         `)
-        .bind(stationId, timestamp, JSON.stringify(surveys))
+        .bind(stationId, timestamp, JSON.stringify(surveys), scanDurationMs ?? null)
     );
 
     // 2. Upsert each AP into station_discovered_aps for tracking unique APs and inactive detection
@@ -406,5 +411,99 @@ export class Database {
       .bind(stationId)
       .all<NetworkDiagnosticsRecord>();
     return result.results || [];
+  }
+
+  async saveChannelUtilization(
+    stationId: string,
+    timestamp: number,
+    scanDurationMs: number | null,
+    metrics: ChannelUtilizationPayload[]
+  ): Promise<number> {
+    if (!metrics || metrics.length === 0) return 0;
+
+    const statements: D1PreparedStatement[] = [];
+    for (const m of metrics) {
+      const rssiStr = Array.isArray(m.rssi_hist) ? JSON.stringify(m.rssi_hist) : "[]";
+      statements.push(
+        this.db
+          .prepare(`
+            INSERT INTO station_channel_utilization (
+              station_id, timestamp, channel, mgmt_frames, data_frames,
+              ctrl_frames, rssi_hist, unique_transmitters, airtime_pct, scan_duration_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(station_id, timestamp, channel) DO UPDATE SET
+              mgmt_frames = excluded.mgmt_frames,
+              data_frames = excluded.data_frames,
+              ctrl_frames = excluded.ctrl_frames,
+              rssi_hist = excluded.rssi_hist,
+              unique_transmitters = excluded.unique_transmitters,
+              airtime_pct = excluded.airtime_pct,
+              scan_duration_ms = excluded.scan_duration_ms
+          `)
+          .bind(
+            stationId,
+            timestamp,
+            m.channel,
+            m.mgmt_frames || 0,
+            m.data_frames || 0,
+            m.ctrl_frames || 0,
+            rssiStr,
+            m.unique_transmitters || 0,
+            m.airtime_pct || 0,
+            scanDurationMs ?? null
+          )
+      );
+    }
+
+    await this.db.batch(statements);
+    return metrics.length;
+  }
+
+  async getRecentChannelUtilization(stationId: string, hours: number = 24): Promise<ChannelUtilizationRecord[]> {
+    const sinceTime = Math.floor(Date.now() / 1000) - (hours * 3600);
+    const result = await this.db
+      .prepare(`
+        SELECT * FROM station_channel_utilization
+        WHERE station_id = ? AND timestamp >= ?
+        ORDER BY timestamp ASC, channel ASC
+      `)
+      .bind(stationId, sinceTime)
+      .all<ChannelUtilizationRecord>();
+    return result.results || [];
+  }
+
+  async getLatestChannelUtilization(stationId: string): Promise<ChannelUtilizationRecord[]> {
+    const latestTimestampRow = await this.db
+      .prepare(`
+        SELECT timestamp FROM station_channel_utilization
+        WHERE station_id = ?
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `)
+      .bind(stationId)
+      .first<{ timestamp: number }>();
+
+    if (!latestTimestampRow || !latestTimestampRow.timestamp) return [];
+
+    const result = await this.db
+      .prepare(`
+        SELECT * FROM station_channel_utilization
+        WHERE station_id = ? AND timestamp = ?
+        ORDER BY channel ASC
+      `)
+      .bind(stationId, latestTimestampRow.timestamp)
+      .all<ChannelUtilizationRecord>();
+    return result.results || [];
+  }
+
+  async getLatestScanDuration(stationId: string): Promise<number | null> {
+    const row = await this.db
+      .prepare(`
+        SELECT scan_duration_ms FROM station_latest_scan
+        WHERE station_id = ?
+      `)
+      .bind(stationId)
+      .first<{ scan_duration_ms: number | null }>();
+    return row?.scan_duration_ms ?? null;
   }
 }

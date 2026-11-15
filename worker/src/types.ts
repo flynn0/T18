@@ -30,6 +30,7 @@ export interface MeasurementRecord {
   gateway_ms?: number | null;
   dns_ipv4_ms?: number | null;
   dns_ipv6_ms?: number | null;
+  scan_duration_ms?: number | null;
   status: string | null;
 }
 
@@ -156,12 +157,38 @@ export interface SurveyPayload {
   band?: string;
 }
 
+export interface ChannelUtilizationPayload {
+  channel: number;
+  mgmt_frames: number;
+  data_frames: number;
+  ctrl_frames: number;
+  rssi_hist: number[];
+  unique_transmitters: number;
+  airtime_pct: number;
+}
+
+export interface ChannelUtilizationRecord {
+  id?: number;
+  station_id: string;
+  timestamp: number;
+  channel: number;
+  mgmt_frames: number;
+  data_frames: number;
+  ctrl_frames: number;
+  rssi_hist: string; // JSON encoded number[]: [lt80, 80_71, 70_61, gte60]
+  unique_transmitters: number;
+  airtime_pct: number;
+  scan_duration_ms?: number | null;
+}
+
 export interface TelemetryCyclePayload {
   station_id?: string;
   timestamp?: number;
+  scan_duration_ms?: number;
   networks?: NetworkPayload[];
   scan_survey?: SurveyPayload[];
   diagnostics?: NetworkDiagnosticsPayload;
+  channel_utilization?: ChannelUtilizationPayload[];
 }
 
 export interface StationOverviewCacheRecord {

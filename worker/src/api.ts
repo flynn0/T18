@@ -109,6 +109,9 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const recentMeasurements = await db.getRecentMeasurements(stationId, 1000); // 24-48h across all monitored SSIDs (144 samples/day per SSID)
   const dailySummaries = await db.getDailySummaries(stationId, 30);
   const diagnostics = await db.getLatestDiagnostics(stationId);
+  const channelUtilization = await db.getRecentChannelUtilization(stationId, 24);
+  const latestChannelUtilization = await db.getLatestChannelUtilization(stationId);
+  const latestScanDuration = await db.getLatestScanDuration(stationId);
 
   const overviewPayload = JSON.stringify({
     station: publicMeta,
@@ -117,7 +120,10 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
     inactive_survey: inactiveSurvey,
     recent_history: recentMeasurements,
     daily_summaries: dailySummaries,
-    diagnostics: diagnostics
+    diagnostics: diagnostics,
+    channel_utilization: channelUtilization,
+    latest_channel_utilization: latestChannelUtilization,
+    latest_scan_duration_ms: latestScanDuration
   });
 
   // Store in Level 1 & Level 2 cache

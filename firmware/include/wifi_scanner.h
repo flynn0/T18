@@ -7,7 +7,7 @@
 
 class WifiScanner {
 public:
-    static std::vector<SurveyItem> performScan() {
+    static std::vector<SurveyItem> performScan(uint32_t &scanDurationMs) {
         std::vector<SurveyItem> results;
         Serial.println(F("[Scanner] Scanning 2.4 GHz Wi-Fi spectrum..."));
 
@@ -16,15 +16,17 @@ public:
         WiFi.disconnect();
         delay(100);
 
+        uint32_t startMs = millis();
         // Parameters: async=false, show_hidden=true, passive=false, max_ms_per_chan=300
         int16_t n = WiFi.scanNetworks(false, true);
+        scanDurationMs = millis() - startMs;
 
         if (n < 0) {
-            Serial.printf("[Scanner] Wi-Fi scan failed with code %d\n", n);
+            Serial.printf("[Scanner] Wi-Fi scan failed with code %d (elapsed %u ms)\n", n, (unsigned)scanDurationMs);
             return results;
         }
 
-        Serial.printf("[Scanner] Scan complete. Found %d networks.\n", n);
+        Serial.printf("[Scanner] Scan complete in %u ms. Found %d networks.\n", (unsigned)scanDurationMs, n);
         results.reserve(n);
 
         for (int i = 0; i < n; i++) {
@@ -48,6 +50,11 @@ public:
         WiFi.scanDelete();
 
         return results;
+    }
+
+    static std::vector<SurveyItem> performScan() {
+        uint32_t dummy = 0;
+        return performScan(dummy);
     }
 
     static uint8_t calculateQuality(int16_t rssi) {

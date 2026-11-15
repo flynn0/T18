@@ -100,6 +100,7 @@ kreier/wifi/
 │       ├── board_pins.h      # Compile-time board LED & pin mappings
 │       ├── captive_portal.h  # Soft-AP, captive DNS server, & setup UI
 │       ├── latency_prober.h  # Association, DHCP, and 6-target HTTP probes
+│       ├── channel_analyzer.h # Promiscuous 13-channel utilization & airtime analyzer
 │       ├── led_controller.h  # Non-blocking LED status indicator
 │       ├── ntp_sync.h        # SNTP synchronization engine (24h interval)
 │       ├── spool_manager.h   # LittleFS ring buffer (500 KB ceiling)
@@ -108,8 +109,7 @@ kreier/wifi/
 │   ├── wrangler.toml         # Worker bindings, D1 config, & cron schedule
 │   ├── package.json          # TypeScript & Cloudflare Worker dependencies
 │   ├── tsconfig.json         # TypeScript compiler configuration
-│   ├── migrations/
-│   │   └── 0001_initial_schema.sql # D1 schema: stations, measurements, surveys, daily_summaries
+│   ├── migrations/           # D1 migrations (0001–0006: telemetry, diagnostics, channel utilization)
 │   └── src/
 │       ├── index.ts          # Request router and scheduled event handler
 │       ├── types.ts          # Domain interfaces & payloads

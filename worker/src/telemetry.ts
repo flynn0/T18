@@ -47,6 +47,8 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
   const surveysToInsert: ScanSurveyRecord[] = [];
   const serverNow = Math.floor(Date.now() / 1000);
   let latestTimestamp = station.last_seen || 0;
+  let latestScanDuration: number | null = null;
+  let insertedChannels = 0;
 
   for (const cycle of cycles) {
     let cycleTime = cycle.timestamp || serverNow;
@@ -56,6 +58,11 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
     }
     if (cycleTime > latestTimestamp) {
       latestTimestamp = cycleTime;
+    }
+
+    const scanDuration = typeof cycle.scan_duration_ms === "number" ? cycle.scan_duration_ms : null;
+    if (scanDuration !== null) {
+      latestScanDuration = scanDuration;
     }
 
     // Process network latency measurements
@@ -79,6 +86,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
           gateway_ms: typeof net.gateway_ms === "number" ? net.gateway_ms : null,
           dns_ipv4_ms: typeof net.dns_ipv4_ms === "number" ? net.dns_ipv4_ms : null,
           dns_ipv6_ms: typeof net.dns_ipv6_ms === "number" ? net.dns_ipv6_ms : null,
+          scan_duration_ms: scanDuration,
           status: net.status || "connected"
         });
       }
@@ -87,6 +95,16 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
     // Process daily network diagnostics if present in this cycle
     if (cycle.diagnostics) {
       await db.saveNetworkDiagnostics(station.station_id, cycleTime, cycle.diagnostics);
+    }
+
+    // Process 30-minute promiscuous channel utilization metrics if present
+    if (Array.isArray(cycle.channel_utilization) && cycle.channel_utilization.length > 0) {
+      insertedChannels += await db.saveChannelUtilization(
+        station.station_id,
+        cycleTime,
+        scanDuration,
+        cycle.channel_utilization
+      );
     }
 
     // Process scan surveys
@@ -110,7 +128,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
   // 3. Batch insert into D1 with optimized storage
   const insertedM = await db.insertMeasurements(measurementsToInsert);
-  const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert);
+  const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert, latestScanDuration);
   await db.updateStationLastSeen(station.station_id, serverNow);
 
   // 4. Invalidate overview caches so fresh data is visible immediately
@@ -123,6 +141,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
       station_id: station.station_id,
       inserted_measurements: insertedM,
       inserted_surveys: insertedS,
+      inserted_channels: insertedChannels,
       cycles_processed: cycles.length
     }),
     {

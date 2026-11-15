@@ -12,12 +12,13 @@
 #include "latency_prober.h"
 #include "spool_manager.h"
 #include "api_client.h"
+#include "channel_analyzer.h"
 
 #define MEASUREMENT_INTERVAL_SEC 600 // 10 minutes
 
 class AppMain {
 public:
-    AppMain() : _led(STATUS_LED_PIN), _portal(_configMgr, _led), _lastDailyCheckEpoch(0) {}
+    AppMain() : _led(STATUS_LED_PIN), _portal(_configMgr, _led), _lastDailyCheckEpoch(0), _lastChannelAnalysisEpoch(0) {}
 
     void setup() {
         Serial.begin(115200);
@@ -64,12 +65,25 @@ public:
 
         // 2. Perform 2.4 GHz spectrum Wi-Fi scan survey
         _led.setSolid(true);
-        std::vector<SurveyItem> scanResults = WifiScanner::performScan();
+        uint32_t scanDurationMs = 0;
+        std::vector<SurveyItem> scanResults = WifiScanner::performScan(scanDurationMs);
 
-        // 3. Sequentially probe configured monitored networks
+        // 3. Promiscuous mode 13-channel congestion analysis (every 30 minutes / 1800s)
+        uint64_t currentEpoch = _ntp.getCurrentEpoch();
+        bool shouldRunChannelAnalysis = false;
+        if (_lastChannelAnalysisEpoch == 0 || (currentEpoch >= _lastChannelAnalysisEpoch + 1800)) {
+            shouldRunChannelAnalysis = true;
+        }
+
+        std::vector<ChannelUtilizationItem> chanResults;
+        if (shouldRunChannelAnalysis) {
+            chanResults = ChannelAnalyzer::measureChannels(2000);
+            _lastChannelAnalysisEpoch = currentEpoch;
+        }
+
+        // 4. Sequentially probe configured monitored networks
         std::vector<NetworkMeasurement> measurements;
         bool shouldRunDaily = false;
-        uint64_t currentEpoch = _ntp.getCurrentEpoch();
         if (_lastDailyCheckEpoch == 0 || (currentEpoch > _lastDailyCheckEpoch + 86400)) {
             shouldRunDaily = true;
         }
@@ -90,18 +104,21 @@ public:
         }
         _led.setOff();
 
-        // 4. Package cycle telemetry and append to LittleFS spool ring buffer
+        // 5. Package cycle telemetry and append to LittleFS spool ring buffer
         CycleTelemetry cycle;
         cycle.station_id = _config.station_id;
         cycle.timestamp = currentEpoch;
+        cycle.scan_duration_ms = scanDurationMs;
         cycle.measurements = measurements;
         cycle.survey = scanResults;
         cycle.has_diagnostics = diagCaptured;
         cycle.diagnostics = dailyDiag;
+        cycle.has_channel_utilization = shouldRunChannelAnalysis;
+        cycle.channel_utilization = chanResults;
 
         SpoolManager::appendCycle(cycle);
 
-        // 5. Connect to network and upload pending telemetry spool
+        // 6. Connect to network and upload pending telemetry spool
         uploadSpooledData();
 
         // 6. Calculate sleep duration and enter ESP32 Light Sleep
@@ -273,6 +290,7 @@ private:
     CaptivePortalManager _portal;
     NtpSyncManager _ntp;
     uint64_t _lastDailyCheckEpoch;
+    uint64_t _lastChannelAnalysisEpoch;
 };
 
 // Global singleton helper for setup & loop

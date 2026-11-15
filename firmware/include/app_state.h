@@ -88,13 +88,35 @@ struct NetworkDiagnostics {
         open_ports(""), details_json("") {}
 };
 
+struct ChannelUtilizationItem {
+    uint8_t channel;
+    uint32_t mgmt_frames;
+    uint32_t data_frames;
+    uint32_t ctrl_frames;
+    uint32_t rssi_hist[4]; // [0: < -80, 1: -80..-71, 2: -70..-61, 3: >= -60]
+    uint16_t unique_transmitters;
+    float airtime_pct;
+
+    ChannelUtilizationItem() :
+        channel(0), mgmt_frames(0), data_frames(0), ctrl_frames(0),
+        unique_transmitters(0), airtime_pct(0.0f) {
+        rssi_hist[0] = 0;
+        rssi_hist[1] = 0;
+        rssi_hist[2] = 0;
+        rssi_hist[3] = 0;
+    }
+};
+
 struct CycleTelemetry {
     String station_id;
     uint64_t timestamp; // UTC epoch seconds
+    uint32_t scan_duration_ms;
     std::vector<NetworkMeasurement> measurements;
     std::vector<SurveyItem> survey;
     bool has_diagnostics;
     NetworkDiagnostics diagnostics;
+    bool has_channel_utilization;
+    std::vector<ChannelUtilizationItem> channel_utilization;
 
-    CycleTelemetry() : timestamp(0), has_diagnostics(false) {}
+    CycleTelemetry() : timestamp(0), scan_duration_ms(0), has_diagnostics(false), has_channel_utilization(false) {}
 };
