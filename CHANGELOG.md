@@ -1,0 +1,176 @@
+# Changelog
+
+All notable changes to the `kreier/wifi` platform will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> **Version Note:** The platform maintains synchronized semantic versioning:
+> - **Firmware:** ESP32 embedded application (`v1.0.x`)
+> - **Web & Worker:** Cloudflare Worker backend and web dashboards (`v2.0.x`)
+
+---
+
+## [Unreleased]
+
+---
+
+## [2.0.4 / 1.0.4] - 2026-11-15
+
+### Added
+- **Web (v2.0.4)**: Dynamic 4-bar SVG battery status icon with calculated percentage placed immediately to the left of the online badge in the station banner.
+- **Web (v2.0.4)**: Automated battery discharge trend analysis and remaining runtime estimation:
+  - `"Running on battery for XXXh (DD days X hours)"`
+  - `"Estimated runtime YYYh (DD days Y hours)"`
+- **Web (v2.0.4)**: Collapsible battery discharge graph drawer with interactive Chart.js line graph and timeframe selector buttons: **Day (24h)**, **Week (7d)**, and **Month (30d)**.
+- **Web (v2.0.4)**: Summary KPI cards: Current Voltage, Battery Level %, Discharge Rate ($\text{mV/h}$), Estimated Runtime, and Voltage Range ($\text{Min} - \text{Max}$).
+- **Database (Migration 0008)**: Added `station_battery_history` table (`station_id`, `timestamp`, `battery_mv`) and `battery_mv` column on `measurements` and `station_latest_measurements`.
+- **Backend**: Daily cron maintenance (`cron.ts`) automatically prunes expired battery history records older than 30 days.
+- **Firmware (v1.0.4)**: Configurable **Power Bank Keep-Alive** workaround: wakes for 500 ms with an active current draw every 20 seconds during light sleep, preventing commercial USB power banks from automatically shutting off between 10-minute cycles.
+- **Firmware (v1.0.4)**: Opt-in Power Bank Keep-Alive toggle switch in captive portal setup UI, persisted via NVS (`Preferences`).
+- **Firmware (v1.0.4)**: Instant BOOT button wake-up interrupt maintained across all keep-alive sleep sub-intervals.
+- **Documentation**: Added [ADR 0004: Automated Fleet OTA Updates, Action Runner Modernization, and Battery Telemetry History](docs/adr/0004-fleet-ota-and-battery-monitoring.md).
+
+### Changed
+- **CI/CD**: Modernized GitHub Actions workflows (`build-release.yml` and `deploy-pages.yml`) to Node.js 24 (`actions/checkout@v5`, `actions/setup-python@v6`, `softprops/action-gh-release@v3`).
+- **Documentation**: Replaced static hard-coded `1.0.0` version badge in `README.md` with dynamic Shields.io release tracking endpoint.
+
+### Fixed
+- **Firmware (v1.0.4)**: Added automatic 1-second retry backoff upon transient HTTPS socket failures (`httpCode < 0`) in `OtaManager::checkForUpdate`, preventing spurious `-1` connection drops during Wi-Fi association.
+- **Firmware (v1.0.4)**: Explicitly disabled socket reuse (`http.setReuse(false)`) on ESP32 OTA check client to ensure clean TCP/TLS teardown.
+
+---
+
+## [2.0.3 / 1.0.3] - 2026-11-15
+
+### Added
+- **Firmware (v1.0.3)**: 60-second configuration captive portal window launched automatically on every boot/reset with soft-AP `WIFI-Mon-XXXX` at `192.168.4.1`.
+- **Firmware (v1.0.3)**: Instant BOOT button press bypass during the 60s boot portal window to proceed directly to measurement cycle.
+- **Web (v2.0.3)**: Single consolidated Network Environment & Firewall Diagnostics card with interactive monitored network dropdown selector.
+
+### Changed
+- **Web (v2.0.3)**: Connected utilization graph line across missing 30-minute polling gaps using `spanGaps: true`.
+
+---
+
+## [1.1.0 / 1.0.2] - 2026-11-15
+
+### Added
+- **Firmware (v1.0.2)**: Daily local network and firewall diagnostics extended across all configured monitored SSIDs sequentially.
+- **Web (v1.1.0)**: Station banner box displays running firmware version badge (e.g. `v1.0.2`).
+- **Telemetry**: Synchronized station location description from firmware config into backend D1 station records.
+
+---
+
+## [1.0.1] - 2026-11-15
+
+### Added
+- **Firmware**: Self-healing boot OTA update check executed immediately upon initial Wi-Fi connection prior to long measurement cycles.
+
+### Fixed
+- **Firmware**: Replaced Arduino `WiFiUdp` with thread-safe POSIX BSD sockets (`sys/socket.h`) inside dual-stack DNS probing, eliminating multithreaded lwip core lock assertion crashes.
+- **Web**: Fixed embedded JavaScript syntax error affecting GitHub Pages mirror execution; added client-side station routing fallback.
+
+---
+
+## [1.0.0] - 2026-11-15
+
+### Added
+- **Firmware**: Station firmware version (`FIRMWARE_VERSION`) transmitted in cycle telemetry payloads.
+- **Web**: Station header banner displays version badge; station select dropdown remains clean with station ID and location.
+
+### Fixed
+- **Backend**: Resolved station rename token reset bug where station ID changes in captive portal invalidated authentication tokens.
+
+---
+
+## [0.9.0] - 2026-11-15
+
+### Added
+- **Firmware**: Unified multi-board firmware into single compiled ESP32 binary (`esp32dev`).
+- **Firmware**: Dynamic hardware profiles (LILYGO T18, T8, ESP32 DevKit V1, Custom) selectable via captive portal and saved in NVS (`Preferences`).
+- **Firmware**: Partition scheme switched to `min_spiffs.csv`, providing two 1.9 MB application slots (`app0`, `app1`) for dual Over-The-Air (OTA) updates.
+- **Firmware**: In-memory-first telemetry transmission to prevent flash wear; zero-flash-wear normal cycles with 192 KB raw partition binary buffer fallback.
+- **Firmware**: `OtaManager` client with automated background flash updates.
+- **Backend (Migration 0007)**: Added `stations.firmware_version`, `stations.target_version`, `stations.board_type`, `stations.battery_mv`, `stations.is_canary`, and `stations.ota_url`.
+- **Backend**: Cloudflare Worker `/api/ota` endpoints supporting fleet defaults and per-station Canary targeting, serving binaries via streaming proxy.
+- **CI/CD**: Added `.github/workflows/build-release.yml` automating firmware compilation and asset publishing on version tag pushes.
+
+---
+
+## [0.8.0] - 2026-11-15
+
+### Added
+- **Firmware**: 13-channel promiscuous 2.4 GHz spectrum analyzer (`ChannelAnalyzer`) with 2-second dwell per channel running every 30 minutes.
+- **Firmware**: Frame classification (Management, Data, Control), 4-bracket RSSI histogram (`<-80`, `-80..-71`, `-70..-61`, `>=-60 dBm`), unique transmitter MAC tallies, and PHY airtime percentage modeling.
+- **Firmware**: Full Wi-Fi spectrum scan duration tracking in milliseconds.
+- **Database (Migration 0006)**: Added `station_channel_utilization` table and `scan_duration_ms` on measurements and scans.
+- **Web**: 24-Hour Channel Utilization & Spectrum Congestion chart with view modes for All Channels Combined, Channels 1/6/11 (Non-Overlapping), and Channels 1–13 Individual.
+- **Web**: Optional scan duration overlay curve and 13-channel breakdown table with stacked RSSI distribution bars.
+
+---
+
+## [0.7.0] - 2026-11-15
+
+### Added
+- **Firmware**: Automated daily network diagnostics (`LatencyProber::runDailyDiagnostics`):
+  - Gateway TCP SYN RTT probe (port 80/443).
+  - Dual-stack DNS benchmark comparing IPv4 vs. IPv6 lookup latency.
+  - HTTP captive portal canary hijacking detection.
+  - Gateway web admin exposure audit and port scanner.
+- **Database (Migration 0005)**: Added `station_network_diagnostics` table; added `gateway_ms`, `dns_ipv4_ms`, and `dns_ipv6_ms` to `measurements`.
+- **Web**: Expandable Detailed Audit drawer in network cards.
+
+---
+
+## [0.6.0] - 2026-11-15
+
+### Added
+- **Database (Migration 0002)**: Optimized storage schema with `station_overview_cache`, `station_latest_scan`, `station_discovered_aps`, and `station_latest_measurements`.
+- **Backend**: Two-tier caching (Cloudflare isolate in-memory cache + D1 `station_overview_cache` with 10-minute validity) reducing D1 reads by >90%.
+- **Database (Migration 0003 & 0004)**: Dropped legacy `scan_surveys` table; deduplicated measurements and enforced unique constraint on `(station_id, ssid, timestamp)`.
+
+---
+
+## [0.5.0] - 2026-11-14
+
+### Added
+- **Web**: Light and Dark mode theme toggle with instant stylesheet transition and `localStorage` persistence.
+
+---
+
+## [0.4.0] - 2026-11-14
+
+### Added
+- **Web**: Monitored network latency trend filtering (Combined view vs. individual SSID selection).
+- **Web**: 6 individual probe latency cards: Gateway RTT, Cloudflare (1.1.1.1), Google (generate_204), Microsoft (connecttest), Netflix (fast.com), Facebook (connectivity).
+- **Web**: Peak 24-hour signal strength and quality indicators for inactive/missing access points.
+
+---
+
+## [0.3.0] - 2026-11-14
+
+### Added
+- **Backend & Web**: Previously detected networks tracking for surrounding APs absent from the latest cycle.
+- **Firmware**: Improved 802.11g PHY mode and WEP/WPA encryption detection in Wi-Fi scan engine.
+
+---
+
+## [0.2.0] - 2026-11-13
+
+### Added
+- **Web**: GitHub Pages automated static client deployment workflow (`deploy-pages.yml`).
+- **Web**: Direct station deep-linking (`https://wifi.kreier.workers.dev/:stationId` and `?station=:stationId`).
+
+---
+
+## [0.1.0] - 2026-11-13
+
+### Added
+- Initial project architecture and telemetry fleet release.
+- Dual-build layout for ESP32 in `firmware/` (PlatformIO and Arduino IDE).
+- 10-minute automated measurement cycle with light sleep power management.
+- Captive portal bootstrap commissioning via Soft-AP `WIFI-Mon-XXXX`.
+- Zero-trust device token registration (`POST /register`) with one-time `MASTER_PHRASE`.
+- Cloudflare Worker backend and D1 database initial schema (Migration 0001).
+- Basic web dashboard with latency cards and 2.4 GHz spectrum scan survey table.

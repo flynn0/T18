@@ -42,17 +42,15 @@ firmware/
 ### Build Environment Integration
 
 1. **PlatformIO Integration**:
-   - `platformio.ini` defines three environments corresponding to the target hardware variants:
-     - `[env:t18]` with `build_flags = -D STATUS_LED_PIN=5`
-     - `[env:devkitv1]` with `build_flags = -D STATUS_LED_PIN=2`
-     - `[env:t8]` with `build_flags = -D STATUS_LED_PIN=21`
-   - Common configuration includes `board = esp32dev`, `framework = arduino`, and `include_dir = include`.
-   - `src/main.cpp` simply includes `#include "app_main.h"`, providing the `setup()` and `loop()` implementations.
+   - `platformio.ini` uses a single unified environment `[env:esp32dev]` targeting all ESP32 variants.
+   - Dynamic hardware profiles (LILYGO T18, T8, ESP32 DevKit V1, Custom) are selected at runtime via the first-boot captive portal and persisted across reboots via NVS (`Preferences`).
+   - Partition scheme is configured to `partitions/min_spiffs.csv`, providing two 1.9 MB OTA application slots (`app0`, `app1`) and a 192 KB raw data partition (`raw_spool`).
+   - `src/main.cpp` includes `#include "app_main.h"`, delegating to `AppMain::setup()` and `AppMain::loop()`.
 
 2. **Arduino IDE Integration**:
    - The user opens `firmware/wifi/wifi.ino`.
-   - `wifi.ino` includes `"../include/app_main.h"` and provides compile-time defaults for boards without preprocessor flags (`STATUS_LED_PIN` default to pin 5 or selectable via a single `#define` at the top of the file).
-   - In environments where parent directory includes (`../include/`) are not directly in the include search path, `platformio.ini` and Arduino library configurations explicitly link or include the directory.
+   - `wifi.ino` includes `"../include/app_main.h"`.
+   - The sketch compiles the exact same unified binary as PlatformIO without requiring separate build targets or manual preprocessor pin flags.
 
 ## Consequences
 

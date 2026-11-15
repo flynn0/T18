@@ -39,3 +39,15 @@ Key elements of this decision:
 ### Negative
 - Requires maintaining a Cloudflare account and D1 database binding.
 - D1 rows and operations are subject to Cloudflare free/paid tier limits (though Cloudflare's free tier of 5M read queries/day and 100k write queries/day is more than sufficient for fleet monitoring).
+
+## Evolution & Schema Migrations
+As fleet requirements matured, the D1 schema evolved through incremental migrations:
+- **0001 (Initial Schema)**: Baseline `stations`, `measurements`, `scan_surveys`, and `daily_summaries`.
+- **0002 (Read/Storage Optimization)**: Introduced `station_overview_cache` (10-minute temporary snapshot), `station_latest_scan`, `station_discovered_aps`, and `station_latest_measurements` to replace full-table scans.
+- **0003 (Drop Legacy Surveys)**: Deprecated raw `scan_surveys` table in favor of snapshot documents.
+- **0004 (Deduplication)**: Enforced unique constraints on `(station_id, ssid, timestamp)`.
+- **0005 (Diagnostics & Realtime Metrics)**: Added `gateway_ms`, `dns_ipv4_ms`, `dns_ipv6_ms`, and `station_network_diagnostics`.
+- **0006 (Channel Utilization & Scan Variance)**: Added `station_channel_utilization` and `scan_duration_ms`.
+- **0007 (OTA Fleet Targeting & Hardware Profiles)**: Added `firmware_version`, `target_version`, `board_type`, `battery_mv`, `is_canary`, and `ota_url` to `stations`.
+- **0008 (Battery History Tracking)**: Added `station_battery_history` and `battery_mv` to `measurements` for 30-day voltage discharge analytics.
+

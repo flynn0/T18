@@ -1,0 +1,12 @@
+# Architecture Decision Records (ADRs)
+
+This directory documents the foundational architectural and design decisions governing `kreier/wifi`.
+
+## Index of Records
+
+| ADR | Title | Status | Date | Summary |
+| --- | ----- | ------ | ---- | ------- |
+| [0001](0001-d1-over-git-storage.md) | Use Cloudflare D1 Over Direct Git-Based Storage for Telemetry | Accepted | 2026-11-13 | Serverless edge SQLite with 30-day retention and automated daily cron rollups, replacing git commit spam and rate limiting. |
+| [0002](0002-per-device-token-provisioning.md) | Zero-Trust Per-Device Token Provisioning via Bootstrap Secret | Accepted | 2026-11-13 | One-time bootstrap secret in captive portal exchanged for unique per-device UUID Bearer token stored in NVS; master phrase erased. |
+| [0003](0003-dual-build-layout.md) | Dual-Compatible Firmware Build Layout (PlatformIO & Arduino IDE) | Accepted | 2026-11-13 | Single-source C++ modular architecture in `firmware/include/` unified across PlatformIO CI/CD and Arduino IDE desktop flashing. |
+| [0004](0004-fleet-ota-and-battery-monitoring.md) | Automated Fleet OTA Updates, Action Runner Modernization, and Battery Telemetry History | Accepted | 2026-11-15 | Edge OTA dispatch with streaming proxies, transient socket retry backoff, 30-day battery discharge modeling, and Node 24 CI runners. |
