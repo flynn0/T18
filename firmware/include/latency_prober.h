@@ -4,7 +4,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClient.h>
-#include <WiFiUdp.h>
+#include <lwip/sockets.h>
+#include <lwip/netdb.h>
 #include "app_state.h"
 
 struct ProbeTarget {
@@ -108,12 +109,8 @@ public:
         result.gateway_ms = measureGatewayLatency(WiFi.gatewayIP(), 600);
         Serial.printf("[Prober]   gateway RTT : %d ms\n", result.gateway_ms);
 
-        // 5. Measure Dual-Stack DNS Resolution Latency (IPv4 A vs IPv6 AAAA)
-        uint32_t tDns4 = millis();
-        IPAddress dns4Ip;
-        bool dns4Ok = WiFi.hostByName("connectivitycheck.gstatic.com", dns4Ip);
-        result.dns_ipv4_ms = dns4Ok ? (int32_t)(millis() - tDns4) : -1;
-
+        // 5. Measure Dual-Stack DNS Resolution Latency (IPv4 A vs IPv6 AAAA) via POSIX sockets
+        result.dns_ipv4_ms = measureDnsAQuery("connectivitycheck.gstatic.com");
         result.dns_ipv6_ms = measureDnsAaaaLatency("google.com", 3500);
         Serial.printf("[Prober]   dns ipv4    : %d ms\n", result.dns_ipv4_ms);
         Serial.printf("[Prober]   dns ipv6    : %d ms\n", result.dns_ipv6_ms);
@@ -194,13 +191,41 @@ private:
         return -1;
     }
 
+    static int32_t measureDnsAQuery(const char *hostname) {
+        uint32_t t0 = millis();
+        struct addrinfo hints, *res = nullptr;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+
+        int err = getaddrinfo(hostname, NULL, &hints, &res);
+        uint32_t elapsed = millis() - t0;
+        if (err == 0 && res != nullptr) {
+            freeaddrinfo(res);
+            return (int32_t)elapsed;
+        }
+        return -1;
+    }
+
     static int32_t measureDnsAaaaLatency(const char *hostname, uint32_t timeoutMs) {
         IPAddress dnsServer = WiFi.dnsIP(0);
         if (dnsServer == IPAddress(0, 0, 0, 0)) dnsServer = WiFi.gatewayIP();
         if (dnsServer == IPAddress(0, 0, 0, 0)) return -1;
 
-        WiFiUDP udp;
-        if (!udp.begin(0)) return -1;
+        // Use standard POSIX socket (inherently thread-safe in ESP-IDF, locks TCPIP core automatically)
+        int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (sock < 0) return -1;
+
+        struct timeval tv;
+        tv.tv_sec = timeoutMs / 1000;
+        tv.tv_usec = (timeoutMs % 1000) * 1000;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+        struct sockaddr_in destAddr;
+        memset(&destAddr, 0, sizeof(destAddr));
+        destAddr.sin_family = AF_INET;
+        destAddr.sin_port = htons(53);
+        destAddr.sin_addr.s_addr = (uint32_t)dnsServer;
 
         // Build standard DNS AAAA query packet for google.com (Type 0x1C)
         // Header: ID=0x1234, Flags=0x0100 (Standard query), QDCOUNT=1, ANCOUNT=0, NSCOUNT=0, ARCOUNT=0
@@ -213,20 +238,20 @@ private:
         };
 
         uint32_t t0 = millis();
-        udp.beginPacket(dnsServer, 53);
-        udp.write(aaaaQuery, sizeof(aaaaQuery));
-        udp.endPacket();
-
-        while (millis() - t0 < timeoutMs) {
-            int packetSize = udp.parsePacket();
-            if (packetSize > 12) {
-                uint32_t elapsed = millis() - t0;
-                udp.stop();
-                return (int32_t)elapsed;
-            }
-            delay(10);
+        int sent = sendto(sock, aaaaQuery, sizeof(aaaaQuery), 0, (struct sockaddr *)&destAddr, sizeof(destAddr));
+        if (sent < 0) {
+            close(sock);
+            return -1;
         }
-        udp.stop();
+
+        uint8_t rxBuffer[512];
+        int len = recv(sock, rxBuffer, sizeof(rxBuffer), 0);
+        uint32_t elapsed = millis() - t0;
+        close(sock);
+
+        if (len > 12) {
+            return (int32_t)elapsed;
+        }
         return -1; // Timeout (indicates IPv6 DNS blackholing / timeout)
     }
 

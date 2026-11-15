@@ -60,11 +60,21 @@ public:
         uint32_t cycleStartMs = millis();
         Serial.println(F("\n>>> Starting 10-Minute Measurement Cycle <<<"));
 
-        // 1. Maintain NTP time synchronization (re-sync every 24h)
+        // 1. Maintain NTP time synchronization (re-sync every 24h) and early OTA check
         if (_ntp.shouldSync() && _config.network_count > 0) {
             connectFirstAvailableWifi();
             if (WiFi.status() == WL_CONNECTED) {
                 _ntp.syncTime();
+
+                // Self-healing: Check for OTA updates immediately on boot before long measurements
+                uint64_t currentEpoch = _ntp.getCurrentEpoch();
+                if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
+                    _lastOtaCheckEpoch = currentEpoch;
+                    bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
+                                                               FIRMWARE_VERSION, _config.hw);
+                    if (updating) return;
+                }
+
                 WiFi.disconnect(true);
             }
         }
