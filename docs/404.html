@@ -197,6 +197,34 @@
       color: var(--danger);
       border: 1px solid rgba(239, 68, 68, 0.3);
     }
+    .battery-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .battery-badge:hover {
+      filter: brightness(1.15);
+    }
+    .battery-badge.warn {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    .battery-badge.crit {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
     .pulse-dot {
       width: 8px;
       height: 8px;
@@ -401,7 +429,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v2.0.3</span>
+        <span class="brand-tag">v2.0.4</span>
       </div>
     </a>
     <div class="header-controls">
@@ -422,10 +450,27 @@
       <div class="station-info">
         <h2 id="stTitle">Station: Loading...</h2>
         <p id="stDesc">Fetching telemetry data...</p>
+        <div id="stBatteryRuntime" style="display: none; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+          <div id="stBatteryRunTimeText"></div>
+          <div id="stBatteryEstTimeText"></div>
+        </div>
       </div>
-      <div id="stStatusBadge" class="status-badge online">
-        <span class="pulse-dot"></span>
-        <span id="stStatusText">Checking</span>
+      <div class="station-header-badges" style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+        <div id="stBatteryBadge" class="battery-badge" style="display: none;" title="Battery Status" onclick="toggleBatteryGraph(true)">
+          <svg class="battery-icon" width="28" height="15" viewBox="0 0 28 15" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+            <rect x="0.75" y="0.75" width="22.5" height="13.5" rx="2.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="M25 5C25.5523 5 26 5.44772 26 6V9C26 9.55228 25.5523 10 25 10V5Z" fill="currentColor" />
+            <rect id="batBar1" x="3" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar2" x="7.7" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar3" x="12.4" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+            <rect id="batBar4" x="17.1" y="3" width="3.5" height="9" rx="1" fill="currentColor" />
+          </svg>
+          <span id="stBatteryPctText">100%</span>
+        </div>
+        <div id="stStatusBadge" class="status-badge online">
+          <span class="pulse-dot"></span>
+          <span id="stStatusText">Checking</span>
+        </div>
       </div>
     </div>
 
@@ -437,6 +482,61 @@
     <!-- Network Environment & Firewall Diagnostics -->
     <div id="diagnosticsContainer" style="margin-bottom: 2rem;">
       <!-- Populated via JavaScript -->
+    </div>
+
+    <!-- Collapsed Battery Voltage Graph (Day / Week / Month) -->
+    <div id="batterySection" class="chart-container" style="display: none; margin-bottom: 2rem;">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem; cursor: pointer; user-select: none;" onclick="toggleBatteryGraph()">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">Battery Voltage & Discharge Profile</h3>
+            <span id="batteryStatusBadge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">LiPo 3.3V–4.2V</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Measured on predefined ADC pin (IO35, 100k/100k divider) every 10 minutes</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;" onclick="event.stopPropagation()">
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <label for="batteryTimeframeSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Timeframe:</label>
+            <select id="batteryTimeframeSelect" onchange="onBatteryTimeframeChange(this.value)">
+              <option value="day">Last Day (24h)</option>
+              <option value="week">Last Week (7d)</option>
+              <option value="month">Last Month (30d)</option>
+            </select>
+          </div>
+          <span id="batteryCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted); padding: 0.2rem 0.5rem; cursor: pointer;" onclick="toggleBatteryGraph()">▼</span>
+        </div>
+      </div>
+
+      <!-- Quick KPI Stat Boxes for Battery -->
+      <div id="batteryKpiRow" class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 1rem; margin-top: 0.75rem;">
+        <div class="metric-box">
+          <div class="metric-label">Current Voltage</div>
+          <div class="metric-val" id="stat-bat-voltage" style="color: #10b981;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Battery Level</div>
+          <div class="metric-val" id="stat-bat-pct" style="color: #38bdf8;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Discharge Rate</div>
+          <div class="metric-val" id="stat-bat-rate" style="color: #f59e0b;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Estimated Runtime</div>
+          <div class="metric-val" id="stat-bat-runtime" style="color: #a78bfa; font-size: 0.85rem;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Timeframe Span</div>
+          <div class="metric-val" id="stat-bat-range" style="font-size: 0.82rem; color: var(--text-muted);">—</div>
+        </div>
+      </div>
+
+      <!-- Collapsed Drawer for Battery Graph -->
+      <div id="batteryGraphDrawer" style="display: none; margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 1rem;">
+        <div class="main-chart-wrap" style="height: 290px;">
+          <canvas id="batteryChart"></canvas>
+        </div>
+      </div>
     </div>
 
     <!-- 24-Hour Channel Utilization & Spectrum Congestion -->
@@ -706,7 +806,7 @@
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v2.0.3)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v2.0.4)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -720,6 +820,9 @@
     let currentStationData = null;
     let selectedNetworkFilter = "combined";
     let mainChartInstance = null;
+    let batteryChartInstance = null;
+    let selectedBatteryTimeframe = "day";
+    let batteryDrawerOpen = false;
     const targetChartInstances = {
       gateway: null,
       cloudflare: null,
@@ -1123,6 +1226,7 @@
 
         renderAllTrendCharts();
         renderChannelUtilizationSection();
+        updateBatteryUi(data);
 
       } catch (err) {
         console.error("Failed to load station details:", err);
@@ -1138,6 +1242,12 @@
         if (badge) badge.className = "status-badge offline";
         const statusText = document.getElementById("stStatusText");
         if (statusText) statusText.innerText = "Error loading";
+        const batBadge = document.getElementById("stBatteryBadge");
+        if (batBadge) batBadge.style.display = "none";
+        const batRuntime = document.getElementById("stBatteryRuntime");
+        if (batRuntime) batRuntime.style.display = "none";
+        const batSec = document.getElementById("batterySection");
+        if (batSec) batSec.style.display = "none";
       }
     }
 
@@ -1951,6 +2061,358 @@
           tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.2rem;">No channel promiscuous measurement data recorded yet (scheduled every 30 minutes).</td></tr>`;
         }
       }
+    }
+
+    function voltageToPercentage(mv) {
+      if (!mv || mv <= 0) return 0;
+      if (mv >= 4200) return 100;
+      if (mv <= 3300) return 0;
+      const table = [
+        { v: 4200, p: 100 },
+        { v: 4100, p: 90 },
+        { v: 4000, p: 80 },
+        { v: 3900, p: 70 },
+        { v: 3830, p: 60 },
+        { v: 3790, p: 50 },
+        { v: 3750, p: 40 },
+        { v: 3710, p: 30 },
+        { v: 3670, p: 20 },
+        { v: 3600, p: 10 },
+        { v: 3450, p: 5 },
+        { v: 3300, p: 0 }
+      ];
+      for (let i = 0; i < table.length - 1; i++) {
+        if (mv >= table[i + 1].v) {
+          const span = table[i].v - table[i + 1].v;
+          const frac = (mv - table[i + 1].v) / span;
+          return Math.round(table[i + 1].p + frac * (table[i].p - table[i + 1].p));
+        }
+      }
+      return 0;
+    }
+
+    function getBatteryPoints(data) {
+      if (!data) return [];
+      let points = [];
+      if (Array.isArray(data.battery_history) && data.battery_history.length > 0) {
+        data.battery_history.forEach(p => {
+          if (typeof p.battery_mv === "number" && p.battery_mv > 0) {
+            points.push({ timestamp: p.timestamp, battery_mv: p.battery_mv });
+          }
+        });
+      }
+      if (points.length === 0 && Array.isArray(data.recent_history) && data.recent_history.length > 0) {
+        const seen = new Set();
+        data.recent_history.forEach(m => {
+          if (m.battery_mv && m.battery_mv > 0 && !seen.has(m.timestamp)) {
+            seen.add(m.timestamp);
+            points.push({ timestamp: m.timestamp, battery_mv: m.battery_mv });
+          }
+        });
+      }
+      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv > 0) {
+        points.push({
+          timestamp: data.station.last_seen || Math.floor(Date.now() / 1000),
+          battery_mv: data.station.battery_mv
+        });
+      }
+      return points.sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    function analyzeBatteryTrend(points, currentMv) {
+      if (!points || points.length < 2) {
+        return { isDecreasing: false };
+      }
+
+      const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
+      const latest = sorted[sorted.length - 1];
+      const curMv = currentMv || latest.battery_mv;
+
+      let dischargeStartIdx = sorted.length - 1;
+      let peakMv = curMv;
+
+      for (let i = sorted.length - 2; i >= 0; i--) {
+        const p = sorted[i];
+        if (p.battery_mv < peakMv - 45) {
+          break;
+        }
+        if (p.battery_mv > peakMv) {
+          peakMv = p.battery_mv;
+        }
+        dischargeStartIdx = i;
+      }
+
+      const startPt = sorted[dischargeStartIdx];
+      const elapsedSec = latest.timestamp - startPt.timestamp;
+      const deltaMv = startPt.battery_mv - curMv;
+
+      if (elapsedSec >= 1200 && deltaMv >= 8) {
+        const elapsedHours = Math.max(1, Math.round(elapsedSec / 3600));
+        const runDays = Math.floor(elapsedHours / 24);
+        const runHoursRem = elapsedHours % 24;
+
+        const rateMvPerHour = deltaMv / (elapsedSec / 3600);
+        const usableMv = Math.max(0, curMv - 3300);
+        const estHoursTotal = rateMvPerHour > 0 ? Math.max(0, Math.round(usableMv / rateMvPerHour)) : 0;
+        const estDays = Math.floor(estHoursTotal / 24);
+        const estHoursRem = estHoursTotal % 24;
+
+        return {
+          isDecreasing: true,
+          runHours: elapsedHours,
+          runDays: runDays,
+          runHoursRem: runHoursRem,
+          estHours: estHoursTotal,
+          estDays: estDays,
+          estHoursRem: estHoursRem,
+          rateMvPerHour: rateMvPerHour,
+          deltaMv: deltaMv
+        };
+      }
+
+      return { isDecreasing: false };
+    }
+
+    function updateBatteryUi(data) {
+      const batBadge = document.getElementById("stBatteryBadge");
+      const batRuntime = document.getElementById("stBatteryRuntime");
+      const runTextEl = document.getElementById("stBatteryRunTimeText");
+      const estTextEl = document.getElementById("stBatteryEstTimeText");
+      const batSection = document.getElementById("batterySection");
+
+      if (!data || !data.station) {
+        if (batBadge) batBadge.style.display = "none";
+        if (batRuntime) batRuntime.style.display = "none";
+        if (batSection) batSection.style.display = "none";
+        return;
+      }
+
+      const st = data.station;
+      const points = getBatteryPoints(data);
+      const curMv = (st.battery_mv && st.battery_mv > 0)
+        ? st.battery_mv
+        : (points.length > 0 ? points[points.length - 1].battery_mv : 0);
+
+      if (!curMv || curMv <= 0) {
+        if (batBadge) batBadge.style.display = "none";
+        if (batRuntime) batRuntime.style.display = "none";
+        if (batSection) batSection.style.display = "none";
+        return;
+      }
+
+      const pct = voltageToPercentage(curMv);
+
+      if (batBadge) {
+        batBadge.style.display = "inline-flex";
+        batBadge.className = "battery-badge" + (pct < 20 ? " crit" : (pct < 50 ? " warn" : ""));
+        batBadge.title = "Battery: " + (curMv / 1000).toFixed(2) + "V (" + curMv + " mV) — " + pct + "% (Click to toggle voltage graph)";
+
+        const pctEl = document.getElementById("stBatteryPctText");
+        if (pctEl) pctEl.innerText = pct + "%";
+
+        let filledBars = 0;
+        if (pct >= 75) filledBars = 4;
+        else if (pct >= 50) filledBars = 3;
+        else if (pct >= 25) filledBars = 2;
+        else if (pct >= 5) filledBars = 1;
+        else filledBars = 0;
+
+        const b1 = document.getElementById("batBar1");
+        const b2 = document.getElementById("batBar2");
+        const b3 = document.getElementById("batBar3");
+        const b4 = document.getElementById("batBar4");
+        const barEls = [b1, b2, b3, b4];
+
+        barEls.forEach((bar, idx) => {
+          if (!bar) return;
+          if (idx < filledBars) {
+            bar.style.opacity = "1";
+          } else {
+            bar.style.opacity = "0.2";
+          }
+        });
+      }
+
+      const trend = analyzeBatteryTrend(points, curMv);
+
+      if (trend.isDecreasing) {
+        if (runTextEl) runTextEl.innerText = "Running on battery for " + trend.runHours + "h (" + trend.runDays + " days " + trend.runHoursRem + " hours)";
+        if (estTextEl) estTextEl.innerText = "Estimated runtime " + trend.estHours + "h (" + trend.estDays + " days " + trend.estHoursRem + " hours)";
+        if (batRuntime) batRuntime.style.display = "block";
+      } else {
+        if (batRuntime) batRuntime.style.display = "none";
+      }
+
+      if (batSection) {
+        batSection.style.display = "block";
+
+        const statV = document.getElementById("stat-bat-voltage");
+        const statP = document.getElementById("stat-bat-pct");
+        const statRate = document.getElementById("stat-bat-rate");
+        const statRun = document.getElementById("stat-bat-runtime");
+        const statRange = document.getElementById("stat-bat-range");
+
+        if (statV) statV.innerText = (curMv / 1000).toFixed(2) + "V (" + curMv + " mV)";
+        if (statP) {
+          const color = pct < 20 ? "#ef4444" : (pct < 50 ? "#f59e0b" : "#10b981");
+          statP.innerHTML = '<span style="color:' + color + '">' + pct + '%</span>';
+        }
+        if (statRate) {
+          statRate.innerText = trend.isDecreasing ? "-" + trend.rateMvPerHour.toFixed(1) + " mV/h" : "Steady / Charging";
+        }
+        if (statRun) {
+          statRun.innerText = trend.isDecreasing ? trend.estHours + "h (" + trend.estDays + "d " + trend.estHoursRem + "h)" : "—";
+        }
+
+        if (points.length > 0 && statRange) {
+          const vList = points.map(p => p.battery_mv);
+          const minV = Math.min(...vList);
+          const maxV = Math.max(...vList);
+          statRange.innerText = (minV / 1000).toFixed(2) + "V – " + (maxV / 1000).toFixed(2) + "V";
+        }
+
+        if (batteryDrawerOpen) {
+          renderBatteryChart();
+        }
+      }
+    }
+
+    function toggleBatteryGraph(forceOpen) {
+      const drawer = document.getElementById("batteryGraphDrawer");
+      const icon = document.getElementById("batteryCollapseIcon");
+      if (!drawer) return;
+      if (forceOpen === true) {
+        batteryDrawerOpen = true;
+      } else {
+        batteryDrawerOpen = !batteryDrawerOpen;
+      }
+      drawer.style.display = batteryDrawerOpen ? "block" : "none";
+      if (icon) icon.innerText = batteryDrawerOpen ? "▲" : "▼";
+      if (batteryDrawerOpen) {
+        renderBatteryChart();
+        if (forceOpen === true) {
+          const sec = document.getElementById("batterySection");
+          if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    }
+
+    function onBatteryTimeframeChange(val) {
+      selectedBatteryTimeframe = val;
+      renderBatteryChart();
+    }
+
+    function renderBatteryChart() {
+      if (!currentStationData) return;
+      const canvas = document.getElementById("batteryChart");
+      if (!canvas) return;
+
+      const points = getBatteryPoints(currentStationData);
+      if (points.length === 0) return;
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      let cutoffSec = nowSec - 86400; // default day
+      if (selectedBatteryTimeframe === "week") {
+        cutoffSec = nowSec - 7 * 86400;
+      } else if (selectedBatteryTimeframe === "month") {
+        cutoffSec = nowSec - 30 * 86400;
+      }
+
+      let filtered = points.filter(p => p.timestamp >= cutoffSec);
+      if (filtered.length === 0) {
+        filtered = points;
+      }
+
+      const statRange = document.getElementById("stat-bat-range");
+      if (statRange && filtered.length > 0) {
+        const vList = filtered.map(p => p.battery_mv);
+        const minV = Math.min(...vList);
+        const maxV = Math.max(...vList);
+        statRange.innerText = (minV / 1000).toFixed(2) + "V – " + (maxV / 1000).toFixed(2) + "V";
+      }
+
+      const labels = filtered.map(p => {
+        const d = new Date(p.timestamp * 1000);
+        if (selectedBatteryTimeframe === "month") {
+          return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + d.getHours().toString().padStart(2, "0") + ":00";
+        } else if (selectedBatteryTimeframe === "week") {
+          return d.toLocaleDateString([], { weekday: "short" }) + " " + d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+        }
+        return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+      });
+
+      const voltValues = filtered.map(p => Number((p.battery_mv / 1000).toFixed(3)));
+      const minVolt = Math.min(...voltValues);
+      const maxVolt = Math.max(...voltValues);
+      const yMin = Math.max(2.8, Number((minVolt - 0.1).toFixed(2)));
+      const yMax = Math.min(4.5, Number((maxVolt + 0.1).toFixed(2)));
+
+      if (batteryChartInstance) {
+        batteryChartInstance.destroy();
+      }
+
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue("--chart-grid").trim() || "rgba(255, 255, 255, 0.05)";
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue("--chart-text").trim() || "#9ca3af";
+
+      batteryChartInstance = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Battery Voltage (V)",
+            data: voltValues,
+            borderColor: "#10b981",
+            backgroundColor: "rgba(16, 185, 129, 0.12)",
+            tension: 0.25,
+            fill: true,
+            pointRadius: filtered.length > 100 ? 1 : 3,
+            borderWidth: 2,
+            spanGaps: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: textColor, boxWidth: 12, font: { size: 11 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.parsed.y;
+                  const mv = Math.round(val * 1000);
+                  const pct = voltageToPercentage(mv);
+                  return "Voltage: " + val.toFixed(3) + " V (" + mv + " mV) • " + pct + "%";
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 12 }
+            },
+            y: {
+              type: "linear",
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                callback: function(v) { return Number(v).toFixed(2) + " V"; }
+              },
+              min: yMin,
+              max: yMax,
+              title: {
+                display: true,
+                text: "Battery Voltage (V)",
+                color: textColor,
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
     }
 
     // Initialize

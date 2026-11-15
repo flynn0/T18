@@ -39,6 +39,7 @@ export interface MeasurementRecord {
   dns_ipv4_ms?: number | null;
   dns_ipv6_ms?: number | null;
   scan_duration_ms?: number | null;
+  battery_mv?: number | null;
   status: string | null;
 }
 
@@ -221,4 +222,11 @@ export interface DiscoveredApRecord {
   band: string | null;
   last_seen: number;
 }
+
+export interface BatteryHistoryRecord {
+  station_id: string;
+  timestamp: number;
+  battery_mv: number;
+}
+
 

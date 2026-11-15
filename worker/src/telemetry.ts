@@ -61,6 +61,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
   const measurementsToInsert: MeasurementRecord[] = [];
   const surveysToInsert: ScanSurveyRecord[] = [];
+  const batteryRecordsToInsert: { station_id: string; timestamp: number; battery_mv: number }[] = [];
   const serverNow = Math.floor(Date.now() / 1000);
   let latestTimestamp = station.last_seen || 0;
   let latestScanDuration: number | null = null;
@@ -79,6 +80,15 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
     const scanDuration = typeof cycle.scan_duration_ms === "number" ? cycle.scan_duration_ms : null;
     if (scanDuration !== null) {
       latestScanDuration = scanDuration;
+    }
+
+    const batMv = typeof cycle.battery_mv === "number" && cycle.battery_mv > 0 ? cycle.battery_mv : null;
+    if (batMv !== null) {
+      batteryRecordsToInsert.push({
+        station_id: station.station_id,
+        timestamp: cycleTime,
+        battery_mv: batMv
+      });
     }
 
     // Process network latency measurements
@@ -103,6 +113,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
           dns_ipv4_ms: typeof net.dns_ipv4_ms === "number" ? net.dns_ipv4_ms : null,
           dns_ipv6_ms: typeof net.dns_ipv6_ms === "number" ? net.dns_ipv6_ms : null,
           scan_duration_ms: scanDuration,
+          battery_mv: batMv,
           status: net.status || "connected"
         });
       }
@@ -151,6 +162,9 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
   // 3. Batch insert into D1 with optimized storage
   const insertedM = await db.insertMeasurements(measurementsToInsert);
   const insertedS = await db.saveSurveys(station.station_id, latestTimestamp, surveysToInsert, latestScanDuration);
+  if (batteryRecordsToInsert.length > 0) {
+    await db.saveBatteryHistory(batteryRecordsToInsert);
+  }
 
   // Extract latest hardware & firmware metadata if present
   let latestBattery: number | undefined;

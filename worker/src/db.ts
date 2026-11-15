@@ -107,8 +107,8 @@ export class Database {
               station_id, timestamp, ssid, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
               microsoft_ms, facebook_ms, netflix_ms, apple_ms,
-              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, battery_mv, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid, timestamp) DO UPDATE SET
               bssid = excluded.bssid,
               channel = excluded.channel,
@@ -124,6 +124,7 @@ export class Database {
               dns_ipv4_ms = excluded.dns_ipv4_ms,
               dns_ipv6_ms = excluded.dns_ipv6_ms,
               scan_duration_ms = excluded.scan_duration_ms,
+              battery_mv = excluded.battery_mv,
               status = excluded.status
           `)
           .bind(
@@ -144,6 +145,7 @@ export class Database {
             m.dns_ipv4_ms ?? null,
             m.dns_ipv6_ms ?? null,
             m.scan_duration_ms ?? null,
+            m.battery_mv ?? null,
             m.status ?? "unknown"
           )
       );
@@ -156,8 +158,8 @@ export class Database {
               station_id, ssid, timestamp, bssid, channel,
               assoc_ms, dhcp_ms, google_ms, cloudflare_ms,
               microsoft_ms, facebook_ms, netflix_ms, apple_ms,
-              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              gateway_ms, dns_ipv4_ms, dns_ipv6_ms, scan_duration_ms, battery_mv, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, ssid) DO UPDATE SET
               timestamp = excluded.timestamp,
               bssid = excluded.bssid,
@@ -174,6 +176,7 @@ export class Database {
               dns_ipv4_ms = excluded.dns_ipv4_ms,
               dns_ipv6_ms = excluded.dns_ipv6_ms,
               scan_duration_ms = excluded.scan_duration_ms,
+              battery_mv = excluded.battery_mv,
               status = excluded.status
           `)
           .bind(
@@ -194,6 +197,7 @@ export class Database {
             m.dns_ipv4_ms ?? null,
             m.dns_ipv6_ms ?? null,
             m.scan_duration_ms ?? null,
+            m.battery_mv ?? null,
             m.status ?? "unknown"
           )
       );
@@ -552,5 +556,50 @@ export class Database {
       .bind(stationId)
       .first<{ scan_duration_ms: number | null }>();
     return row?.scan_duration_ms ?? null;
+  }
+
+  async saveBatteryHistory(
+    records: { station_id: string; timestamp: number; battery_mv: number }[]
+  ): Promise<number> {
+    if (!records || records.length === 0) return 0;
+
+    const statements: D1PreparedStatement[] = [];
+    for (const r of records) {
+      statements.push(
+        this.db
+          .prepare(`
+            INSERT INTO station_battery_history (station_id, timestamp, battery_mv)
+            VALUES (?, ?, ?)
+            ON CONFLICT(station_id, timestamp) DO UPDATE SET
+              battery_mv = excluded.battery_mv
+          `)
+          .bind(r.station_id, r.timestamp, r.battery_mv)
+      );
+    }
+
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < statements.length; i += CHUNK_SIZE) {
+      await this.db.batch(statements.slice(i, i + CHUNK_SIZE));
+    }
+    return records.length;
+  }
+
+  async getBatteryHistory(
+    stationId: string,
+    sinceTimestamp: number
+  ): Promise<{ timestamp: number; battery_mv: number }[]> {
+    try {
+      const result = await this.db
+        .prepare(`
+          SELECT timestamp, battery_mv FROM station_battery_history
+          WHERE station_id = ? AND timestamp >= ?
+          ORDER BY timestamp ASC
+        `)
+        .bind(stationId, sinceTimestamp)
+        .all<{ timestamp: number; battery_mv: number }>();
+      return result.results || [];
+    } catch {
+      return [];
+    }
   }
 }

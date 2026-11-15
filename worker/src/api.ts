@@ -115,6 +115,8 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const channelUtilization = await db.getRecentChannelUtilization(stationId, 24);
   const latestChannelUtilization = await db.getLatestChannelUtilization(stationId);
   const latestScanDuration = await db.getLatestScanDuration(stationId);
+  const thirtyDaysAgo = now - (30 * 86400);
+  const batteryHistory = await db.getBatteryHistory(stationId, thirtyDaysAgo);
 
   const overviewPayload = JSON.stringify({
     station: publicMeta,
@@ -126,7 +128,8 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
     diagnostics: diagnostics,
     channel_utilization: channelUtilization,
     latest_channel_utilization: latestChannelUtilization,
-    latest_scan_duration_ms: latestScanDuration
+    latest_scan_duration_ms: latestScanDuration,
+    battery_history: batteryHistory
   });
 
   // Store in Level 1 & Level 2 cache
