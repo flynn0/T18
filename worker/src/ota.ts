@@ -1,6 +1,20 @@
 import { Env, StationRecord } from "./types";
 import { Database } from "./db";
 
+function parseSemVer(v: string): [number, number, number] {
+  const clean = v.replace(/^v/, "").trim();
+  const parts = clean.split(".").map(p => parseInt(p, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function compareSemVer(v1: string, v2: string): number {
+  const [maj1, min1, pat1] = parseSemVer(v1);
+  const [maj2, min2, pat2] = parseSemVer(v2);
+  if (maj1 !== maj2) return maj1 - maj2;
+  if (min1 !== min2) return min1 - min2;
+  return pat1 - pat2;
+}
+
 export async function handleOta(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
 
@@ -54,9 +68,26 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
     }
     // Otherwise use stable production version (fleet default)
     targetVersion = env.STABLE_VERSION || "1.0.7";
+
+    // For fleet updates, never downgrade a device running an equal or newer version
+    if (compareSemVer(targetVersion, currentVersion) <= 0) {
+      return new Response(
+        JSON.stringify({
+          update_available: false,
+          station_id: stationId,
+          current_version: currentVersion,
+          target_version: targetVersion,
+          message: "Firmware is already up to date"
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
   }
 
-  // Check if already running the target version
+  // Check if already running the target version (for explicit station target_version)
   if (currentVersion === targetVersion) {
     return new Response(
       JSON.stringify({
