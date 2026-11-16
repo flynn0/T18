@@ -749,9 +749,15 @@ export class Database {
   }
 
   async getInactiveBluetoothDevices(stationId: string, hours: number = 24): Promise<InactiveBluetoothRecord[]> {
+    return this.getRecentBluetoothDevices(stationId, hours);
+  }
+
+  async getRecentBluetoothDevices(stationId: string, hours: number = 24): Promise<InactiveBluetoothRecord[]> {
     const latestBt = await this.getLatestBluetooth(stationId);
     const activeKeys = new Set<string>();
-    let latestTime = Math.floor(Date.now() / 1000);
+    const seenMap = new Map<string, InactiveBluetoothRecord>();
+    const nowSec = Math.floor(Date.now() / 1000);
+    let latestTime = nowSec;
 
     if (latestBt) {
       if (latestBt.timestamp) latestTime = latestBt.timestamp;
@@ -760,26 +766,50 @@ export class Database {
           const parsed = JSON.parse(latestBt.devices_json);
           for (const d of (parsed.ble_devices || [])) {
             const k = (d.address || d.fingerprint || '').trim().toUpperCase();
-            if (k) activeKeys.add(k);
+            if (k) {
+              activeKeys.add(k);
+              seenMap.set(k, {
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: typeof d.rssi === 'number' ? d.rssi : null,
+                fingerprint: d.fingerprint,
+                last_seen: latestTime,
+                is_active: true
+              });
+            }
           }
           for (const cd of (parsed.classic_devices || [])) {
             const k = (cd.address || '').trim().toUpperCase();
-            if (k) activeKeys.add(k);
+            if (k) {
+              activeKeys.add(k);
+              seenMap.set(k, {
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: typeof cd.rssi === 'number' ? cd.rssi : null,
+                last_seen: latestTime,
+                is_active: true
+              });
+            }
           }
         } catch {}
       }
     }
 
-    const since = latestTime - (hours * 3600);
+    const since = nowSec - (hours * 3600);
     try {
       const res = await this.db.prepare(`
         SELECT timestamp, devices_json
         FROM station_bluetooth_summary
-        WHERE station_id = ? AND timestamp >= ? AND timestamp < ? AND devices_json IS NOT NULL
+        WHERE station_id = ? AND timestamp >= ? AND devices_json IS NOT NULL
         ORDER BY timestamp DESC
-      `).bind(stationId, since, latestTime).all<{ timestamp: number; devices_json: string }>();
-
-      const seenMap = new Map<string, InactiveBluetoothRecord>();
+      `).bind(stationId, since).all<{ timestamp: number; devices_json: string }>();
 
       for (const row of (res.results || [])) {
         if (!row.devices_json) continue;
@@ -788,7 +818,7 @@ export class Database {
           // BLE devices
           for (const d of (parsed.ble_devices || [])) {
             const key = (d.address || d.fingerprint || '').trim().toUpperCase();
-            if (!key || activeKeys.has(key)) continue;
+            if (!key) continue;
             if (!seenMap.has(key)) {
               seenMap.set(key, {
                 type: 'ble',
@@ -799,7 +829,8 @@ export class Database {
                 category: d.category,
                 rssi: typeof d.rssi === 'number' ? d.rssi : null,
                 fingerprint: d.fingerprint,
-                last_seen: row.timestamp
+                last_seen: row.timestamp,
+                is_active: activeKeys.has(key)
               });
             } else {
               const existing = seenMap.get(key)!;
@@ -811,7 +842,7 @@ export class Database {
           // Classic devices
           for (const cd of (parsed.classic_devices || [])) {
             const key = (cd.address || '').trim().toUpperCase();
-            if (!key || activeKeys.has(key)) continue;
+            if (!key) continue;
             if (!seenMap.has(key)) {
               seenMap.set(key, {
                 type: 'classic',
@@ -820,7 +851,8 @@ export class Database {
                 dev_class: cd.dev_class,
                 cod: cd.cod,
                 rssi: typeof cd.rssi === 'number' ? cd.rssi : null,
-                last_seen: row.timestamp
+                last_seen: row.timestamp,
+                is_active: activeKeys.has(key)
               });
             } else {
               const existing = seenMap.get(key)!;
@@ -832,10 +864,12 @@ export class Database {
         } catch {}
       }
 
-      return Array.from(seenMap.values());
+      const list = Array.from(seenMap.values());
+      list.sort((a, b) => b.last_seen - a.last_seen);
+      return list;
     } catch (e) {
-      console.error("[Database] Error getting inactive bluetooth devices:", e);
-      return [];
+      console.error("[Database] Error getting recent bluetooth devices:", e);
+      return Array.from(seenMap.values());
     }
   }
 }

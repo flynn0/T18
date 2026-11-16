@@ -258,6 +258,7 @@ export interface InactiveBluetoothRecord {
   rssi?: number | null;
   fingerprint?: string;
   last_seen: number;
+  is_active?: boolean | number;
 }
 
 export interface TelemetryCyclePayload {

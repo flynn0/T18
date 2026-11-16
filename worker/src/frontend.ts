@@ -973,7 +973,7 @@ export function renderDashboardHtml(): string {
         </div>
         <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto; overflow-y: hidden;">
           <!-- Heatmap Legend & Hover Info Bar -->
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.75rem;">
             <div style="display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap;">
               <span style="color: var(--text-muted); margin-right: 3px;">Airtime:</span>
               <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="&le; 2% (Quiet)"></span>
@@ -1002,8 +1002,9 @@ export function renderDashboardHtml(): string {
               <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 25 devices (Dense)"></span>
               <span style="color:#38bdf8; font-weight:600; margin-left:2px;">&gt;25 Dev</span>
             </div>
-            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.4rem; line-height: 1.4;">Hover over a cell to inspect metrics</div>
           </div>
+          <!-- Dedicated Full-Width Hover Info Bar (Permanently allocated height to prevent hover flicker) -->
+          <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.5rem; line-height: 1.5; margin-bottom: 0.6rem; padding: 2px 0;">Hover over a cell to inspect metrics</div>
           <!-- Heatmap Container -->
           <div id="channelHeatmapContainer" style="min-width: 760px; padding: 4px 12px 14px 4px;"></div>
         </div>
@@ -3110,7 +3111,7 @@ export function renderDashboardHtml(): string {
     }
 
     function voltageToPercentage(mv) {
-      if (!mv || mv <= 0) return 0;
+      if (!mv || mv < 2500) return 0;
       if (mv >= 4200) return 100;
       if (mv <= 3300) return 0;
       const table = [
@@ -3142,7 +3143,7 @@ export function renderDashboardHtml(): string {
       let points = [];
       if (Array.isArray(data.battery_history) && data.battery_history.length > 0) {
         data.battery_history.forEach(p => {
-          if (typeof p.battery_mv === "number" && p.battery_mv > 0) {
+          if (typeof p.battery_mv === "number" && p.battery_mv >= 2500) {
             points.push({ timestamp: p.timestamp, battery_mv: p.battery_mv });
           }
         });
@@ -3150,13 +3151,13 @@ export function renderDashboardHtml(): string {
       if (points.length === 0 && Array.isArray(data.recent_history) && data.recent_history.length > 0) {
         const seen = new Set();
         data.recent_history.forEach(m => {
-          if (m.battery_mv && m.battery_mv > 0 && !seen.has(m.timestamp)) {
+          if (m.battery_mv && m.battery_mv >= 2500 && !seen.has(m.timestamp)) {
             seen.add(m.timestamp);
             points.push({ timestamp: m.timestamp, battery_mv: m.battery_mv });
           }
         });
       }
-      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv > 0) {
+      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv >= 2500) {
         points.push({
           timestamp: data.station.last_seen || Math.floor(Date.now() / 1000),
           battery_mv: data.station.battery_mv
@@ -3235,11 +3236,11 @@ export function renderDashboardHtml(): string {
 
       const st = data.station;
       const points = getBatteryPoints(data);
-      const curMv = (st.battery_mv && st.battery_mv > 0)
+      const curMv = (st.battery_mv && st.battery_mv >= 2500)
         ? st.battery_mv
-        : (points.length > 0 ? points[points.length - 1].battery_mv : 0);
+        : (points.length > 0 && points[points.length - 1].battery_mv >= 2500 ? points[points.length - 1].battery_mv : 0);
 
-      if (!curMv || curMv <= 0) {
+      if (!curMv || curMv < 2500) {
         if (batBadge) batBadge.style.display = "none";
         if (batRuntime) batRuntime.style.display = "none";
         if (batSection) batSection.style.display = "none";
@@ -3508,8 +3509,45 @@ export function renderDashboardHtml(): string {
           '</tr>';
         }
 
-        const inactiveList = (data && Array.isArray(data.inactive_bluetooth)) ? data.inactive_bluetooth : [];
-        if (badgeEl) badgeEl.innerText = inactiveList.length + ' Previously Seen';
+        let inactiveList = (data && Array.isArray(data.recent_bluetooth_devices))
+          ? data.recent_bluetooth_devices
+          : ((data && Array.isArray(data.inactive_bluetooth) && data.inactive_bluetooth.length > 0) ? data.inactive_bluetooth : []);
+
+        // Fallback: If inactiveList is still empty but latest_bluetooth has devices, extract them!
+        if (inactiveList.length === 0 && data && data.latest_bluetooth && data.latest_bluetooth.devices_json) {
+          try {
+            const parsed = JSON.parse(data.latest_bluetooth.devices_json);
+            const fallbackList = [];
+            for (const d of (parsed.ble_devices || [])) {
+              fallbackList.push({
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: d.rssi,
+                last_seen: data.latest_bluetooth.timestamp,
+                is_active: true
+              });
+            }
+            for (const cd of (parsed.classic_devices || [])) {
+              fallbackList.push({
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: cd.rssi,
+                last_seen: data.latest_bluetooth.timestamp,
+                is_active: true
+              });
+            }
+            inactiveList = fallbackList;
+          } catch {}
+        }
+
+        if (badgeEl) badgeEl.innerText = inactiveList.length + ' Devices (24h)';
 
         if (inactiveList.length === 0) {
           tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No previous Bluetooth devices recorded in the last 24 hours.</td></tr>';
@@ -3544,9 +3582,12 @@ export function renderDashboardHtml(): string {
               ? '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>'
               : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>');
 
-          const lastSeenDisplay = d.last_seen
-            ? '<span title="' + new Date(d.last_seen * 1000).toLocaleString() + '" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">' + formatLastSeen(d.last_seen) + '</span>'
-            : '<span style="color: var(--text-muted);">—</span>';
+          const isActive = d.is_active || (data && data.latest_bluetooth && Math.abs(d.last_seen - data.latest_bluetooth.timestamp) < 600);
+          const lastSeenDisplay = isActive
+            ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#10b981;font-weight:600;font-size:0.75rem;"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;"></span>Active</span>'
+            : (d.last_seen
+              ? '<span title="' + new Date(d.last_seen * 1000).toLocaleString() + '" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">' + formatLastSeen(d.last_seen) + '</span>'
+              : '<span style="color: var(--text-muted);">—</span>');
 
           rowsHtml += '<tr style="opacity: 0.85;">' +
             '<td>' + typeBadge + '</td>' +

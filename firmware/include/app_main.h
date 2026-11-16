@@ -277,6 +277,11 @@ private:
             if (connectWifiSpecific(_config.backup_ssid, _config.backup_pass, 15000)) {
                 Serial.printf("[Main] Connected to backup AP '%s'! Uploading telemetry...\n", _config.backup_ssid);
 
+                if (_ntp.shouldSync()) {
+                    _ntp.syncTime();
+                    cycle.timestamp = _ntp.getCurrentEpoch();
+                }
+
                 if (!_configMgr.hasDeviceToken()) {
                     ensureDeviceRegistered();
                 }

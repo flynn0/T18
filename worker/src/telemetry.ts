@@ -69,8 +69,9 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
 
   for (const cycle of cycles) {
     let cycleTime = cycle.timestamp || serverNow;
-    // Guard against future timestamps caused by NTP / clock skew on IoT probe
-    if (cycleTime > serverNow + 30) {
+    // Guard against invalid pre-2024 timestamps (IoT probe without NTP sync, local uptime ticks)
+    // or future timestamps caused by NTP / clock skew
+    if (cycleTime < 1700000000 || cycleTime > serverNow + 30) {
       cycleTime = serverNow;
     }
     if (cycleTime > latestTimestamp) {
@@ -82,7 +83,7 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
       latestScanDuration = scanDuration;
     }
 
-    const batMv = typeof cycle.battery_mv === "number" && cycle.battery_mv > 0 ? cycle.battery_mv : null;
+    const batMv = typeof cycle.battery_mv === "number" && cycle.battery_mv >= 2500 && cycle.battery_mv <= 5000 ? cycle.battery_mv : null;
     if (batMv !== null) {
       batteryRecordsToInsert.push({
         station_id: station.station_id,
@@ -176,7 +177,9 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
   let latestBoard: string | undefined;
   let latestFw: string | undefined;
   for (const c of cycles) {
-    if (typeof c.battery_mv === "number" && c.battery_mv > 0) latestBattery = c.battery_mv;
+    if (typeof c.battery_mv === "number" && c.battery_mv >= 2500 && c.battery_mv <= 5000) {
+      latestBattery = c.battery_mv;
+    }
     if (c.board_type) latestBoard = c.board_type;
     if (c.firmware_version) latestFw = c.firmware_version;
   }

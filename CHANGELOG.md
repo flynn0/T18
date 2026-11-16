@@ -28,10 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Firmware (v1.0.7)**: Automatic detection of backup AP in the Wi-Fi scan survey. If monitored primary Wi-Fi networks have no internet connection or fail to upload telemetry, the station automatically connects to the backup hotspot to transmit queued offline telemetry and current cycle data.
 - **Setup Web Portal**: Added **Backup Internet Connection** configuration section in the Captive Portal setup UI to enable/disable backup failover and customize backup SSID and password.
 - **Web & Backend (v2.0.7)**: Updated stable firmware version to `v1.0.7` across Worker OTA delivery, Web Serial installer modal, and manifest metadata.
-- **Web UI (v2.0.7)**: Fixed hover indicator glitch and flickering scrollbars on Channel 13 (bottom boundary) and "Now" (right edge) in the 24-Hour Utilization Heatmap with padding clearances, centered zoom origin, and overflow containment.
+- **Web UI (v2.0.7)**: Fixed hover indicator glitch and flickering on Channel 13 and BLE cells by giving `#heatmapHoverInfo` a dedicated, permanently allocated line below the color indicators, preventing text wrapping from shifting the heatmap.
 - **Web UI (v2.0.7)**: Added dedicated **Unique BLE Devices** row to the 24-Hour Spectrum Heatmap, mapping detected BLE devices across 48 half-hour slots with density-based color scaling and detailed hover telemetry inspection.
-- **Web UI (v2.0.7)**: Added interactive view switch in **Discovered Bluetooth Devices** drawer between **Current Cycle** and **Previous 24 Hours**, displaying historical BLE and Classic Bluetooth devices with "Last Seen" timestamps and peak recorded RSSI.
-- **Backend (v2.0.7)**: Added `getInactiveBluetoothDevices` database query and API response payload to retrieve previously discovered Bluetooth devices absent from the latest cycle over the past 24 hours.
+- **Web UI (v2.0.7)**: Added interactive view switch in **Discovered Bluetooth Devices** drawer between **Current Cycle** and **Previous 24 Hours**, displaying historical BLE and Classic Bluetooth devices with "Active" badges and "Last Seen" timestamps.
+- **Backend (v2.0.7)**: Added `getRecentBluetoothDevices` database query and API response payload to retrieve all Bluetooth devices discovered over the past 24 hours.
+- **Backend (v2.0.7)**: Added unsynced timestamp fallback in `telemetry.ts` (`< 1700000000`) to guarantee nodes connecting via backup APs before NTP sync record valid 24-hour spectrum utilization.
+- **Telemetry & UI (v2.0.7)**: Filtered out floating ADC noise (`< 2500 mV`) so AC/USB-powered nodes without batteries (e.g., DevKit V1) no longer display a false 0% battery indicator.
+- **Firmware (v1.0.7)**: Added NTP time synchronization upon failover connection to the backup AP.
 
 ---
 
