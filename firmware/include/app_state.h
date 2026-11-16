@@ -19,10 +19,11 @@ struct AppConfig {
     char master_phrase[64]; // Cleared once device_token is acquired
     WifiNetworkConfig networks[MAX_MONITORED_NETWORKS];
     uint8_t network_count;
-    bool fallback_enabled;
-    WifiNetworkConfig fallback_network;
     bool is_configured;
     bool powerbank_keepalive; // Wake up 500ms every 20s during light sleep
+    bool backup_enabled;      // Failover to backup hotspot if primary Wi-Fi has no internet
+    char backup_ssid[33];     // Backup SSID (default: "S24")
+    char backup_pass[65];     // Backup Password (default: "12345678")
     HardwareProfile hw;
 
     AppConfig() {
@@ -32,11 +33,11 @@ struct AppConfig {
         memset(master_phrase, 0, sizeof(master_phrase));
         memset(networks, 0, sizeof(networks));
         network_count = 0;
-        fallback_enabled = true;
-        strncpy(fallback_network.ssid, "S24", sizeof(fallback_network.ssid) - 1);
-        strncpy(fallback_network.password, "12345678", sizeof(fallback_network.password) - 1);
         is_configured = false;
         powerbank_keepalive = false;
+        backup_enabled = false;
+        strncpy(backup_ssid, "S24", sizeof(backup_ssid) - 1);
+        strncpy(backup_pass, "12345678", sizeof(backup_pass) - 1);
         hw.setPreset(BOARD_T18);
     }
 };
@@ -116,6 +117,47 @@ struct ChannelUtilizationItem {
     }
 };
 
+struct BleDeviceTelemetry {
+    String address;
+    String addr_type;
+    String name;
+    String vendor;
+    String category;
+    int16_t rssi;
+    String fingerprint;
+};
+
+struct ClassicBtDeviceTelemetry {
+    String address;
+    String name;
+    uint32_t cod;
+    String dev_class;
+    int16_t rssi;
+};
+
+struct BluetoothCycleTelemetry {
+    uint32_t scan_duration_ms;
+    uint32_t ble_total_packets;
+    uint16_t ble_total_macs;
+    uint16_t ble_unique_devices;
+    uint16_t ble_random_macs;
+    uint16_t ble_public_macs;
+    uint16_t ble_beacons;
+    uint16_t ble_smartphones;
+    uint16_t ble_wearables;
+    uint16_t ble_audio;
+    uint16_t ble_other;
+    std::vector<BleDeviceTelemetry> ble_devices;
+    uint16_t classic_total;
+    std::vector<ClassicBtDeviceTelemetry> classic_devices;
+
+    BluetoothCycleTelemetry() :
+        scan_duration_ms(0), ble_total_packets(0), ble_total_macs(0),
+        ble_unique_devices(0), ble_random_macs(0), ble_public_macs(0),
+        ble_beacons(0), ble_smartphones(0), ble_wearables(0),
+        ble_audio(0), ble_other(0), classic_total(0) {}
+};
+
 struct CycleTelemetry {
     String station_id;
     uint64_t timestamp; // UTC epoch seconds
@@ -128,8 +170,10 @@ struct CycleTelemetry {
     std::vector<NetworkDiagnostics> diagnostics;
     bool has_channel_utilization;
     std::vector<ChannelUtilizationItem> channel_utilization;
+    bool has_bluetooth;
+    BluetoothCycleTelemetry bluetooth;
 
     CycleTelemetry() :
         timestamp(0), scan_duration_ms(0), battery_mv(0), board_type("T18"),
-        has_diagnostics(false), has_channel_utilization(false) {}
+        has_diagnostics(false), has_channel_utilization(false), has_bluetooth(false) {}
 };

@@ -58,6 +58,11 @@ Thumbs.db
 .piolibdeps/
 compile_commands.json
 
+# Arduino / Binaries
+*.bin
+!docs/firmware/*.bin
+*.elf
+
 # Node & Cloudflare Worker
 node_modules/
 dist/

@@ -47,12 +47,12 @@ public:
             strlcpy(config.networks[i].password, prefs.getString(passKey.c_str(), "").c_str(), sizeof(config.networks[0].password));
         }
 
-        // Fallback Network (Backup upload only, not monitored)
-        config.fallback_enabled = prefs.getBool("fb_en", true);
-        String fbSsid = prefs.getString("fb_ssid", "S24");
-        String fbPass = prefs.getString("fb_pass", "12345678");
-        strlcpy(config.fallback_network.ssid, fbSsid.c_str(), sizeof(config.fallback_network.ssid));
-        strlcpy(config.fallback_network.password, fbPass.c_str(), sizeof(config.fallback_network.password));
+        // Backup Internet Connection
+        config.backup_enabled = prefs.getBool("bkp_en", false);
+        String bkpSsid = prefs.getString("bkp_ssid", "S24");
+        String bkpPass = prefs.getString("bkp_pass", "12345678");
+        strlcpy(config.backup_ssid, bkpSsid.c_str(), sizeof(config.backup_ssid));
+        strlcpy(config.backup_pass, bkpPass.c_str(), sizeof(config.backup_pass));
 
         // Hardware Profile
         uint8_t hwType = prefs.getUChar("hw_type", (uint8_t)BOARD_T18);
@@ -103,10 +103,10 @@ public:
             prefs.putString(passKey.c_str(), config.networks[i].password);
         }
 
-        // Fallback Network
-        prefs.putBool("fb_en", config.fallback_enabled);
-        prefs.putString("fb_ssid", config.fallback_network.ssid);
-        prefs.putString("fb_pass", config.fallback_network.password);
+        // Backup Internet Connection
+        prefs.putBool("bkp_en", config.backup_enabled);
+        prefs.putString("bkp_ssid", config.backup_ssid);
+        prefs.putString("bkp_pass", config.backup_pass);
 
         // Hardware Profile
         prefs.putUChar("hw_type", config.hw.board_type);

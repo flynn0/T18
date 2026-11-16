@@ -227,28 +227,28 @@ private:
             html += "<button type='button' class='toggle-btn' onclick='togglePwd(\"pwd_" + String(i) + "\")'>Show</button></div></div></div>";
         }
 
-        // Fallback / Backup Network (Not Monitored)
-        html += F("<div class='section-title'>Fallback Network (Backup Only)</div>");
-        html += F("<div class='net-box'>");
-        html += F("<div class='field' style='display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem;'>"
-                  "<input type='checkbox' id='fb_en' name='fb_en' value='1'");
-        if (config.fallback_enabled) {
+        // Backup Internet Connection
+        html += F("<div class='section-title'>Backup Internet Connection</div>");
+        html += F("<div class='field' style='display:flex;align-items:flex-start;gap:0.75rem;margin-top:0.5rem;'>"
+                  "<input type='checkbox' id='bkp_en' name='bkp_en' value='1'");
+        if (config.backup_enabled) {
             html += F(" checked");
         }
         html += F(" style='width:1.25rem;min-width:1.25rem;height:1.25rem;accent-color:var(--primary);cursor:pointer;margin-top:0.2rem;'>"
-                  "<div><label for='fb_en' style='cursor:pointer;margin-bottom:0.15rem;font-weight:600;'>Enable Fallback Network</label>"
+                  "<div><label for='bkp_en' style='cursor:pointer;margin-bottom:0.15rem;font-weight:600;'>Enable Backup Internet Failover</label>"
                   "<span style='color:var(--muted);font-size:0.75rem;line-height:1.3;display:block;'>"
-                  "Used strictly as an upload backup when monitored networks cannot connect or lack internet access. This network is never monitored."
+                  "Connect to backup hotspot (e.g. S24) if monitored networks have no internet connection to ensure telemetry upload."
                   "</span></div></div>");
-        html += F("<div class='field'><label>Fallback SSID</label>"
-                  "<input type='text' id='fb_ssid' name='fb_ssid' value='");
-        html += String(strlen(config.fallback_network.ssid) > 0 ? config.fallback_network.ssid : "S24");
-        html += F("' placeholder='e.g. S24'></div>");
-        html += F("<div class='field'><label>Fallback Password</label><div class='pwd-wrap'>"
-                  "<input type='password' id='pwd_fb' name='fb_pass' value='");
-        html += String(strlen(config.fallback_network.password) > 0 ? config.fallback_network.password : "12345678");
-        html += F("' placeholder='e.g. 12345678'>"
-                  "<button type='button' class='toggle-btn' onclick='togglePwd(\"pwd_fb\")'>Show</button></div></div></div>");
+
+        html += F("<div class='row'>"
+                  "<div class='field'><label for='bkp_ssid'>Backup Hotspot SSID</label>"
+                  "<input type='text' id='bkp_ssid' name='bkp_ssid' maxlength='32' value='");
+        html += String(strlen(config.backup_ssid) > 0 ? config.backup_ssid : "S24");
+        html += F("'></div>"
+                  "<div class='field'><label for='bkp_pass'>Backup Password</label><div class='pwd-wrap'>"
+                  "<input type='password' id='bkp_pass' name='bkp_pass' maxlength='64' value='");
+        html += String(strlen(config.backup_pass) > 0 ? config.backup_pass : "12345678");
+        html += F("'><button type='button' class='toggle-btn' onclick='togglePwd(\"bkp_pass\")'>Show</button></div></div></div>");
 
         // Worker & Bootstrap Security
         html += F("<div class='section-title'>Cloudflare Worker & Provisioning</div>");
@@ -347,13 +347,15 @@ private:
             }
         }
 
-        // Fallback Network
-        config.fallback_enabled = _server.hasArg("fb_en");
-        String fbSsid = _server.arg("fb_ssid");
-        fbSsid.trim();
-        strlcpy(config.fallback_network.ssid, fbSsid.length() > 0 ? fbSsid.c_str() : "S24", sizeof(config.fallback_network.ssid));
-        String fbPass = _server.arg("fb_pass");
-        strlcpy(config.fallback_network.password, fbPass.c_str(), sizeof(config.fallback_network.password));
+        // Backup Internet Connection
+        config.backup_enabled = _server.hasArg("bkp_en");
+        String bkpSsid = _server.arg("bkp_ssid");
+        String bkpPass = _server.arg("bkp_pass");
+        bkpSsid.trim();
+        if (bkpSsid.length() == 0) bkpSsid = "S24";
+        if (bkpPass.length() == 0 && !_server.hasArg("bkp_pass")) bkpPass = "12345678";
+        strlcpy(config.backup_ssid, bkpSsid.c_str(), sizeof(config.backup_ssid));
+        strlcpy(config.backup_pass, bkpPass.c_str(), sizeof(config.backup_pass));
 
         config.is_configured = (config.network_count > 0);
         bool saved = _configMgr.saveConfig(config);

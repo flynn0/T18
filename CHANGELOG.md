@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-11-16
+
+### Added
+- **In-Browser Web Serial Firmware Flasher**:
+  - Integrated ESP Web Tools (`<esp-web-install-button>`) directly into the Web UI dashboard with a 3-tab modal dialog (`Web Serial Install`, `Direct Downloads & CLI`, and `First-Boot Setup`).
+  - Supports one-click USB flashing directly from Google Chrome, Microsoft Edge, Brave, or Opera over Web Serial.
+  - Generates and serves `manifest.json` and static binaries (`firmware.bin`, `partitions.bin`, `bootloader.bin`, `boot_app0.bin`, and an all-in-one `firmware-esp32-merged.bin`) from both Cloudflare Edge Worker and GitHub Pages.
+  - Deep-link support via `/?flash=1` and `/flash` routes.
+- **2.4 GHz Bluetooth Low Energy (BLE) & Classic Spectrum Scanning**:
+  - Sequential dual-stack Bluetooth scan in every 10-minute cycle (`BluetoothScanner::performScan`).
+  - Active 3-second BLE scan capturing Advertising, Service UUIDs, and local device names.
+  - 3-second Classic Bluetooth Inquiry querying discoverable BR/EDR devices, capturing fixed MACs, Class of Device (COD), and RSSI.
+  - Advanced payload de-randomization establishing deterministic fingerprints for Resolvable Private Addresses (RPA) across Apple (Find My / AirTag, iBeacon), Google (Eddystone), Tile, Samsung, and Microsoft devices.
+  - D1 database migration (`0010_bluetooth_telemetry.sql`) adding `station_bluetooth_summary` and `station_latest_bluetooth`.
+  - Web UI visualization: dedicated **2.4 GHz Bluetooth & BLE Activity** card with KPIs, 24-hour trend graph, collapsible device inspector, and Bluetooth heatmap row in the channel utilization view.
+- **Dynamic LED & Boot Survey Sequence**:
+  - 13-channel promiscuous congestion survey runs immediately on boot/wake with active LED feedback: solid ON while dwelling on a channel, 100 ms blink OFF during channel transitions.
+  - Non-blocking BOOT button monitoring during channel scans: pressing BOOT immediately halts the scan and launches the Soft-AP captive portal setup without waiting.
+- **Backup Hotspot Internet Failover**:
+  - Automatic detection of backup AP (e.g. "S24") in the Wi-Fi scan survey.
+  - If primary monitored Wi-Fi networks have no internet connection or fail to upload telemetry, the station automatically connects to the backup hotspot to transmit queued offline telemetry and current cycle data.
+  - Setup portal includes backup hotspot credentials configuration section.
+- **Backend & OTA Enhancements**:
+  - Enforced strict SemVer comparison checks in firmware and Worker OTA to prevent unintended fleet downgrades.
+  - Worker endpoints for `/manifest.json`, `/firmware/manifest.json`, and `/firmware/*` binary streaming with CORS.
+  - Automated 30-day data retention cleanup for Bluetooth summaries in daily cron maintenance.
+
+---
+
 ## [1.0.1] - 2026-11-16
 
 ### Added

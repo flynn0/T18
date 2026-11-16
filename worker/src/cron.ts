@@ -81,6 +81,16 @@ export async function handleScheduledMaintenance(_event: ScheduledEvent, env: En
       // Table may not exist yet if migration pending
     }
 
+    // Purge bluetooth summary older than 30 days
+    try {
+      const purgeBt = await env.DB.prepare("DELETE FROM station_bluetooth_summary WHERE timestamp < ?")
+        .bind(retentionCutoff)
+        .run();
+      console.log(`[Cron] Purged ${purgeBt.meta?.changes ?? 0} expired bluetooth summary records.`);
+    } catch {
+      // Table may not exist yet if migration pending
+    }
+
     // Purge cached overviews older than 1 day
     const purgeCache = await env.DB.prepare("DELETE FROM station_overview_cache WHERE cached_at < ?")
       .bind(now - 86400)

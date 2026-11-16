@@ -5,6 +5,8 @@
 #include <vector>
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
+#include "board_pins.h"
+#include "led_controller.h"
 #include "app_state.h"
 
 namespace {
@@ -114,9 +116,15 @@ static void IRAM_ATTR promiscuousRxCallback(void* buf, wifi_promiscuous_pkt_type
 
 class ChannelAnalyzer {
 public:
-    static std::vector<ChannelUtilizationItem> measureChannels(uint32_t dwellMsPerChannel = 2000) {
+    static std::vector<ChannelUtilizationItem> measureChannels(
+        uint32_t dwellMsPerChannel = 2000,
+        LedController *led = nullptr,
+        bool *bootPressed = nullptr
+    ) {
         std::vector<ChannelUtilizationItem> results;
-        Serial.println(F("[ChannelAnalyzer] Starting 13-channel promiscuous congestion survey (2s/ch)..."));
+        Serial.println(F("[ChannelAnalyzer] Starting 13-channel promiscuous congestion survey..."));
+
+        if (bootPressed) *bootPressed = false;
 
         // Ensure station mode and disconnect radio from AP
         WiFi.disconnect();
@@ -133,6 +141,9 @@ public:
         esp_wifi_set_promiscuous(true);
 
         for (uint8_t ch = 1; ch <= 13; ch++) {
+            // While scanning have the LED on
+            if (led) led->setSolid(true);
+
             // Reset channel accumulators
             portENTER_CRITICAL(&s_chanWork.mux);
             s_chanWork.mgmt_frames = 0;
@@ -149,8 +160,23 @@ public:
             // Switch to target channel
             esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
 
-            // Dwell for specified duration (default: 2000 ms)
-            delay(dwellMsPerChannel);
+            // Dwell for specified duration, polling BOOT button
+            uint32_t dwellStart = millis();
+            bool aborted = false;
+            while (millis() - dwellStart < dwellMsPerChannel) {
+                if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+                    Serial.println(F("[ChannelAnalyzer] BOOT button press detected during channel scan!"));
+                    if (bootPressed) *bootPressed = true;
+                    aborted = true;
+                    break;
+                }
+                delay(10);
+            }
+
+            if (aborted) {
+                if (led) led->setOff();
+                break;
+            }
 
             // Capture snapshot of metrics for channel ch
             portENTER_CRITICAL(&s_chanWork.mux);
@@ -173,13 +199,30 @@ public:
 
             results.push_back(item);
             Serial.printf("[ChannelAnalyzer] Ch %2d: %4u mgmt, %4u data, %4u ctrl, %2u transmitters, %5.1f%% airtime\n",
-                          ch, item.mgmt_frames, item.data_frames, item.ctrl_frames,
-                          item.unique_transmitters, item.airtime_pct);
+                          ch, (unsigned)item.mgmt_frames, (unsigned)item.data_frames, (unsigned)item.ctrl_frames,
+                          (unsigned)item.unique_transmitters, item.airtime_pct);
+
+            // When switching to the next channel have the LED off, maybe 100 ms - so it is not static lit
+            if (ch < 13) {
+                if (led) led->setOff();
+                uint32_t offStart = millis();
+                while (millis() - offStart < 100) {
+                    if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+                        Serial.println(F("[ChannelAnalyzer] BOOT button press detected between channels!"));
+                        if (bootPressed) *bootPressed = true;
+                        aborted = true;
+                        break;
+                    }
+                    delay(10);
+                }
+                if (aborted) break;
+            }
         }
 
         // Cleanly disable promiscuous mode
         esp_wifi_set_promiscuous(false);
         esp_wifi_set_promiscuous_rx_cb(NULL);
+        if (led) led->setOff();
         delay(50);
 
         Serial.println(F("[ChannelAnalyzer] Completed 13-channel survey."));

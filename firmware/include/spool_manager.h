@@ -181,6 +181,26 @@ public:
             }
         }
 
+        // 4. Bluetooth status
+        buffer[offset++] = cycle.has_bluetooth ? 1 : 0;
+        if (cycle.has_bluetooth) {
+            uint16_t bMacs = cycle.bluetooth.ble_total_macs;
+            memcpy(buffer + offset, &bMacs, 2); offset += 2;
+            uint16_t bUniq = cycle.bluetooth.ble_unique_devices;
+            memcpy(buffer + offset, &bUniq, 2); offset += 2;
+            uint16_t bRand = cycle.bluetooth.ble_random_macs;
+            memcpy(buffer + offset, &bRand, 2); offset += 2;
+            uint16_t bPub = cycle.bluetooth.ble_public_macs;
+            memcpy(buffer + offset, &bPub, 2); offset += 2;
+            buffer[offset++] = (uint8_t)cycle.bluetooth.ble_beacons;
+            buffer[offset++] = (uint8_t)cycle.bluetooth.ble_smartphones;
+            buffer[offset++] = (uint8_t)cycle.bluetooth.ble_wearables;
+            buffer[offset++] = (uint8_t)cycle.bluetooth.ble_audio;
+            buffer[offset++] = (uint8_t)cycle.bluetooth.ble_other;
+            uint16_t cTot = cycle.bluetooth.classic_total;
+            memcpy(buffer + offset, &cTot, 2); offset += 2;
+        }
+
         // Update record length
         uint16_t totalRecLen = offset;
         memcpy(buffer + lenOffset, &totalRecLen, 2);
@@ -345,6 +365,30 @@ public:
                     off += stlen;
                 }
                 no["status"] = stBuf;
+            }
+
+            // Bluetooth Status (if present)
+            if (off < recLen) {
+                uint8_t hasBt = buffer[off++];
+                if (hasBt && (off + 15 <= recLen)) {
+                    JsonObject bt = doc["bluetooth"].to<JsonObject>();
+                    uint16_t bMacs = 0; memcpy(&bMacs, buffer + off, 2); off += 2;
+                    bt["ble_total_macs"] = bMacs;
+                    uint16_t bUniq = 0; memcpy(&bUniq, buffer + off, 2); off += 2;
+                    bt["ble_unique_devices"] = bUniq;
+                    uint16_t bRand = 0; memcpy(&bRand, buffer + off, 2); off += 2;
+                    bt["ble_random_macs"] = bRand;
+                    uint16_t bPub = 0; memcpy(&bPub, buffer + off, 2); off += 2;
+                    bt["ble_public_macs"] = bPub;
+                    JsonObject cat = bt["ble_categories"].to<JsonObject>();
+                    cat["beacons"] = buffer[off++];
+                    cat["smartphones"] = buffer[off++];
+                    cat["wearables"] = buffer[off++];
+                    cat["audio"] = buffer[off++];
+                    cat["other"] = buffer[off++];
+                    uint16_t cTot = 0; memcpy(&cTot, buffer + off, 2); off += 2;
+                    bt["classic_total"] = cTot;
+                }
             }
 
             String line;

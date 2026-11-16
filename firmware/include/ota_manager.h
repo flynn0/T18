@@ -59,8 +59,16 @@ public:
             bool updateAvailable = doc["update_available"] | false;
             const char *targetVersion = doc["target_version"] | "";
             const char *binUrl = doc["url"] | "";
+            bool allowDowngrade = doc["allow_downgrade"] | false;
 
             if (updateAvailable && strlen(binUrl) > 0) {
+                // Safeguard: Never accept an automatic downgrade or equal version
+                if (!allowDowngrade && compareSemVer(String(targetVersion), currentVersion) <= 0) {
+                    Serial.printf("[OTA] Ignoring downgrade/same version offer (Target: %s <= Current: %s)\n",
+                                  targetVersion, currentVersion.c_str());
+                    return false;
+                }
+
                 Serial.println(F("\n=========================================="));
                 Serial.printf(" [OTA] UPDATE FOUND! Target: %s\n", targetVersion);
                 Serial.printf(" [OTA] Binary URL: %s\n", binUrl);
@@ -104,5 +112,19 @@ public:
                 return true;
         }
         return false;
+    }
+
+    static int compareSemVer(const String &v1, const String &v2) {
+        int maj1 = 0, min1 = 0, pat1 = 0;
+        int maj2 = 0, min2 = 0, pat2 = 0;
+        const char *s1 = v1.c_str();
+        const char *s2 = v2.c_str();
+        if (s1[0] == 'v' || s1[0] == 'V') s1++;
+        if (s2[0] == 'v' || s2[0] == 'V') s2++;
+        sscanf(s1, "%d.%d.%d", &maj1, &min1, &pat1);
+        sscanf(s2, "%d.%d.%d", &maj2, &min2, &pat2);
+        if (maj1 != maj2) return maj1 - maj2;
+        if (min1 != min2) return min1 - min2;
+        return pat1 - pat2;
     }
 };

@@ -1,4 +1,4 @@
-import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord, ChannelUtilizationPayload, ChannelUtilizationRecord } from "./types";
+import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord, ChannelUtilizationPayload, ChannelUtilizationRecord, BluetoothPayload, BluetoothRecord, InactiveBluetoothRecord } from "./types";
 
 export class Database {
   private db: D1Database;
@@ -49,7 +49,9 @@ export class Database {
       this.db.prepare("UPDATE station_channel_utilization SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
       this.db.prepare("UPDATE station_network_diagnostics SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
       this.db.prepare("UPDATE daily_summaries SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
-      this.db.prepare("UPDATE station_overview_cache SET station_id = ? WHERE station_id = ?").bind(newId, oldId)
+      this.db.prepare("UPDATE station_overview_cache SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_bluetooth_summary SET station_id = ? WHERE station_id = ?").bind(newId, oldId),
+      this.db.prepare("UPDATE station_latest_bluetooth SET station_id = ? WHERE station_id = ?").bind(newId, oldId)
     ];
     await this.db.batch(statements);
   }
@@ -630,6 +632,244 @@ export class Database {
       return result.results || [];
     } catch {
       return [];
+    }
+  }
+
+  async saveBluetoothTelemetry(
+    stationId: string,
+    timestamp: number,
+    bt: BluetoothPayload
+  ): Promise<void> {
+    const bleTotalPackets = bt.ble_total_packets ?? 0;
+    const bleTotalMacs = bt.ble_total_macs ?? 0;
+    const bleUniqueDevices = bt.ble_unique_devices ?? 0;
+    const bleRandomMacs = bt.ble_random_macs ?? 0;
+    const blePublicMacs = bt.ble_public_macs ?? 0;
+    const bleBeacons = bt.ble_categories?.beacons ?? 0;
+    const bleSmartphones = bt.ble_categories?.smartphones ?? 0;
+    const bleWearables = bt.ble_categories?.wearables ?? 0;
+    const bleAudio = bt.ble_categories?.audio ?? 0;
+    const bleOther = bt.ble_categories?.other ?? 0;
+    const classicTotal = bt.classic_total ?? 0;
+    const scanDurationMs = bt.scan_duration_ms ?? null;
+    const devicesJson = JSON.stringify({
+      ble_devices: bt.ble_devices ?? [],
+      classic_devices: bt.classic_devices ?? []
+    });
+
+    try {
+      await this.db.batch([
+        this.db.prepare(`
+          INSERT INTO station_bluetooth_summary (
+            station_id, timestamp, ble_total_packets, ble_total_macs, ble_unique_devices,
+            ble_random_macs, ble_public_macs, ble_beacons, ble_smartphones, ble_wearables,
+            ble_audio, ble_other, classic_total, scan_duration_ms, devices_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(station_id, timestamp) DO UPDATE SET
+            ble_total_packets = excluded.ble_total_packets,
+            ble_total_macs = excluded.ble_total_macs,
+            ble_unique_devices = excluded.ble_unique_devices,
+            ble_random_macs = excluded.ble_random_macs,
+            ble_public_macs = excluded.ble_public_macs,
+            ble_beacons = excluded.ble_beacons,
+            ble_smartphones = excluded.ble_smartphones,
+            ble_wearables = excluded.ble_wearables,
+            ble_audio = excluded.ble_audio,
+            ble_other = excluded.ble_other,
+            classic_total = excluded.classic_total,
+            scan_duration_ms = excluded.scan_duration_ms,
+            devices_json = excluded.devices_json
+        `).bind(
+          stationId, timestamp, bleTotalPackets, bleTotalMacs, bleUniqueDevices,
+          bleRandomMacs, blePublicMacs, bleBeacons, bleSmartphones, bleWearables,
+          bleAudio, bleOther, classicTotal, scanDurationMs, devicesJson
+        ),
+        this.db.prepare(`
+          INSERT INTO station_latest_bluetooth (
+            station_id, timestamp, ble_total_packets, ble_total_macs, ble_unique_devices,
+            ble_random_macs, ble_public_macs, ble_beacons, ble_smartphones, ble_wearables,
+            ble_audio, ble_other, classic_total, scan_duration_ms, devices_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(station_id) DO UPDATE SET
+            timestamp = excluded.timestamp,
+            ble_total_packets = excluded.ble_total_packets,
+            ble_total_macs = excluded.ble_total_macs,
+            ble_unique_devices = excluded.ble_unique_devices,
+            ble_random_macs = excluded.ble_random_macs,
+            ble_public_macs = excluded.ble_public_macs,
+            ble_beacons = excluded.ble_beacons,
+            ble_smartphones = excluded.ble_smartphones,
+            ble_wearables = excluded.ble_wearables,
+            ble_audio = excluded.ble_audio,
+            ble_other = excluded.ble_other,
+            classic_total = excluded.classic_total,
+            scan_duration_ms = excluded.scan_duration_ms,
+            devices_json = excluded.devices_json
+        `).bind(
+          stationId, timestamp, bleTotalPackets, bleTotalMacs, bleUniqueDevices,
+          bleRandomMacs, blePublicMacs, bleBeacons, bleSmartphones, bleWearables,
+          bleAudio, bleOther, classicTotal, scanDurationMs, devicesJson
+        )
+      ]);
+    } catch (err) {
+      console.error("[Database] Error saving Bluetooth telemetry:", err);
+    }
+  }
+
+  async getLatestBluetooth(stationId: string): Promise<BluetoothRecord | null> {
+    try {
+      const res = await this.db.prepare(`
+        SELECT * FROM station_latest_bluetooth
+        WHERE station_id = ?
+        LIMIT 1
+      `).bind(stationId).first<BluetoothRecord>();
+      return res;
+    } catch {
+      return null;
+    }
+  }
+
+  async getRecentBluetooth(stationId: string, hours: number = 24): Promise<BluetoothRecord[]> {
+    const cutoff = Math.floor(Date.now() / 1000) - (hours * 3600);
+    try {
+      const res = await this.db.prepare(`
+        SELECT id, station_id, timestamp, ble_total_packets, ble_total_macs, ble_unique_devices,
+               ble_random_macs, ble_public_macs, ble_beacons, ble_smartphones, ble_wearables,
+               ble_audio, ble_other, classic_total, scan_duration_ms
+        FROM station_bluetooth_summary
+        WHERE station_id = ? AND timestamp >= ?
+        ORDER BY timestamp ASC
+      `).bind(stationId, cutoff).all<BluetoothRecord>();
+      return res.results || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getInactiveBluetoothDevices(stationId: string, hours: number = 24): Promise<InactiveBluetoothRecord[]> {
+    return this.getRecentBluetoothDevices(stationId, hours);
+  }
+
+  async getRecentBluetoothDevices(stationId: string, hours: number = 24): Promise<InactiveBluetoothRecord[]> {
+    const latestBt = await this.getLatestBluetooth(stationId);
+    const activeKeys = new Set<string>();
+    const seenMap = new Map<string, InactiveBluetoothRecord>();
+    const nowSec = Math.floor(Date.now() / 1000);
+    let latestTime = nowSec;
+
+    if (latestBt) {
+      if (latestBt.timestamp) latestTime = latestBt.timestamp;
+      if (latestBt.devices_json) {
+        try {
+          const parsed = JSON.parse(latestBt.devices_json);
+          for (const d of (parsed.ble_devices || [])) {
+            const k = (d.address || d.fingerprint || '').trim().toUpperCase();
+            if (k) {
+              activeKeys.add(k);
+              seenMap.set(k, {
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: typeof d.rssi === 'number' ? d.rssi : null,
+                fingerprint: d.fingerprint,
+                last_seen: latestTime,
+                is_active: true
+              });
+            }
+          }
+          for (const cd of (parsed.classic_devices || [])) {
+            const k = (cd.address || '').trim().toUpperCase();
+            if (k) {
+              activeKeys.add(k);
+              seenMap.set(k, {
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: typeof cd.rssi === 'number' ? cd.rssi : null,
+                last_seen: latestTime,
+                is_active: true
+              });
+            }
+          }
+        } catch {}
+      }
+    }
+
+    const since = nowSec - (hours * 3600);
+    try {
+      const res = await this.db.prepare(`
+        SELECT timestamp, devices_json
+        FROM station_bluetooth_summary
+        WHERE station_id = ? AND timestamp >= ? AND devices_json IS NOT NULL
+        ORDER BY timestamp DESC
+      `).bind(stationId, since).all<{ timestamp: number; devices_json: string }>();
+
+      for (const row of (res.results || [])) {
+        if (!row.devices_json) continue;
+        try {
+          const parsed = JSON.parse(row.devices_json);
+          // BLE devices
+          for (const d of (parsed.ble_devices || [])) {
+            const key = (d.address || d.fingerprint || '').trim().toUpperCase();
+            if (!key) continue;
+            if (!seenMap.has(key)) {
+              seenMap.set(key, {
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: typeof d.rssi === 'number' ? d.rssi : null,
+                fingerprint: d.fingerprint,
+                last_seen: row.timestamp,
+                is_active: activeKeys.has(key)
+              });
+            } else {
+              const existing = seenMap.get(key)!;
+              if (typeof d.rssi === 'number' && (existing.rssi == null || d.rssi > existing.rssi)) {
+                existing.rssi = d.rssi;
+              }
+            }
+          }
+          // Classic devices
+          for (const cd of (parsed.classic_devices || [])) {
+            const key = (cd.address || '').trim().toUpperCase();
+            if (!key) continue;
+            if (!seenMap.has(key)) {
+              seenMap.set(key, {
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: typeof cd.rssi === 'number' ? cd.rssi : null,
+                last_seen: row.timestamp,
+                is_active: activeKeys.has(key)
+              });
+            } else {
+              const existing = seenMap.get(key)!;
+              if (typeof cd.rssi === 'number' && (existing.rssi == null || cd.rssi > existing.rssi)) {
+                existing.rssi = cd.rssi;
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const list = Array.from(seenMap.values());
+      list.sort((a, b) => b.last_seen - a.last_seen);
+      return list;
+    } catch (e) {
+      console.error("[Database] Error getting recent bluetooth devices:", e);
+      return Array.from(seenMap.values());
     }
   }
 }

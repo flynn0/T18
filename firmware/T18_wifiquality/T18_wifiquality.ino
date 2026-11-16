@@ -1,9 +1,9 @@
 // kreier/T18 - ESP32 Wi-Fi Monitoring Node
 // Arduino IDE Sketch Entry Point
-// Version: 1.0.1
+// Version: 1.0.2
 
 #ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "1.0.1"
+#define FIRMWARE_VERSION "1.0.2"
 #endif
 
 #include "../include/app_main.h"

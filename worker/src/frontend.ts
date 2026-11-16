@@ -4,7 +4,7 @@ export function renderDashboardHtml(): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wi-Fi Fleet Telemetry | kreier/T18</title>
+  <title>T18 Fleet Telemetry | kreier/T18</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/></svg>" />
   <script>
     (function() {
@@ -416,6 +416,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       gap: 2px;
       flex: 1;
+      padding-right: 6px;
     }
     .heatmap-cell {
       flex: 1;
@@ -425,9 +426,10 @@ export function renderDashboardHtml(): string {
       cursor: pointer;
       transition: transform 0.1s ease, outline 0.1s ease;
       background: rgba(100, 116, 139, 0.15);
+      transform-origin: center center;
     }
     .heatmap-cell:hover {
-      transform: scale(1.3);
+      transform: scale(1.25);
       z-index: 10;
       outline: 1.5px solid #fff;
     }
@@ -436,6 +438,7 @@ export function renderDashboardHtml(): string {
       gap: 2px;
       flex: 1;
       margin-bottom: 4px;
+      padding-right: 6px;
     }
     .heatmap-header-col {
       flex: 1;
@@ -443,6 +446,27 @@ export function renderDashboardHtml(): string {
       font-size: 0.65rem;
       color: var(--text-muted);
       text-align: center;
+    }
+    .view-switch-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .view-switch-btn:hover {
+      color: var(--text-main);
+    }
+    .view-switch-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+    }
       overflow: visible;
       white-space: nowrap;
       position: relative;
@@ -472,15 +496,278 @@ export function renderDashboardHtml(): string {
       margin-left: 0.5rem;
       vertical-align: middle;
     }
+
+    /* Web Flasher Modal & Controls */
+    .flash-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff !important;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    [data-theme="dark"] .flash-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #075985 100%);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+    .flash-btn:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-window {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      max-width: 760px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      transform: scale(0.96);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-backdrop.active .modal-window {
+      transform: scale(1);
+    }
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.35rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      line-height: 1;
+    }
+    .modal-close-btn:hover {
+      color: var(--text-main);
+      background: var(--input-bg);
+    }
+    .modal-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--card-border);
+      background: var(--input-bg);
+      padding: 0 1.25rem;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .modal-tab-btn:hover {
+      color: var(--text-main);
+      border-color: transparent;
+    }
+    .modal-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .flash-guide-card {
+      background: var(--metric-box-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .flash-step-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .flash-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .flash-step-num {
+      background: var(--primary-dim);
+      color: var(--primary);
+      font-weight: 700;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.8rem;
+    }
+    .serial-status-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .serial-status-banner.supported {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+    .serial-status-banner.unsupported {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--warning);
+    }
+    .install-button-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.25rem;
+      background: var(--input-bg);
+      border: 2px dashed var(--primary);
+      border-radius: 0.75rem;
+      margin: 0.5rem 0;
+      min-height: 80px;
+    }
+    .install-action-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+      color: #ffffff !important;
+      font-size: 1.05rem !important;
+      font-weight: 700 !important;
+      padding: 0.75rem 1.75rem !important;
+      border-radius: 0.65rem !important;
+      border: none !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .install-action-btn:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5) !important;
+    }
+    .bin-download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+    .bin-card {
+      background: var(--metric-box-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .bin-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .bin-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .bin-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .code-block {
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      color: #c9d1d9;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      position: relative;
+      overflow-x: auto;
+    }
+    .copy-code-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0.35rem;
+      color: #c9d1d9;
+      cursor: pointer;
+    }
+    .copy-code-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   </style>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
 <body>
   <header>
     <a href="./" class="brand" id="brandLink">
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
-        <span class="brand-title">T18 Wi-Fi Monitor</span>
-        <span class="brand-tag">v1.0.1</span>
+        <span class="brand-title">T18 Monitor</span>
+        <span class="brand-tag">v1.0.2</span>
       </div>
     </a>
     <div class="header-controls">
@@ -489,6 +776,7 @@ export function renderDashboardHtml(): string {
       </select>
       <button onclick="refreshData()">↻ Refresh</button>
       <button class="primary-btn" onclick="exportData('json')">Export JSON</button>
+      <button class="flash-btn" onclick="openFlashModal()" title="Flash firmware to ESP32 via Web Serial">⚡ Flash Device</button>
       <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
         <span id="themeIcon">☀️</span>
       </button>
@@ -678,14 +966,14 @@ export function renderDashboardHtml(): string {
       <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelHeatmap()">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Channel Utilization Heatmap (13 Channels)</span>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, Dynamic Nuance Scale)</span>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Spectrum &amp; BLE Heatmap (13 Channels + BLE)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, 13 Wi-Fi Channels + Unique BLE Devices)</span>
           </div>
           <span id="channelHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
         </div>
-        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto; overflow-y: hidden;">
           <!-- Heatmap Legend & Hover Info Bar -->
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.75rem;">
             <div style="display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap;">
               <span style="color: var(--text-muted); margin-right: 3px;">Airtime:</span>
               <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="&le; 2% (Quiet)"></span>
@@ -702,12 +990,23 @@ export function renderDashboardHtml(): string {
               <span style="display:inline-block; width:12px; height:10px; background:#ef4444; border-radius:2px;" title="40% - 55%"></span>
               <span style="display:inline-block; width:12px; height:10px; background:#dc2626; border-radius:2px;" title="55% - 70%"></span>
               <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 70% (Outlier Spike)"></span>
-              <span style="color:#d946ef; font-weight:600; margin-left:2px;">&gt;70% Spike</span>
+              <span style="color:#d946ef; font-weight:600; margin-left:2px; margin-right:6px;">&gt;70% Spike</span>
+              <span style="display:inline-block; width:1px; height:12px; background:var(--card-border); margin:0 4px;"></span>
+              <span style="color: #38bdf8; font-weight: 600; margin-right: 3px;">BLE:</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="0 devices"></span>
+              <span style="color:var(--text-muted); margin-right:2px;">0</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#06b6d4; border-radius:2px;" title="1 - 3 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#10b981; border-radius:2px;" title="4 - 8 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#eab308; border-radius:2px;" title="9 - 15 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#f97316; border-radius:2px;" title="16 - 25 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 25 devices (Dense)"></span>
+              <span style="color:#38bdf8; font-weight:600; margin-left:2px;">&gt;25 Dev</span>
             </div>
-            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">Hover over a cell to inspect metrics</div>
           </div>
+          <!-- Dedicated Full-Width Hover Info Bar (Permanently allocated height to prevent hover flicker) -->
+          <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.5rem; line-height: 1.5; margin-bottom: 0.6rem; padding: 2px 0;">Hover over a cell to inspect metrics</div>
           <!-- Heatmap Container -->
-          <div id="channelHeatmapContainer" style="min-width: 760px;"></div>
+          <div id="channelHeatmapContainer" style="min-width: 760px; padding: 4px 12px 14px 4px;"></div>
         </div>
       </div>
     </div>
@@ -833,6 +1132,86 @@ export function renderDashboardHtml(): string {
       </div>
     </div>
 
+    <!-- 2.4 GHz Bluetooth Low Energy & Classic Activity -->
+    <div id="bluetoothSection" class="card" style="padding: 1.25rem 1.5rem; gap: 1rem; margin-bottom: 2rem;">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">2.4 GHz Bluetooth & BLE Activity</h3>
+            <span id="btBleStatusBadge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">BLE & Classic</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Payload fingerprinting & RPA de-randomization establishing unique device presence</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+          <span id="btLastScanTime" style="font-size: 0.8rem; color: var(--text-muted);">Last scan: —</span>
+        </div>
+      </div>
+
+      <!-- Quick KPI Stat Boxes for Bluetooth -->
+      <div class="metrics-summary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 0.85rem;">
+        <div class="metric-box">
+          <div class="metric-label">Unique BLE Devices</div>
+          <div class="metric-val" id="stat-ble-unique" style="color: #38bdf8;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Total BLE MACs</div>
+          <div class="metric-val" id="stat-ble-macs" style="color: #a78bfa;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Address Privacy</div>
+          <div class="metric-val" id="stat-ble-privacy" style="color: #f59e0b; font-size: 0.85rem;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Classic BT Devices</div>
+          <div class="metric-val" id="stat-classic-total" style="color: #10b981;">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Device Composition</div>
+          <div class="metric-val" id="stat-ble-categories" style="font-size: 0.8rem;">—</div>
+        </div>
+      </div>
+
+      <!-- 24h Bluetooth Presence Trend Chart -->
+      <div class="main-chart-wrap" style="height: 230px;">
+        <canvas id="bluetoothChart"></canvas>
+      </div>
+
+      <!-- Discovered Bluetooth Devices Table Drawer -->
+      <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 0.5rem;" onclick="toggleBluetoothTable()">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span id="btTableCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted);">▼</span>
+            <span id="btTableTitle" style="font-size: 0.95rem; font-weight: 600;">Discovered Bluetooth Devices (Current Cycle)</span>
+            <span id="btDeviceCountBadge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Devices</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;" onclick="event.stopPropagation()">
+            <div style="display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 2px; gap: 2px;">
+              <button id="btBtnCurrent" type="button" class="view-switch-btn active" onclick="switchBtTableMode('current')">Current Cycle</button>
+              <button id="btBtn24h" type="button" class="view-switch-btn" onclick="switchBtTableMode('24h')">Previous 24 Hours</button>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="toggleBluetoothTable()">Toggle</span>
+          </div>
+        </div>
+        <div id="btTableDrawer" style="display: block; margin-top: 0.85rem; overflow-x: auto;">
+          <table>
+            <thead id="bluetoothTableHead">
+              <tr>
+                <th>Type</th>
+                <th>Address</th>
+                <th>Device Name / Beacon Identifier</th>
+                <th>Vendor / Ecosystem</th>
+                <th>Category</th>
+                <th>Signal (RSSI)</th>
+              </tr>
+            </thead>
+            <tbody id="bluetoothTableBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No Bluetooth scan data recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Surrounding 2.4 GHz Scan Survey Table -->
     <div class="table-container">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -887,6 +1266,174 @@ export function renderDashboardHtml(): string {
     </div>
   </main>
 
+  <!-- ESP32 Web Firmware Flasher Modal -->
+  <div id="flashModal" class="modal-backdrop" onclick="onModalBackdropClick(event)">
+    <div class="modal-window" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚡ ESP32 Web Firmware Installer</span>
+          <span class="fw-badge">v1.0.2 Stable</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
+      </div>
+      
+      <div class="modal-tabs">
+        <button id="tabBtnWebSerial" class="modal-tab-btn active" onclick="switchFlashTab('webserial')">Web Serial Install</button>
+        <button id="tabBtnBinaries" class="modal-tab-btn" onclick="switchFlashTab('binaries')">Direct Downloads &amp; CLI</button>
+        <button id="tabBtnGuide" class="modal-tab-btn" onclick="switchFlashTab('guide')">First-Boot Setup</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Web Serial Install -->
+        <div id="flashTabWebSerial">
+          <div id="serialStatusBanner" class="serial-status-banner supported">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span id="serialStatusIcon">✅</span>
+              <span id="serialStatusText">Web Serial API is supported in your browser!</span>
+            </div>
+            <span style="font-size:0.75rem;opacity:0.8;">Chrome / Edge / Brave / Opera</span>
+          </div>
+
+          <div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-muted);line-height:1.5;">
+            Flash the pre-compiled universal firmware directly to your ESP32 board over USB. No Arduino IDE, PlatformIO, or command-line drivers required.
+          </div>
+
+          <div class="install-button-wrapper">
+            <esp-web-install-button id="espWebInstallBtn" manifest="manifest.json">
+              <button slot="activate" class="install-action-btn">
+                ⚡ Connect ESP32 &amp; Install Firmware
+              </button>
+              <span slot="unsupported" style="color:var(--danger);font-size:0.875rem;font-weight:600;">
+                ⚠️ Web Serial is not supported in this browser. Please open this page in Google Chrome, Microsoft Edge, Brave, or Opera on desktop.
+              </span>
+              <span slot="not-allowed" style="color:var(--danger);font-size:0.875rem;font-weight:600;">
+                ⚠️ Web Serial requires an HTTPS secure connection.
+              </span>
+            </esp-web-install-button>
+          </div>
+
+          <div class="flash-guide-card">
+            <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.25rem;">Quick Flashing Steps:</h4>
+            <ul class="flash-step-list">
+              <li class="flash-step-item">
+                <span class="flash-step-num">1</span>
+                <div><strong>Connect USB:</strong> Plug your ESP32 board into your computer with a USB data cable (ensure it supports data, not power-only).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">2</span>
+                <div><strong>Pair Device:</strong> Click <em>Connect ESP32 &amp; Install Firmware</em> and select the serial port (e.g. <code>CP210x</code>, <code>CH340</code>, or <code>USB JTAG</code>).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">3</span>
+                <div><strong>Install &amp; Erase:</strong> Select <em>Install T18 Monitor</em>. For fresh boards, check <em>Erase device</em> to clear flash. Progress is shown in real time.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">4</span>
+                <div><strong>Commission Node:</strong> After installation completes, the board boots up and creates a Soft-AP named <code>T18-Mon-XXXX</code> (IP <code>192.168.4.1</code>) for captive portal setup.</div>
+              </li>
+            </ul>
+          </div>
+
+          <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:0.5rem;padding:0.75rem 1rem;font-size:0.8rem;color:var(--text-muted);display:flex;align-items:flex-start;gap:0.5rem;">
+            <span style="font-size:1.1rem;line-height:1;">💡</span>
+            <div><strong>Connection Troubleshooting:</strong> If the installer cannot connect or times out waiting for the bootloader, hold down the <strong>BOOT (GPIO 0)</strong> button on your ESP32 board while clicking Connect, then release it once flashing starts.</div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Direct Downloads & CLI -->
+        <div id="flashTabBinaries" style="display:none;display:flex;flex-direction:column;gap:1rem;">
+          <div style="font-size:0.875rem;color:var(--text-muted);line-height:1.5;">
+            Download pre-compiled binary files for offline flashing with <code>esptool.py</code>, PlatformIO, or desktop tools.
+          </div>
+
+          <div class="bin-download-grid">
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Application Firmware</span>
+                <span class="bin-meta">Offset: 0x10000 (app0)</span>
+              </div>
+              <a id="dlFirmwareBin" href="firmware/firmware.bin" download="firmware.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ firmware.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Partition Table</span>
+                <span class="bin-meta">Offset: 0x8000 (partitions)</span>
+              </div>
+              <a id="dlPartitionsBin" href="firmware/partitions.bin" download="partitions.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ partitions.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Second Stage Bootloader</span>
+                <span class="bin-meta">Offset: 0x1000 (bootloader)</span>
+              </div>
+              <a id="dlBootloaderBin" href="firmware/bootloader.bin" download="bootloader.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ bootloader.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">OTA Boot Initializer</span>
+                <span class="bin-meta">Offset: 0xe000 (otadata)</span>
+              </div>
+              <a id="dlBootApp0Bin" href="firmware/boot_app0.bin" download="boot_app0.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ boot_app0.bin</a>
+            </div>
+          </div>
+
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+            <div class="bin-info">
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (All-in-One)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file full flash)</span>
+            </div>
+            <a id="dlMergedBin" href="firmware/firmware-esp32-merged.bin" download="firmware-esp32-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32-merged.bin</a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Multi-part):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin', this)">Copy</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Merged Single-file):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin', this)">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: First-Boot Setup Guide -->
+        <div id="flashTabGuide" style="display:none;">
+          <div class="flash-guide-card">
+            <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.25rem;">Node Commissioning (Zero-Trust):</h4>
+            <ul class="flash-step-list">
+              <li class="flash-step-item">
+                <span class="flash-step-num">1</span>
+                <div><strong>Connect to Soft-AP:</strong> Search for Wi-Fi network <code>T18-Mon-XXXX</code> (where XXXX is the device MAC suffix) and connect (password <code>12345678</code> or open).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">2</span>
+                <div><strong>Open Portal:</strong> Open your browser to <a href="http://192.168.4.1" target="_blank" style="color:var(--primary);">http://192.168.4.1</a>. The captive setup UI will load.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">3</span>
+                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">4</span>
+                <div><strong>Configure Wi-Fi &amp; Secret:</strong> Enter up to 5 SSIDs/passwords and your <code>MASTER_PHRASE</code> bootstrap secret. The node registers with the backend and begins 10-minute telemetry cycles!</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span>Host: <strong id="hostIndicator">Cloudflare Worker</strong></span>
     <span>|</span>
@@ -894,7 +1441,9 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="https://kreier.github.io/T18" id="ghPagesLink">GitHub Pages</a>
     <span>|</span>
-    <a href="https://github.com/kreier/T18" target="_blank">Repository (kreier/T18 v1.0.1)</a>
+    <a href="javascript:void(0)" onclick="openFlashModal()" style="font-weight: 600; color: var(--primary);">⚡ Web Flasher</a>
+    <span>|</span>
+    <a href="https://github.com/kreier/T18" target="_blank">Repository (kreier/T18 v1.0.2)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -956,6 +1505,7 @@ export function renderDashboardHtml(): string {
     function applyTheme(theme) {
       document.documentElement.setAttribute("data-theme", theme);
       localStorage.setItem("t18_theme", theme);
+      localStorage.setItem("wifi_theme", theme);
       const icon = document.getElementById("themeIcon");
       if (icon) {
         icon.innerText = theme === "dark" ? "☀️" : "🌙";
@@ -975,10 +1525,99 @@ export function renderDashboardHtml(): string {
     }
 
     // Detect if running on GitHub Pages
-    const isGhPages = window.location.pathname.toLowerCase().startsWith("/t18") || window.location.pathname.startsWith("/wifi");
-    const basePath = isGhPages ? (window.location.pathname.toLowerCase().startsWith("/t18") ? "/T18/" : "/wifi/") : "/";
+    const isGhPages = window.location.pathname.startsWith("/T18") || window.location.pathname.startsWith("/wifi");
+    const basePath = window.location.pathname.startsWith("/T18") ? "/T18/" : (window.location.pathname.startsWith("/wifi") ? "/wifi/" : "/");
     document.getElementById("brandLink").href = basePath;
     document.getElementById("hostIndicator").innerText = isGhPages ? "GitHub Pages" : "Cloudflare Worker";
+
+    function openFlashModal(tab) {
+      const modal = document.getElementById("flashModal");
+      if (modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+      if (tab) {
+        switchFlashTab(tab);
+      }
+      checkSerialSupport();
+      updateFlashManifestUrls();
+    }
+
+    function closeFlashModal() {
+      const modal = document.getElementById("flashModal");
+      if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+    }
+
+    function onModalBackdropClick(e) {
+      if (e.target.id === "flashModal") {
+        closeFlashModal();
+      }
+    }
+
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        closeFlashModal();
+      }
+    });
+
+    function switchFlashTab(tab) {
+      const tabs = ["webserial", "binaries", "guide"];
+      tabs.forEach(function(t) {
+        const el = document.getElementById("flashTab" + (t.charAt(0).toUpperCase() + t.slice(1)));
+        const btn = document.getElementById("tabBtn" + (t.charAt(0).toUpperCase() + t.slice(1)));
+        if (el) el.style.display = (t === tab) ? (t === "binaries" ? "flex" : "block") : "none";
+        if (btn) btn.classList.toggle("active", t === tab);
+      });
+    }
+
+    function checkSerialSupport() {
+      const isSupported = "serial" in navigator;
+      const banner = document.getElementById("serialStatusBanner");
+      const icon = document.getElementById("serialStatusIcon");
+      const text = document.getElementById("serialStatusText");
+      if (banner && icon && text) {
+        if (isSupported) {
+          banner.className = "serial-status-banner supported";
+          icon.innerText = "✅";
+          text.innerText = "Web Serial API is supported in your browser!";
+        } else {
+          banner.className = "serial-status-banner unsupported";
+          icon.innerText = "⚠️";
+          text.innerText = "Web Serial API is not supported in this browser. Please use Chrome, Edge, Brave, or Opera.";
+        }
+      }
+    }
+
+    function updateFlashManifestUrls() {
+      const installBtn = document.getElementById("espWebInstallBtn");
+      if (installBtn) {
+        installBtn.setAttribute("manifest", basePath + "manifest.json");
+      }
+      const links = [
+        { id: "dlFirmwareBin", file: "firmware.bin" },
+        { id: "dlPartitionsBin", file: "partitions.bin" },
+        { id: "dlBootloaderBin", file: "bootloader.bin" },
+        { id: "dlBootApp0Bin", file: "boot_app0.bin" },
+        { id: "dlMergedBin", file: "firmware-esp32-merged.bin" }
+      ];
+      links.forEach(function(l) {
+        const el = document.getElementById(l.id);
+        if (el) el.href = basePath + "firmware/" + l.file;
+      });
+    }
+
+    function copySnippet(text, btn) {
+      navigator.clipboard.writeText(text).then(function() {
+        const orig = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(function() { btn.innerText = orig; }, 2000);
+      }).catch(function() {
+        prompt("Copy command:", text);
+      });
+    }
 
     function getRequestedStationId() {
       // 1. Query parameter override: ?station=9E1-9 or ?id=9E1-9
@@ -989,14 +1628,14 @@ export function renderDashboardHtml(): string {
       // 2. Direct path routing: e.g. /9E1-9 or /T18/9E1-9
       let path = window.location.pathname || "";
       while (path.endsWith("/")) path = path.slice(0, -1);
-      if (path.toLowerCase().startsWith("/t18")) {
+      if (path.startsWith("/T18")) {
         path = path.substring(4);
       } else if (path.startsWith("/wifi")) {
         path = path.substring(5);
       }
       while (path.startsWith("/")) path = path.slice(1);
 
-      if (path && path !== "index.html" && path !== "404.html" && path !== "wifi" && path.toLowerCase() !== "t18") {
+      if (path && path !== "index.html" && path !== "404.html" && path !== "T18" && path !== "wifi" && path !== "flash") {
         return decodeURIComponent(path);
       }
       return "";
@@ -1334,6 +1973,7 @@ export function renderDashboardHtml(): string {
         renderAllTrendCharts();
         renderChannelUtilizationSection();
         updateBatteryUi(data);
+        updateBluetoothUi(data);
 
       } catch (err) {
         console.error("Failed to load station details:", err);
@@ -1356,6 +1996,16 @@ export function renderDashboardHtml(): string {
         const batSec = document.getElementById("batterySection");
         if (batSec) batSec.style.display = "none";
       }
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     function formatLastSeen(ts) {
@@ -1857,6 +2507,16 @@ export function renderDashboardHtml(): string {
       return '#d946ef'; // > 70% outlier spike
     }
 
+    function getBleHeatmapColor(count) {
+      if (count === null || count === undefined || isNaN(count)) return 'rgba(100, 116, 139, 0.15)';
+      if (count === 0) return '#0f2942'; // near idle / 0 devices
+      if (count <= 3) return '#06b6d4'; // 1-3 devices
+      if (count <= 8) return '#10b981'; // 4-8 devices
+      if (count <= 15) return '#eab308'; // 9-15 devices
+      if (count <= 25) return '#f97316'; // 16-25 devices
+      return '#d946ef';                 // > 25 devices
+    }
+
     function renderChannelHeatmap() {
       const container = document.getElementById("channelHeatmapContainer");
       if (!container || !currentStationData) return;
@@ -1913,6 +2573,52 @@ export function renderDashboardHtml(): string {
             cellData.ctrlFrames += (u.ctrl_frames || 0);
             cellData.transmitters = Math.max(cellData.transmitters, (u.unique_transmitters || 0));
           }
+        }
+      }
+
+      // Initialize BLE slots
+      const bleSlots = new Array(48).fill(null);
+      const btHistory = currentStationData.bluetooth_history || [];
+      for (let i = 0; i < btHistory.length; i++) {
+        const b = btHistory[i];
+        const slotIdx = Math.round((b.timestamp - startSlot) / 1800);
+        if (slotIdx >= 0 && slotIdx < 48) {
+          if (!bleSlots[slotIdx]) {
+            bleSlots[slotIdx] = {
+              count: 1,
+              sumUnique: (b.ble_unique_devices || 0),
+              maxUnique: (b.ble_unique_devices || 0),
+              totalMacs: (b.ble_total_macs || 0),
+              randomMacs: (b.ble_random_macs || 0),
+              publicMacs: (b.ble_public_macs || 0),
+              classicTotal: (b.classic_total || 0)
+            };
+          } else {
+            const bs = bleSlots[slotIdx];
+            bs.count++;
+            bs.sumUnique += (b.ble_unique_devices || 0);
+            bs.maxUnique = Math.max(bs.maxUnique, (b.ble_unique_devices || 0));
+            bs.totalMacs = Math.max(bs.totalMacs, (b.ble_total_macs || 0));
+            bs.randomMacs = Math.max(bs.randomMacs, (b.ble_random_macs || 0));
+            bs.publicMacs = Math.max(bs.publicMacs, (b.ble_public_macs || 0));
+            bs.classicTotal = Math.max(bs.classicTotal, (b.classic_total || 0));
+          }
+        }
+      }
+
+      if (currentStationData.latest_bluetooth && currentStationData.latest_bluetooth.timestamp) {
+        const lb = currentStationData.latest_bluetooth;
+        const lbSlot = Math.round((lb.timestamp - startSlot) / 1800);
+        if (lbSlot >= 0 && lbSlot < 48 && !bleSlots[lbSlot]) {
+          bleSlots[lbSlot] = {
+            count: 1,
+            sumUnique: (lb.ble_unique_devices || 0),
+            maxUnique: (lb.ble_unique_devices || 0),
+            totalMacs: (lb.ble_total_macs || 0),
+            randomMacs: (lb.ble_random_macs || 0),
+            publicMacs: (lb.ble_public_macs || 0),
+            classicTotal: (lb.classic_total || 0)
+          };
         }
       }
 
@@ -2002,6 +2708,65 @@ export function renderDashboardHtml(): string {
         row.appendChild(cellsWrap);
         container.appendChild(row);
       }
+
+      // 3. Render Unique BLE Devices Row
+      const bleRow = document.createElement("div");
+      bleRow.className = "heatmap-row";
+      bleRow.style.marginTop = "4px";
+      bleRow.style.paddingTop = "4px";
+      bleRow.style.borderTop = "1px dashed rgba(100, 116, 139, 0.3)";
+
+      const bleLabel = document.createElement("div");
+      bleLabel.className = "heatmap-row-label";
+      bleLabel.style.color = "#38bdf8";
+      bleLabel.style.fontWeight = "700";
+      bleLabel.innerText = "BLE";
+      bleRow.appendChild(bleLabel);
+
+      const bleCellsWrap = document.createElement("div");
+      bleCellsWrap.className = "heatmap-cells-wrap";
+
+      for (let i = 0; i < 48; i++) {
+        const cell = document.createElement("div");
+        cell.className = "heatmap-cell";
+
+        const bData = bleSlots[i];
+        const slotTime = slots[i];
+        const timeLabel = new Date(slotTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const endTimeLabel = new Date((slotTime + 1800) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (bData) {
+          const devCount = Math.round(bData.sumUnique / bData.count);
+          const color = getBleHeatmapColor(devCount);
+          cell.style.background = color;
+          cell.title = 'BLE Devices (' + timeLabel + ' - ' + endTimeLabel + '): ' + devCount + ' unique devices, ' + bData.totalMacs + ' MACs (' + bData.randomMacs + ' RPA, ' + bData.publicMacs + ' Public)';
+
+          cell.addEventListener("mouseenter", function() {
+            if (hoverInfo) {
+              hoverInfo.innerHTML = '<span style="color:#38bdf8; font-weight:600;">Unique BLE Devices</span> &bull; <span style="color:var(--primary);">' + timeLabel + ' - ' + endTimeLabel + '</span> &bull; Detected: <span style="color:' + color + '; font-weight:700;">' + devCount + ' Unique BLE</span> | Total MACs: ' + bData.totalMacs + ' (' + bData.randomMacs + ' RPA, ' + bData.publicMacs + ' Public) | Classic: ' + bData.classicTotal;
+            }
+          });
+        } else {
+          cell.style.background = "rgba(100, 116, 139, 0.15)";
+          cell.title = 'BLE Devices (' + timeLabel + ' - ' + endTimeLabel + '): No Bluetooth telemetry data';
+          cell.addEventListener("mouseenter", function() {
+            if (hoverInfo) {
+              hoverInfo.innerHTML = '<span style="color:var(--text-muted);">Unique BLE Devices &bull; ' + timeLabel + ' - ' + endTimeLabel + ' &bull; No Bluetooth telemetry recorded</span>';
+            }
+          });
+        }
+
+        cell.addEventListener("mouseleave", function() {
+          if (hoverInfo) {
+            hoverInfo.innerText = "Hover over a cell to inspect metrics";
+          }
+        });
+
+        bleCellsWrap.appendChild(cell);
+      }
+
+      bleRow.appendChild(bleCellsWrap);
+      container.appendChild(bleRow);
     }
 
     const CHANNEL_COLORS_13 = [
@@ -2349,7 +3114,7 @@ export function renderDashboardHtml(): string {
     }
 
     function voltageToPercentage(mv) {
-      if (!mv || mv <= 0) return 0;
+      if (!mv || mv < 2500) return 0;
       if (mv >= 4200) return 100;
       if (mv <= 3300) return 0;
       const table = [
@@ -2381,7 +3146,7 @@ export function renderDashboardHtml(): string {
       let points = [];
       if (Array.isArray(data.battery_history) && data.battery_history.length > 0) {
         data.battery_history.forEach(p => {
-          if (typeof p.battery_mv === "number" && p.battery_mv > 0) {
+          if (typeof p.battery_mv === "number" && p.battery_mv >= 2500) {
             points.push({ timestamp: p.timestamp, battery_mv: p.battery_mv });
           }
         });
@@ -2389,13 +3154,13 @@ export function renderDashboardHtml(): string {
       if (points.length === 0 && Array.isArray(data.recent_history) && data.recent_history.length > 0) {
         const seen = new Set();
         data.recent_history.forEach(m => {
-          if (m.battery_mv && m.battery_mv > 0 && !seen.has(m.timestamp)) {
+          if (m.battery_mv && m.battery_mv >= 2500 && !seen.has(m.timestamp)) {
             seen.add(m.timestamp);
             points.push({ timestamp: m.timestamp, battery_mv: m.battery_mv });
           }
         });
       }
-      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv > 0) {
+      if (points.length === 0 && data.station && typeof data.station.battery_mv === "number" && data.station.battery_mv >= 2500) {
         points.push({
           timestamp: data.station.last_seen || Math.floor(Date.now() / 1000),
           battery_mv: data.station.battery_mv
@@ -2474,11 +3239,11 @@ export function renderDashboardHtml(): string {
 
       const st = data.station;
       const points = getBatteryPoints(data);
-      const curMv = (st.battery_mv && st.battery_mv > 0)
+      const curMv = (st.battery_mv && st.battery_mv >= 2500)
         ? st.battery_mv
-        : (points.length > 0 ? points[points.length - 1].battery_mv : 0);
+        : (points.length > 0 && points[points.length - 1].battery_mv >= 2500 ? points[points.length - 1].battery_mv : 0);
 
-      if (!curMv || curMv <= 0) {
+      if (!curMv || curMv < 2500) {
         if (batBadge) batBadge.style.display = "none";
         if (batRuntime) batRuntime.style.display = "none";
         if (batSection) batSection.style.display = "none";
@@ -2700,10 +3465,412 @@ export function renderDashboardHtml(): string {
       });
     }
 
+    let currentBtTableMode = 'current';
+    let btDrawerOpen = true;
+    let bluetoothChartInstance = null;
+
+    function toggleBluetoothTable() {
+      btDrawerOpen = !btDrawerOpen;
+      const drawer = document.getElementById("btTableDrawer");
+      const icon = document.getElementById("btTableCollapseIcon");
+      if (drawer) drawer.style.display = btDrawerOpen ? "block" : "none";
+      if (icon) icon.innerText = btDrawerOpen ? "▼" : "▶";
+    }
+
+    function switchBtTableMode(mode) {
+      currentBtTableMode = mode;
+      const btnCurrent = document.getElementById("btBtnCurrent");
+      const btn24h = document.getElementById("btBtn24h");
+      if (btnCurrent) btnCurrent.classList.toggle("active", mode === "current");
+      if (btn24h) btn24h.classList.toggle("active", mode === "24h");
+      if (!btDrawerOpen) {
+        toggleBluetoothTable();
+      }
+      if (currentStationData) {
+        renderBluetoothTable(currentStationData);
+      }
+    }
+
+    function renderBluetoothTable(data) {
+      const tableHead = document.getElementById("bluetoothTableHead");
+      const tableBody = document.getElementById("bluetoothTableBody");
+      const badgeEl = document.getElementById("btDeviceCountBadge");
+      const titleEl = document.getElementById("btTableTitle");
+      if (!tableBody) return;
+
+      if (currentBtTableMode === "24h") {
+        if (titleEl) titleEl.innerText = "Discovered Bluetooth Devices (Previous 24 Hours)";
+        if (tableHead) {
+          tableHead.innerHTML = '<tr>' +
+            '<th>Type</th>' +
+            '<th>Address</th>' +
+            '<th>Device Name / Beacon Identifier</th>' +
+            '<th>Vendor / Ecosystem</th>' +
+            '<th>Category</th>' +
+            '<th>Signal (Max RSSI)</th>' +
+            '<th>Last Seen</th>' +
+          '</tr>';
+        }
+
+        let inactiveList = (data && Array.isArray(data.recent_bluetooth_devices))
+          ? data.recent_bluetooth_devices
+          : ((data && Array.isArray(data.inactive_bluetooth) && data.inactive_bluetooth.length > 0) ? data.inactive_bluetooth : []);
+
+        // Fallback: If inactiveList is still empty but latest_bluetooth has devices, extract them!
+        if (inactiveList.length === 0 && data && data.latest_bluetooth && data.latest_bluetooth.devices_json) {
+          try {
+            const parsed = JSON.parse(data.latest_bluetooth.devices_json);
+            const fallbackList = [];
+            for (const d of (parsed.ble_devices || [])) {
+              fallbackList.push({
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: d.rssi,
+                last_seen: data.latest_bluetooth.timestamp,
+                is_active: true
+              });
+            }
+            for (const cd of (parsed.classic_devices || [])) {
+              fallbackList.push({
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: cd.rssi,
+                last_seen: data.latest_bluetooth.timestamp,
+                is_active: true
+              });
+            }
+            inactiveList = fallbackList;
+          } catch {}
+        }
+
+        if (badgeEl) badgeEl.innerText = inactiveList.length + ' Devices (24h)';
+
+        if (inactiveList.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No previous Bluetooth devices recorded in the last 24 hours.</td></tr>';
+          return;
+        }
+
+        let rowsHtml = '';
+        for (const d of inactiveList) {
+          const isBle = d.type === 'ble';
+          const typeBadge = isBle
+            ? '<span class="pill" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">BLE</span>'
+            : '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">Classic</span>';
+
+          const addrBadge = isBle
+            ? (d.addr_type === 'public'
+              ? '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">Public</span>'
+              : (d.addr_type === 'random_rpa'
+                ? '<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.68rem; padding: 1px 6px;">RPA</span>'
+                : '<span class="pill" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 0.68rem; padding: 1px 6px;">Static</span>'))
+            : '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">IEEE Fixed</span>';
+
+          const rssiVal = typeof d.rssi === 'number' && d.rssi !== -100 ? d.rssi : null;
+          const pct = rssiVal !== null ? Math.min(100, Math.max(0, 2 * (rssiVal + 100))) : 0;
+          const rssiBarColor = rssiVal !== null ? (rssiVal >= -65 ? '#10b981' : (rssiVal >= -80 ? '#f59e0b' : '#ef4444')) : '#64748b';
+
+          const catLabel = d.category ? (d.category.charAt(0).toUpperCase() + d.category.slice(1)) : (d.dev_class || 'General');
+          const catBadge = '<span class="pill" style="font-size: 0.72rem; padding: 2px 7px;">' + escapeHtml(catLabel) + '</span>';
+
+          const nameDisplay = d.name
+            ? ('<strong>' + escapeHtml(d.name) + '</strong>')
+            : (isBle
+              ? '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>'
+              : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>');
+
+          const isActive = d.is_active || (data && data.latest_bluetooth && Math.abs(d.last_seen - data.latest_bluetooth.timestamp) < 600);
+          const lastSeenDisplay = isActive
+            ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#10b981;font-weight:600;font-size:0.75rem;"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;"></span>Active</span>'
+            : (d.last_seen
+              ? '<span title="' + new Date(d.last_seen * 1000).toLocaleString() + '" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">' + formatLastSeen(d.last_seen) + '</span>'
+              : '<span style="color: var(--text-muted);">—</span>');
+
+          rowsHtml += '<tr style="opacity: 0.85;">' +
+            '<td>' + typeBadge + '</td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(d.address) + '</code> ' + addrBadge + '</div></td>' +
+            '<td>' + nameDisplay + '</td>' +
+            '<td>' + escapeHtml(d.vendor || d.dev_class || 'Generic') + '</td>' +
+            '<td>' + catBadge + '</td>' +
+            '<td>' +
+              (rssiVal !== null
+                ? '<div style="display:flex; align-items:center; gap:0.5rem;"><div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + pct + '%; background:' + rssiBarColor + ';"></div></div></div><span style="font-size:0.75rem; color:var(--text-muted);" title="Max RSSI recorded">' + rssiVal + ' dBm</span></div>'
+                : '<span style="font-size:0.75rem; color:var(--text-muted);">Inquiry ACK</span>') +
+            '</td>' +
+            '<td>' + lastSeenDisplay + '</td>' +
+          '</tr>';
+        }
+        tableBody.innerHTML = rowsHtml;
+      } else {
+        // Current Cycle Mode
+        if (titleEl) titleEl.innerText = "Discovered Bluetooth Devices (Current Cycle)";
+        if (tableHead) {
+          tableHead.innerHTML = '<tr>' +
+            '<th>Type</th>' +
+            '<th>Address</th>' +
+            '<th>Device Name / Beacon Identifier</th>' +
+            '<th>Vendor / Ecosystem</th>' +
+            '<th>Category</th>' +
+            '<th>Signal (RSSI)</th>' +
+          '</tr>';
+        }
+
+        const bt = data ? data.latest_bluetooth : null;
+        if (!bt) {
+          if (badgeEl) badgeEl.innerText = '0 Devices';
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No Bluetooth scan data recorded yet. Node will include Bluetooth in next cycle.</td></tr>';
+          return;
+        }
+
+        let devices = { ble_devices: [], classic_devices: [] };
+        if (bt.devices_json) {
+          try {
+            devices = JSON.parse(bt.devices_json);
+          } catch (e) {
+            console.error("Failed to parse devices_json:", e);
+          }
+        }
+
+        const bleList = Array.isArray(devices.ble_devices) ? devices.ble_devices : [];
+        const classicList = Array.isArray(devices.classic_devices) ? devices.classic_devices : [];
+        const totalDevs = bleList.length + classicList.length;
+
+        if (badgeEl) badgeEl.innerText = totalDevs + ' Devices';
+
+        if (totalDevs === 0) {
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active Bluetooth devices in range during last scan.</td></tr>';
+          return;
+        }
+
+        let rowsHtml = '';
+        // BLE devices
+        for (const d of bleList) {
+          const addrBadge = d.addr_type === 'public'
+            ? '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">Public</span>'
+            : (d.addr_type === 'random_rpa'
+              ? '<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.68rem; padding: 1px 6px;">RPA</span>'
+              : '<span class="pill" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 0.68rem; padding: 1px 6px;">Static</span>');
+
+          const rssiVal = typeof d.rssi === 'number' ? d.rssi : -100;
+          const rssiBarColor = rssiVal >= -65 ? '#10b981' : (rssiVal >= -80 ? '#f59e0b' : '#ef4444');
+          const pct = Math.min(100, Math.max(0, 2 * (rssiVal + 100)));
+
+          const catLabel = d.category ? (d.category.charAt(0).toUpperCase() + d.category.slice(1)) : 'General';
+          const catBadge = '<span class="pill" style="font-size: 0.72rem; padding: 2px 7px;">' + catLabel + '</span>';
+
+          const nameDisplay = d.name ? ('<strong>' + escapeHtml(d.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>';
+
+          rowsHtml += '<tr>' +
+            '<td><span class="pill" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">BLE</span></td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(d.address) + '</code> ' + addrBadge + '</div></td>' +
+            '<td>' + nameDisplay + '</td>' +
+            '<td>' + escapeHtml(d.vendor || 'Generic') + '</td>' +
+            '<td>' + catBadge + '</td>' +
+            '<td>' +
+              '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                '<div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + pct + '%; background:' + rssiBarColor + ';"></div></div></div>' +
+                '<span style="font-size:0.75rem; color:var(--text-muted);">' + rssiVal + ' dBm</span>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }
+
+        // Classic devices
+        for (const cd of classicList) {
+          const cRssi = typeof cd.rssi === 'number' && cd.rssi !== -100 ? cd.rssi : null;
+          const cPct = cRssi !== null ? Math.min(100, Math.max(0, 2 * (cRssi + 100))) : 0;
+          const cBarColor = cRssi !== null ? (cRssi >= -65 ? '#10b981' : (cRssi >= -80 ? '#f59e0b' : '#ef4444')) : '#64748b';
+
+          const cName = cd.name ? ('<strong>' + escapeHtml(cd.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>';
+
+          rowsHtml += '<tr>' +
+            '<td><span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">Classic</span></td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(cd.address) + '</code> <span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">IEEE Fixed</span></div></td>' +
+            '<td>' + cName + '</td>' +
+            '<td>' + escapeHtml(cd.dev_class || 'Bluetooth Classic') + '</td>' +
+            '<td><span class="pill" style="font-size:0.72rem; padding:2px 7px;">' + escapeHtml(cd.dev_class || 'Classic') + '</span></td>' +
+            '<td>' +
+              (cRssi !== null
+                ? '<div style="display:flex; align-items:center; gap:0.5rem;"><div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + cPct + '%; background:' + cBarColor + ';"></div></div></div><span style="font-size:0.75rem; color:var(--text-muted);">' + cRssi + ' dBm</span></div>'
+                : '<span style="font-size:0.75rem; color:var(--text-muted);">Inquiry ACK</span>') +
+            '</td>' +
+          '</tr>';
+        }
+
+        tableBody.innerHTML = rowsHtml;
+      }
+    }
+
+    function updateBluetoothUi(data) {
+      const bt = data ? data.latest_bluetooth : null;
+      const history = (data && Array.isArray(data.bluetooth_history)) ? data.bluetooth_history : [];
+
+      const uEl = document.getElementById("stat-ble-unique");
+      const mEl = document.getElementById("stat-ble-macs");
+      const pEl = document.getElementById("stat-ble-privacy");
+      const cEl = document.getElementById("stat-classic-total");
+      const catEl = document.getElementById("stat-ble-categories");
+      const timeEl = document.getElementById("btLastScanTime");
+
+      if (!bt) {
+        if (uEl) uEl.innerText = "—";
+        if (mEl) mEl.innerText = "—";
+        if (pEl) pEl.innerText = "—";
+        if (cEl) cEl.innerText = "—";
+        if (catEl) catEl.innerText = "—";
+        if (timeEl) timeEl.innerText = "No Bluetooth telemetry received";
+        renderBluetoothTable(data);
+        renderBluetoothChart([]);
+        return;
+      }
+
+      if (uEl) uEl.innerText = String(bt.ble_unique_devices ?? 0);
+      if (mEl) mEl.innerText = String(bt.ble_total_macs ?? 0);
+      if (pEl) {
+        const rpa = bt.ble_random_macs ?? 0;
+        const pub = bt.ble_public_macs ?? 0;
+        pEl.innerHTML = '<span style="color:#f59e0b;">' + rpa + ' RPA</span> / <span style="color:#10b981;">' + pub + ' Public</span>';
+      }
+      if (cEl) cEl.innerText = String(bt.classic_total ?? 0);
+      if (catEl) {
+        const parts = [];
+        if (bt.ble_smartphones) parts.push(bt.ble_smartphones + ' Phone');
+        if (bt.ble_beacons) parts.push(bt.ble_beacons + ' Beacon');
+        if (bt.ble_wearables) parts.push(bt.ble_wearables + ' Watch');
+        if (bt.ble_audio) parts.push(bt.ble_audio + ' Audio');
+        if (bt.ble_other) parts.push(bt.ble_other + ' Other');
+        catEl.innerText = parts.length > 0 ? parts.join(', ') : 'None detected';
+      }
+      if (timeEl && bt.timestamp) {
+        timeEl.innerText = 'Last scan: ' + new Date(bt.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + formatLastSeen(bt.timestamp) + ')';
+      }
+
+      renderBluetoothTable(data);
+      renderBluetoothChart(history);
+    }
+
+    function renderBluetoothChart(history) {
+      const canvas = document.getElementById("bluetoothChart");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      if (bluetoothChartInstance) {
+        bluetoothChartInstance.destroy();
+        bluetoothChartInstance = null;
+      }
+
+      const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+      const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
+      const textColor = isDark ? "#94a3b8" : "#64748b";
+
+      if (!history || history.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      const labels = history.map(h => new Date(h.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      const uniqueData = history.map(h => h.ble_unique_devices ?? 0);
+      const rpaData = history.map(h => h.ble_random_macs ?? 0);
+      const classicData = history.map(h => h.classic_total ?? 0);
+
+      bluetoothChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Unique BLE Devices',
+              data: uniqueData,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              fill: true,
+              tension: 0.2,
+              borderWidth: 2,
+              pointRadius: history.length > 50 ? 1 : 3
+            },
+            {
+              label: 'Randomized BLE MACs',
+              data: rpaData,
+              borderColor: '#a78bfa',
+              backgroundColor: 'transparent',
+              borderDash: [4, 4],
+              fill: false,
+              tension: 0.2,
+              borderWidth: 1.5,
+              pointRadius: history.length > 50 ? 0 : 2
+            },
+            {
+              label: 'Classic BT Devices',
+              data: classicData,
+              borderColor: '#10b981',
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.2,
+              borderWidth: 1.5,
+              pointRadius: history.length > 50 ? 0 : 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { color: textColor, font: { size: 11 }, boxWidth: 12 }
+            },
+            tooltip: {
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              titleColor: isDark ? '#f8fafc' : '#0f172a',
+              bodyColor: isDark ? '#cbd5e1' : '#334155',
+              borderColor: isDark ? '#334155' : '#e2e8f0',
+              borderWidth: 1
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 12, font: { size: 10 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 10 },
+                precision: 0
+              },
+              title: {
+                display: true,
+                text: 'Device Count',
+                color: textColor,
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+    }
+
     // Initialize
     initTheme();
     loadStations();
     setInterval(refreshData, 60000); // 1-minute auto refresh
+
+    // Auto-open Web Flasher dialog if requested via ?flash=1 or URL route /flash
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("flash") === "true" || urlParams.get("flash") === "1" || window.location.pathname.endsWith("/flash")) {
+      setTimeout(function() { openFlashModal(); }, 300);
+    }
   </script>
 </body>
 </html>`;
