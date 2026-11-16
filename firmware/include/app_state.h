@@ -19,6 +19,8 @@ struct AppConfig {
     char master_phrase[64]; // Cleared once device_token is acquired
     WifiNetworkConfig networks[MAX_MONITORED_NETWORKS];
     uint8_t network_count;
+    bool fallback_enabled;
+    WifiNetworkConfig fallback_network;
     bool is_configured;
     bool powerbank_keepalive; // Wake up 500ms every 20s during light sleep
     HardwareProfile hw;
@@ -30,6 +32,9 @@ struct AppConfig {
         memset(master_phrase, 0, sizeof(master_phrase));
         memset(networks, 0, sizeof(networks));
         network_count = 0;
+        fallback_enabled = true;
+        strncpy(fallback_network.ssid, "S24", sizeof(fallback_network.ssid) - 1);
+        strncpy(fallback_network.password, "12345678", sizeof(fallback_network.password) - 1);
         is_configured = false;
         powerbank_keepalive = false;
         hw.setPreset(BOARD_T18);

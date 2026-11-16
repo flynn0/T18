@@ -47,6 +47,13 @@ public:
             strlcpy(config.networks[i].password, prefs.getString(passKey.c_str(), "").c_str(), sizeof(config.networks[0].password));
         }
 
+        // Fallback Network (Backup upload only, not monitored)
+        config.fallback_enabled = prefs.getBool("fb_en", true);
+        String fbSsid = prefs.getString("fb_ssid", "S24");
+        String fbPass = prefs.getString("fb_pass", "12345678");
+        strlcpy(config.fallback_network.ssid, fbSsid.c_str(), sizeof(config.fallback_network.ssid));
+        strlcpy(config.fallback_network.password, fbPass.c_str(), sizeof(config.fallback_network.password));
+
         // Hardware Profile
         uint8_t hwType = prefs.getUChar("hw_type", (uint8_t)BOARD_T18);
         config.hw.setPreset((BoardType)hwType);
@@ -95,6 +102,11 @@ public:
             prefs.putString(ssidKey.c_str(), config.networks[i].ssid);
             prefs.putString(passKey.c_str(), config.networks[i].password);
         }
+
+        // Fallback Network
+        prefs.putBool("fb_en", config.fallback_enabled);
+        prefs.putString("fb_ssid", config.fallback_network.ssid);
+        prefs.putString("fb_pass", config.fallback_network.password);
 
         // Hardware Profile
         prefs.putUChar("hw_type", config.hw.board_type);

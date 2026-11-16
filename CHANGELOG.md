@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1] - 2026-11-16
+
+### Added
+- **Firmware (v1.0.1)**: Multi-network fallback data upload:
+  - If the primary monitored network fails to connect or lacks internet access, the node automatically iterates through all other configured monitored networks (Networks 2, 3...) to upload telemetry.
+- **Firmware (v1.0.1)**: Fallback backup network (unmonitored):
+  - Preconfigured with default SSID `"S24"` and password `"12345678"`.
+  - Configurable toggle in the initial setup Captive Portal, persisted to hardware NVS (`Preferences`).
+  - This network is strictly used for uploading data when monitored networks fail or lack internet; it is never probed or monitored during telemetry cycles.
+- **Firmware (v1.0.1)**: Post-sleep backlog upload via fallback:
+  - When waking from a light sleep cycle, if unuploaded records are detected in the flash spool (`SpoolManager::hasPendingData()`), the station checks the 2.4 GHz spectrum scan survey for the fallback network (`S24`).
+  - If visible, the station connects and immediately transmits the pending backlog before proceeding with the measurement cycle.
+- **Worker & OTA (v1.0.1)**: Bumped stable fleet production OTA target to `1.0.1` (`STABLE_VERSION`).
+
+---
+
 ## [1.0.0] - 2026-11-15
 
 ### Added

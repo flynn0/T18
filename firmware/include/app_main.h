@@ -37,10 +37,12 @@ public:
         pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
         Serial.println(F("\n========================================"));
-        Serial.printf(" kreier/wifi Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
+        Serial.printf(" kreier/T18 Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
         Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
                       _config.hw.status_led_pin, _config.hw.battery_pin);
         Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (500ms/20s)" : "DISABLED");
+        Serial.printf(" Fallback Network: %s ('%s')\n",
+                      _config.fallback_enabled ? "ENABLED" : "DISABLED", _config.fallback_network.ssid);
         Serial.println(F("========================================"));
 
         // Always launch the 60-second captive portal on power-on / reset
@@ -60,28 +62,43 @@ public:
         Serial.println(F("\n>>> Starting 10-Minute Measurement Cycle <<<"));
 
         // 1. Maintain NTP time synchronization (re-sync every 24h) and early OTA check
-        if (_ntp.shouldSync() && _config.network_count > 0) {
-            connectFirstAvailableWifi();
-            if (WiFi.status() == WL_CONNECTED) {
-                _ntp.syncTime();
-
-                // Self-healing: Check for OTA updates immediately on boot before long measurements
-                uint64_t currentEpoch = _ntp.getCurrentEpoch();
-                if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
-                    _lastOtaCheckEpoch = currentEpoch;
-                    bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
-                                                               FIRMWARE_VERSION, _config.hw);
-                    if (updating) return;
-                }
-
-                WiFi.disconnect(true);
-            }
+        if (_ntp.shouldSync()) {
+            syncNtpAndCheckOta();
         }
 
         // 2. Perform 2.4 GHz spectrum Wi-Fi scan survey
         _led.setSolid(true);
         uint32_t scanDurationMs = 0;
         std::vector<SurveyItem> scanResults = WifiScanner::performScan(scanDurationMs);
+
+        // 3. Post-sleep unuploaded data check:
+        // If recent data has not been uploaded, look for the fallback network in scan results and upload old data before the measurement cycle
+        if (SpoolManager::hasPendingData() && _config.fallback_enabled && strlen(_config.fallback_network.ssid) > 0) {
+            bool fallbackSeen = false;
+            for (const auto &item : scanResults) {
+                if (item.ssid.equalsIgnoreCase(_config.fallback_network.ssid)) {
+                    fallbackSeen = true;
+                    break;
+                }
+            }
+
+            if (fallbackSeen) {
+                Serial.printf("[Main] Unuploaded data detected (%u records) and fallback network '%s' found in scan survey!\n",
+                              (unsigned)SpoolManager::getRecordCount(), _config.fallback_network.ssid);
+                Serial.printf("[Main] Connecting to '%s' to upload backlog before measurement cycle...\n",
+                              _config.fallback_network.ssid);
+                if (connectWifi(_config.fallback_network)) {
+                    String token = _configMgr.getDeviceToken();
+                    if (token.length() > 0) {
+                        uploadBacklogIfPending(token);
+                    }
+                    WiFi.disconnect(true);
+                }
+            } else {
+                Serial.printf("[Main] Note: %u unuploaded records pending in spool, but fallback network '%s' not visible in scan.\n",
+                              (unsigned)SpoolManager::getRecordCount(), _config.fallback_network.ssid);
+            }
+        }
 
         // 3. Promiscuous mode 13-channel congestion analysis (every 30 minutes / 1800s)
         uint64_t currentEpoch = _ntp.getCurrentEpoch();
@@ -170,58 +187,70 @@ private:
             Serial.println(F("[Main] Missing device token. Attempting registration..."));
             ensureDeviceRegistered();
             if (!_configMgr.hasDeviceToken()) {
-                // Buffer to raw flash
                 Serial.println(F("[Main] No token; spooling to raw flash offline buffer."));
                 SpoolManager::appendCycle(cycle);
                 return;
             }
         }
 
-        bool connected = connectFirstAvailableWifi();
-        if (!connected) {
-            Serial.println(F("[Main] Offline: No Wi-Fi available. Spooling to raw flash binary buffer."));
-            SpoolManager::appendCycle(cycle);
-            return;
-        }
-
-        // Check for OTA firmware updates (check every 1 hour or on initial boot)
-        if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
-            _lastOtaCheckEpoch = currentEpoch;
-            bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
-                                                       FIRMWARE_VERSION, _config.hw);
-            if (updating) {
-                // If update is proceeding, ESP will reboot. Return here.
-                return;
-            }
-        }
-
         String token = _configMgr.getDeviceToken();
+        String currentPayload = serializeCycleJson(cycle);
 
-        // If there is pending data from past offline cycles, upload it first
-        if (SpoolManager::hasPendingData()) {
-            Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
-                          (unsigned)SpoolManager::getRecordCount());
-            String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
-            if (spooledBatch.length() > 2) {
-                if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
-                    SpoolManager::clearSpool();
-                    Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
+        bool uploadSucceeded = false;
+
+        // 1. Sequentially try each monitored network (Network 1, Network 2, Network 3...)
+        for (uint8_t i = 0; i < _config.network_count; i++) {
+            Serial.printf("[Main] Attempting cycle upload via monitored network %d/%d ('%s')...\n",
+                          i + 1, _config.network_count, _config.networks[i].ssid);
+            if (connectWifi(_config.networks[i])) {
+                checkOtaIfDue(currentEpoch);
+                uploadBacklogIfPending(token);
+
+                if (ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload)) {
+                    Serial.printf("[Main] Telemetry successfully uploaded via '%s' (RAM fast path, zero flash wear).\n",
+                                  _config.networks[i].ssid);
+                    uploadSucceeded = true;
+                    WiFi.disconnect(true);
+                    break;
+                } else {
+                    Serial.printf("[Main] Network '%s' connected to AP but failed internet upload (no route/WAN issue). Trying next network...\n",
+                                  _config.networks[i].ssid);
+                    WiFi.disconnect(true);
                 }
+            } else {
+                Serial.printf("[Main] Could not associate with '%s'. Trying next network...\n",
+                              _config.networks[i].ssid);
             }
         }
 
-        // Transmit current cycle directly from RAM (ZERO FLASH WEAR)
-        String currentPayload = serializeCycleJson(cycle);
-        bool uploadOk = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
+        // 2. In case the monitored networks have problems with the internet connection, again the backup network is used
+        if (!uploadSucceeded && _config.fallback_enabled && strlen(_config.fallback_network.ssid) > 0) {
+            Serial.printf("[Main] All monitored networks failed internet upload. Falling back to backup network '%s'...\n",
+                          _config.fallback_network.ssid);
+            if (connectWifi(_config.fallback_network)) {
+                checkOtaIfDue(currentEpoch);
+                uploadBacklogIfPending(token);
 
-        if (uploadOk) {
-            Serial.println(F("[Main] Telemetry uploaded directly from RAM. Zero flash wear."));
-        } else {
-            Serial.println(F("[Main] Upload failed! Writing cycle to raw flash binary buffer."));
-            SpoolManager::appendCycle(cycle);
+                if (ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload)) {
+                    Serial.printf("[Main] Telemetry successfully uploaded via fallback backup network '%s'!\n",
+                                  _config.fallback_network.ssid);
+                    uploadSucceeded = true;
+                } else {
+                    Serial.printf("[Main] Fallback network '%s' connected but upload failed (no internet access).\n",
+                                  _config.fallback_network.ssid);
+                }
+                WiFi.disconnect(true);
+            } else {
+                Serial.printf("[Main] Failed to associate with fallback network '%s'.\n",
+                              _config.fallback_network.ssid);
+            }
         }
 
-        WiFi.disconnect(true);
+        // 3. Spool to raw flash circular buffer if all upload options failed
+        if (!uploadSucceeded) {
+            Serial.println(F("[Main] All networks offline or without internet access! Spooling cycle to raw flash binary buffer."));
+            SpoolManager::appendCycle(cycle);
+        }
     }
 
     String serializeCycleJson(const CycleTelemetry &cycle) {
@@ -344,60 +373,122 @@ private:
 
         Serial.println(F("[Main] Starting Zero-Trust token registration..."));
 
-        if (!connectFirstAvailableWifi()) {
-            Serial.println(F("[Main] Cannot register: No Wi-Fi connection available."));
-            return;
+        bool registered = false;
+        String receivedToken;
+
+        // Try monitored networks
+        for (uint8_t i = 0; i < _config.network_count; i++) {
+            if (connectWifi(_config.networks[i])) {
+                _ntp.syncTime();
+                if (ApiClient::registerStation(_config.worker_url, _config.station_id,
+                                               _config.station_desc, _config.master_phrase,
+                                               receivedToken)) {
+                    registered = true;
+                    WiFi.disconnect(true);
+                    break;
+                }
+                WiFi.disconnect(true);
+            }
         }
 
-        _ntp.syncTime();
+        // Try fallback network if monitored networks failed
+        if (!registered && _config.fallback_enabled && strlen(_config.fallback_network.ssid) > 0) {
+            Serial.printf("[Main] Monitored networks failed registration. Trying fallback network '%s'...\n",
+                          _config.fallback_network.ssid);
+            if (connectWifi(_config.fallback_network)) {
+                _ntp.syncTime();
+                if (ApiClient::registerStation(_config.worker_url, _config.station_id,
+                                               _config.station_desc, _config.master_phrase,
+                                               receivedToken)) {
+                    registered = true;
+                }
+                WiFi.disconnect(true);
+            }
+        }
 
-        String receivedToken;
-        bool ok = ApiClient::registerStation(_config.worker_url, _config.station_id,
-                                            _config.station_desc, _config.master_phrase,
-                                            receivedToken);
-
-        if (ok) {
+        if (registered) {
             _configMgr.saveDeviceToken(receivedToken);
             _configMgr.eraseMasterPhrase(_config);
             Serial.println(F("[Main] Zero-Trust provisioning complete. Device token secured."));
         } else {
             Serial.println(F("[Main] Registration failed. Retaining MASTER_PHRASE for next cycle retry."));
         }
-
-        WiFi.disconnect(true);
     }
 
-    bool connectFirstAvailableWifi(uint32_t timeoutMs = 15000) {
+    bool connectWifi(const WifiNetworkConfig &net, uint32_t timeoutMs = 15000) {
         WiFi.disconnect(true);
         delay(100);
         WiFi.mode(WIFI_STA);
 
+        Serial.printf("[Main] Connecting to Wi-Fi '%s'...\n", net.ssid);
+        if (strlen(net.password) > 0) {
+            WiFi.begin(net.ssid, net.password);
+        } else {
+            WiFi.begin(net.ssid);
+        }
+
+        uint32_t start = millis();
+        while (WiFi.status() != WL_CONNECTED && (millis() - start < timeoutMs)) {
+            delay(200);
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.printf("[Main] Connected to '%s' (IP: %s)\n", net.ssid, WiFi.localIP().toString().c_str());
+            return true;
+        } else {
+            Serial.printf("[Main] Failed to connect to '%s'\n", net.ssid);
+            WiFi.disconnect(true);
+            delay(100);
+            return false;
+        }
+    }
+
+    bool syncNtpAndCheckOta() {
         for (uint8_t i = 0; i < _config.network_count; i++) {
-            const char *ssid = _config.networks[i].ssid;
-            const char *pass = _config.networks[i].password;
-            Serial.printf("[Main] Connecting to Wi-Fi '%s'...\n", ssid);
-
-            if (strlen(pass) > 0) {
-                WiFi.begin(ssid, pass);
-            } else {
-                WiFi.begin(ssid);
-            }
-
-            uint32_t start = millis();
-            while (WiFi.status() != WL_CONNECTED && (millis() - start < timeoutMs)) {
-                delay(200);
-            }
-
-            if (WiFi.status() == WL_CONNECTED) {
-                Serial.printf("[Main] Connected to '%s' (IP: %s)\n", ssid, WiFi.localIP().toString().c_str());
-                return true;
-            } else {
-                Serial.printf("[Main] Failed to connect to '%s'\n", ssid);
+            if (connectWifi(_config.networks[i])) {
+                if (_ntp.syncTime()) {
+                    checkOtaIfDue(_ntp.getCurrentEpoch());
+                    WiFi.disconnect(true);
+                    return true;
+                }
                 WiFi.disconnect(true);
-                delay(100);
+            }
+        }
+        if (_config.fallback_enabled && strlen(_config.fallback_network.ssid) > 0) {
+            if (connectWifi(_config.fallback_network)) {
+                if (_ntp.syncTime()) {
+                    checkOtaIfDue(_ntp.getCurrentEpoch());
+                    WiFi.disconnect(true);
+                    return true;
+                }
+                WiFi.disconnect(true);
             }
         }
         return false;
+    }
+
+    void checkOtaIfDue(uint64_t currentEpoch) {
+        if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
+            _lastOtaCheckEpoch = currentEpoch;
+            OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
+                                       FIRMWARE_VERSION, _config.hw);
+        }
+    }
+
+    void uploadBacklogIfPending(const String &token) {
+        if (!SpoolManager::hasPendingData()) return;
+
+        Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
+                      (unsigned)SpoolManager::getRecordCount());
+        String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
+        if (spooledBatch.length() > 2) {
+            if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
+                SpoolManager::clearSpool();
+                Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
+            } else {
+                Serial.println(F("[Main] Backlog upload failed on current connection."));
+            }
+        }
     }
 
     void enterLightSleep(uint32_t sleepDurationMs) {
