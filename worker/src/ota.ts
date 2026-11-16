@@ -67,7 +67,7 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
       );
     }
     // Otherwise use stable production version (fleet default)
-    targetVersion = env.STABLE_VERSION || "1.0.7";
+    targetVersion = env.STABLE_VERSION || "1.0.8";
 
     // For fleet updates, never downgrade a device running an equal or newer version
     if (compareSemVer(targetVersion, currentVersion) <= 0) {
