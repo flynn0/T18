@@ -25,7 +25,7 @@ The `kreier/wifi` platform is built on an edge-native, zero-trust, and power-opt
 - **Serverless Edge Storage & Analytics ([ADR 0001: Cloudflare D1 Storage](docs/adr/0001-d1-over-git-storage.md))**:
   All telemetry cycles, spectrum scans, channel congestion metrics, and daily rollups are stored in **Cloudflare D1** (serverless SQLite at edge). Automated daily cron triggers aggregate 24-hour summaries and enforce 30-day raw data retention.
 - **Zero-Trust Device Provisioning ([ADR 0002: Per-Device Token Provisioning](docs/adr/0002-per-device-token-provisioning.md))**:
-  Devices are commissioned via an on-device captive portal using a one-time bootstrap phrase (`MASTER_PHRASE`). Upon the first successful connection, a unique cryptographically-random Bearer token is negotiated with the backend and stored in hardware NVS; the master phrase is permanently erased from LittleFS flash and RAM.
+  Devices are commissioned via an on-device captive portal using a one-time bootstrap phrase (`MASTER_PHRASE`). Upon the first successful connection, a unique cryptographically-random Bearer token is negotiated with the backend and stored in hardware NVS; the master phrase is permanently erased from NVS flash and RAM.
 - **Dual-Compatible Firmware Layout ([ADR 0003: Single-Source Dual Build](docs/adr/0003-dual-build-layout.md))**:
   Maintains a unified modular codebase in `firmware/include/` that compiles seamlessly in both **PlatformIO** (automated CI/CD pipelines, multi-board target flags) and **Arduino IDE** (single-click desktop flashing without external CLI dependencies).
 - **2.4 GHz Promiscuous RF Contention Profiling**:
@@ -60,14 +60,19 @@ flowchart TD
 
     subgraph ESP32 ["2. ESP32 Node Lifecycle (Every 10 min)"]
         Boot["Cold Boot or Wake"]
-        NTP["NTP Sync (every 24h)<br/>pool.ntp.org"]
+        Chan["Promiscuous Survey<br/>13 Channels (Airtime & Contention)"]
         Scan["Wi-Fi 2.4 GHz Scan Survey<br/>(SSID, RSSI, Phy Mode, Enc)"]
+        NTP["NTP Sync (every 24h) & OTA<br/>(Visible Monitored / Backup AP)"]
+        BT["Bluetooth Scan<br/>(BLE & Classic BR/EDR)"]
         Bench["Sequential Benchmarks (up to 5 SSIDs)<br/>- Assoc Time (ms)<br/>- DHCP Lease Time (ms)<br/>- HTTP Latency (5 targets + Gateway)"]
-        Spool["LittleFS Ring Buffer<br/>/spool/pending.jsonl (Max 500 KB)"]
-        Upload["POST /data<br/>Authorization: Bearer <device_token>"]
+        Upload["Direct RAM Upload / Failover<br/>POST /data (Bearer Token)"]
+        Spool["Raw Flash Circular Spool<br/>raw_spool Partition (192 KB)"]
         Sleep["ESP32 Light Sleep<br/>(Remainder of 10 min)"]
 
-        Boot --> NTP --> Scan --> Bench --> Spool --> Upload --> Sleep
+        Boot --> Chan --> Scan --> NTP --> BT --> Bench --> Upload
+        Upload -.->|Offline Failover| Spool
+        Upload --> Sleep
+        Spool --> Sleep
         Sleep -.->|Timer Wakeup| Boot
     end
 
@@ -190,7 +195,7 @@ To prevent secret leakage from physical extraction of flash dumps:
    ```json
    { "device_token": "a4f89d32-8419-4b68-b732-23c72b22f180" }
    ```
-4. ESP32 saves `device_token` to Non-Volatile Storage (`Preferences`), zeroes out `MASTER_PHRASE` in RAM, and removes it permanently from LittleFS `/config.json`.
+4. ESP32 saves `device_token` to Non-Volatile Storage (`Preferences`), zeroes out `MASTER_PHRASE` in RAM, and removes it permanently from NVS Preferences.
 5. All future telemetry uses `Authorization: Bearer <device_token>`.
 
 ---
@@ -199,15 +204,11 @@ To prevent secret leakage from physical extraction of flash dumps:
 
 Every 10 minutes, the probe executes:
 
-1. **24-Hour NTP Sync**: Checks and resynchronizes local time against `pool.ntp.org` once every 24 hours.
-2. **Spectrum Survey**: Scans all visible 2.4 GHz BSSIDs recording:
-   - SSID (including `<Hidden>`)
-   - BSSID (`XX:XX:XX:XX:XX:XX`)
-   - RSSI (dBm) & estimated Link Quality % (`clamp(2 * (rssi + 100), 0, 100)`)
-   - Encryption (`Open`, `WEP`, `WPA`, `WPA2`, `WPA3`, `WPA2/WPA3`)
-   - 802.11 Phy Mode (`WIFI_1` for 11b, `WIFI_3` for 11g, `WIFI_4` for 11n)
-   - Channel (1 to 14) and Band (`2.4 GHz`)
-3. **Sequential Network Benchmarks** (Up to 5 configured SSIDs):
+1. **Promiscuous 13-Channel Congestion Survey**: 2-second dwell times per channel measuring Management, Data, and Control frames, 4-bracket RSSI histograms, unique transmitter counts, and PHY-modeled airtime percentage.
+2. **2.4 GHz Spectrum Survey**: Scans all visible 2.4 GHz BSSIDs (SSID, BSSID, RSSI, Link Quality %, Encryption, Phy Mode, Channel, Band) and detects available monitored networks and backup APs.
+3. **Intelligent 24-Hour NTP Sync & Early OTA Check**: Checks visible monitored networks or falls back to backup AP (`S24`) to resynchronize local time and check for firmware updates, skipping offline networks without connection delay.
+4. **Battery Voltage & Bluetooth Survey**: Reads battery ADC voltage on IO35 and conducts dual BLE and Classic Bluetooth inquiry with payload de-randomization.
+5. **Sequential Network Benchmarks** (Up to 5 configured SSIDs):
    - **Association Latency** ($T_{\text{assoc}}$ in ms): Layer 2 connection time.
    - **DHCP IP Acquisition** ($T_{\text{dhcp}}$ in ms): Layer 3 lease assignment time.
    - **HTTP Latency** (3000 ms timeout per target):
@@ -216,9 +217,9 @@ Every 10 minutes, the probe executes:
      - **Microsoft**: `http://www.msftconnecttest.com/connecttest.txt`
      - **Facebook**: `http://www.facebook.com/`
      - **Netflix**: `http://fast.com/`
-4. **Spool Ring Buffer**: Records are spooled to `/spool/pending.jsonl` (capped at 500 KB FIFO ring buffer).
-5. **Telemetry Flush**: Uploads spooled data to `POST /data`. Only after receiving `200 OK` is the spool buffer cleared.
-6. **ESP32 Light Sleep**: Subsystems and radio are deactivated; CPU enters light sleep for the remainder of the 600-second window.
+6. **In-Memory-First Direct RAM Upload**: Telemetry is transmitted directly from RAM to Cloudflare Worker. If primary networks fail, automatically fails over to backup AP.
+7. **Offline Binary Spool Buffer**: If all uplinks fail, records are serialized into a packed binary circular buffer in the raw flash partition (`raw_spool`, 192 KB), holding over 50+ hours of full telemetry. Once connectivity restores, backlog records flush automatically.
+8. **ESP32 Light Sleep**: Subsystems and radio are deactivated; CPU enters light sleep for the remainder of the 600-second window.
 
 ---
 
@@ -314,7 +315,7 @@ pio device monitor -b 115200
 1. Open Arduino IDE 2.x.
 2. Open [`firmware/wifi/wifi.ino`](firmware/wifi/wifi.ino).
 3. Under **Tools > Board**, select **ESP32 Dev Module**.
-4. Set **Partition Scheme** to **Default 4MB with spiffs/littlefs** (or custom `min_spiffs.csv`).
+4. Set **Partition Scheme** to **Minimal SPIFFS (1.9MB OTA with spiffs)** (or custom `partitions/min_spiffs.csv`).
 5. Install the **ArduinoJson** library (v7.x) via the Library Manager.
 6. Click **Upload**.
 
@@ -432,7 +433,7 @@ Version `0.9.0` introduces automated Over-The-Air firmware updates, single unifi
 
 3. **In-Memory-First Telemetry (Zero Flash Wear)**:
    - When the internet connection is healthy, telemetry is transmitted directly from RAM to Cloudflare. **Flash memory is never touched**, preventing flash wear.
-   - **Offline Binary Spooling**: If Wi-Fi or API upload fails, records are serialized into a packed binary format (no LittleFS code overhead) in the raw flash partition. Holds over **50+ hours of full telemetry** (13 channels + Wi-Fi surveys) before wrapping.
+   - **Offline Binary Spooling**: If Wi-Fi or API upload fails, records are serialized into a packed binary format (direct SPI flash block access, zero filesystem overhead) in the dedicated 192 KB raw flash partition (`raw_spool`). Holds over **50+ hours of full telemetry** (13 channels + Wi-Fi surveys) before wrapping.
    - When network connectivity is restored, backlog records are automatically transmitted and the flash buffer is cleared.
 
 4. **Automated CI/CD & Dual-Hosting OTA Distribution**:

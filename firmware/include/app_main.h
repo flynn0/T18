@@ -80,7 +80,17 @@ public:
         std::vector<SurveyItem> scanResults = WifiScanner::performScan(scanDurationMs);
         _led.setOff();
 
-        // Check if backup AP is present in the scan results
+        // Identify visible monitored networks and backup AP from scan results
+        std::vector<uint8_t> visibleMonitoredIndices;
+        for (uint8_t i = 0; i < _config.network_count; i++) {
+            for (const auto &item : scanResults) {
+                if (item.ssid.length() > 0 && item.ssid == _config.networks[i].ssid) {
+                    visibleMonitoredIndices.push_back(i);
+                    break;
+                }
+            }
+        }
+
         bool backupApVisible = false;
         if (_config.backup_enabled && strlen(_config.backup_ssid) > 0) {
             for (const auto &item : scanResults) {
@@ -94,22 +104,45 @@ public:
             }
         }
 
-        // 3. Maintain NTP time synchronization (re-sync every 24h) and early OTA check
-        if (_ntp.shouldSync() && _config.network_count > 0) {
-            connectFirstAvailableWifi();
-            if (WiFi.status() == WL_CONNECTED) {
+        // 3. Maintain NTP time synchronization (re-sync every 24h or if uncalibrated) and early OTA check
+        if (_ntp.shouldSync()) {
+            bool ntpConnected = false;
+
+            // 3a. Try visible monitored networks first
+            for (uint8_t idx : visibleMonitoredIndices) {
+                Serial.printf("[Main] Visible monitored AP '%s' detected. Connecting for NTP sync...\n",
+                              _config.networks[idx].ssid);
+                if (connectWifiSpecific(_config.networks[idx].ssid, _config.networks[idx].password, 15000)) {
+                    ntpConnected = true;
+                    break;
+                }
+            }
+
+            // 3b. If no monitored network connected, try backup AP if visible
+            if (!ntpConnected && _config.backup_enabled && backupApVisible && strlen(_config.backup_ssid) > 0) {
+                Serial.printf("[Main] Monitored networks unavailable for NTP. Connecting to backup AP '%s'...\n",
+                              _config.backup_ssid);
+                if (connectWifiSpecific(_config.backup_ssid, _config.backup_pass, 15000)) {
+                    ntpConnected = true;
+                }
+            }
+
+            // 3c. If connected, perform NTP sync and early OTA check
+            if (ntpConnected) {
                 _ntp.syncTime();
 
                 // Self-healing: Check for OTA updates immediately on boot before long measurements
-                uint64_t currentEpoch = _ntp.getCurrentEpoch();
-                if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
-                    _lastOtaCheckEpoch = currentEpoch;
+                uint64_t ntpEpoch = _ntp.getCurrentEpoch();
+                if (_lastOtaCheckEpoch == 0 || (ntpEpoch >= _lastOtaCheckEpoch + 3600)) {
+                    _lastOtaCheckEpoch = ntpEpoch;
                     bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
                                                                FIRMWARE_VERSION, _config.hw);
                     if (updating) return;
                 }
 
                 WiFi.disconnect(true);
+            } else {
+                Serial.println(F("[Main] No visible uplink for NTP sync (monitored networks and backup AP unavailable). Proceeding with measurements."));
             }
         }
         uint64_t currentEpoch = _ntp.getCurrentEpoch();
@@ -196,7 +229,7 @@ public:
         }
 
         // 7. Check OTA & Upload Telemetry (In-Memory-First, with backup AP failover)
-        processCycleUploadAndOta(cycle, currentEpoch, backupApVisible);
+        processCycleUploadAndOta(cycle, currentEpoch, visibleMonitoredIndices, backupApVisible);
 
         // 8. Calculate sleep duration and enter ESP32 Light Sleep
         uint32_t elapsedMs = millis() - cycleStartMs;
@@ -221,57 +254,68 @@ public:
     }
 
 private:
-    void processCycleUploadAndOta(const CycleTelemetry &cycle, uint64_t currentEpoch, bool backupApVisible) {
+    void processCycleUploadAndOta(CycleTelemetry &cycle, uint64_t currentEpoch,
+                                  const std::vector<uint8_t> &visibleMonitoredIndices,
+                                  bool backupApVisible) {
         bool uploadSuccess = false;
 
-        // 1. Try monitored networks first
-        if (connectFirstAvailableWifi()) {
+        // Lambda to execute upload and OTA check once connected to an AP
+        auto doUpload = [&](const char *apName) -> bool {
             if (!_configMgr.hasDeviceToken()) {
                 ensureDeviceRegistered();
             }
 
-            if (_configMgr.hasDeviceToken()) {
-                // Check for OTA firmware updates (check every 1 hour or on initial boot)
-                if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
-                    _lastOtaCheckEpoch = currentEpoch;
-                    bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
-                                                               FIRMWARE_VERSION, _config.hw);
-                    if (updating) return;
-                }
+            if (!_configMgr.hasDeviceToken()) {
+                return false;
+            }
 
-                String token = _configMgr.getDeviceToken();
+            // Check for OTA firmware updates (check every 1 hour or on initial boot)
+            if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
+                _lastOtaCheckEpoch = currentEpoch;
+                bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
+                                                           FIRMWARE_VERSION, _config.hw);
+                if (updating) return false;
+            }
 
-                // If there is pending data from past offline cycles, upload it first
-                if (SpoolManager::hasPendingData()) {
-                    Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
-                                  (unsigned)SpoolManager::getRecordCount());
-                    String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
-                    if (spooledBatch.length() > 2) {
-                        if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
-                            SpoolManager::clearSpool();
-                            Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
-                        }
+            String token = _configMgr.getDeviceToken();
+
+            // If there is pending data from past offline cycles, upload it first
+            if (SpoolManager::hasPendingData()) {
+                Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
+                              (unsigned)SpoolManager::getRecordCount());
+                String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
+                if (spooledBatch.length() > 2) {
+                    if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
+                        SpoolManager::clearSpool();
+                        Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
                     }
                 }
-
-                // Transmit current cycle directly from RAM (ZERO FLASH WEAR)
-                String currentPayload = serializeCycleJson(cycle);
-                uploadSuccess = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
-
-                if (uploadSuccess) {
-                    Serial.println(F("[Main] Telemetry uploaded directly from RAM via monitored Wi-Fi."));
-                } else {
-                    Serial.println(F("[Main] Primary Wi-Fi upload failed (no internet access)."));
-                }
             }
-            WiFi.disconnect(true);
-        } else {
-            Serial.println(F("[Main] None of the monitored Wi-Fi networks connected."));
+
+            // Transmit current cycle directly from RAM (ZERO FLASH WEAR)
+            String currentPayload = serializeCycleJson(cycle);
+            bool ok = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
+
+            if (ok) {
+                Serial.printf("[Main] Telemetry uploaded directly from RAM via '%s'.\n", apName);
+            } else {
+                Serial.printf("[Main] Upload failed via '%s' (no internet access).\n", apName);
+            }
+            return ok;
+        };
+
+        // 1. Try visible monitored networks first
+        for (uint8_t idx : visibleMonitoredIndices) {
+            if (connectWifiSpecific(_config.networks[idx].ssid, _config.networks[idx].password, 15000)) {
+                uploadSuccess = doUpload(_config.networks[idx].ssid);
+                WiFi.disconnect(true);
+                if (uploadSuccess) break;
+            }
         }
 
         // 2. Failover: If upload failed and backup AP is enabled and was seen in the scan
         if (!uploadSuccess && _config.backup_enabled && backupApVisible && strlen(_config.backup_ssid) > 0) {
-            Serial.printf("[Main] Monitored networks have no internet connection. Attempting failover to backup AP '%s'...\n",
+            Serial.printf("[Main] Monitored networks unavailable or without internet. Attempting failover to backup AP '%s'...\n",
                           _config.backup_ssid);
 
             if (connectWifiSpecific(_config.backup_ssid, _config.backup_pass, 15000)) {
@@ -282,49 +326,26 @@ private:
                     cycle.timestamp = _ntp.getCurrentEpoch();
                 }
 
-                if (!_configMgr.hasDeviceToken()) {
-                    ensureDeviceRegistered();
-                }
-
-                if (_configMgr.hasDeviceToken()) {
-                    String token = _configMgr.getDeviceToken();
-
-                    // Check for OTA firmware updates over backup AP
-                    if (_lastOtaCheckEpoch == 0 || (currentEpoch >= _lastOtaCheckEpoch + 3600)) {
-                        _lastOtaCheckEpoch = currentEpoch;
-                        bool updating = OtaManager::checkForUpdate(_config.worker_url, _config.station_id,
-                                                                   FIRMWARE_VERSION, _config.hw);
-                        if (updating) return;
-                    }
-
-                    // Transmit backlog if any
-                    if (SpoolManager::hasPendingData()) {
-                        String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
-                        if (spooledBatch.length() > 2) {
-                            if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
-                                SpoolManager::clearSpool();
-                                Serial.println(F("[Main] Offline backlog uploaded via backup connection."));
-                            }
-                        }
-                    }
-
-                    // Transmit current cycle
-                    String currentPayload = serializeCycleJson(cycle);
-                    uploadSuccess = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
-
-                    if (uploadSuccess) {
-                        Serial.printf("[Main] Telemetry successfully transmitted via backup AP '%s'!\n", _config.backup_ssid);
-                    } else {
-                        Serial.println(F("[Main] Upload failed over backup AP."));
-                    }
-                }
+                uploadSuccess = doUpload(_config.backup_ssid);
                 WiFi.disconnect(true);
             } else {
                 Serial.printf("[Main] Failed to connect to backup AP '%s'.\n", _config.backup_ssid);
             }
         }
 
-        // 3. Spool to raw flash if all upload attempts failed
+        // 3. Fallback: If no visible networks succeeded and backup AP was not visible, attempt blind connect to configured networks (e.g. hidden SSID)
+        if (!uploadSuccess && visibleMonitoredIndices.empty() && _config.network_count > 0 && !backupApVisible) {
+            Serial.println(F("[Main] No visible networks detected; attempting blind connect fallback..."));
+            for (uint8_t i = 0; i < _config.network_count; i++) {
+                if (connectWifiSpecific(_config.networks[i].ssid, _config.networks[i].password, 10000)) {
+                    uploadSuccess = doUpload(_config.networks[i].ssid);
+                    WiFi.disconnect(true);
+                    if (uploadSuccess) break;
+                }
+            }
+        }
+
+        // 4. Spool to raw flash if all upload attempts failed
         if (!uploadSuccess) {
             Serial.println(F("[Main] Offline: All upload paths failed. Writing cycle to raw flash binary buffer."));
             SpoolManager::appendCycle(cycle);
@@ -494,8 +515,16 @@ private:
         bool alreadyConnected = (WiFi.status() == WL_CONNECTED);
         if (!alreadyConnected) {
             if (!connectFirstAvailableWifi()) {
-                Serial.println(F("[Main] Cannot register: No Wi-Fi connection available."));
-                return;
+                if (_config.backup_enabled && strlen(_config.backup_ssid) > 0) {
+                    Serial.printf("[Main] Monitored networks failed, attempting registration via backup AP '%s'...\n", _config.backup_ssid);
+                    if (!connectWifiSpecific(_config.backup_ssid, _config.backup_pass, 15000)) {
+                        Serial.println(F("[Main] Cannot register: Backup AP also failed."));
+                        return;
+                    }
+                } else {
+                    Serial.println(F("[Main] Cannot register: No Wi-Fi connection available."));
+                    return;
+                }
             }
         }
 

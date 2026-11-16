@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Firmware**: Scan-aware intelligent NTP synchronization and early OTA update workflow in `firmware/include/app_main.h`. Cross-references the Wi-Fi scan survey results to connect only to visible monitored networks, or falls back immediately to the backup AP (e.g. "S24") when primary networks are unavailable. Bypasses connection attempts and 15-second timeouts entirely when neither is in the air.
+- **Firmware**: Streamlined cycle upload workflow in `processCycleUploadAndOta` to connect directly to detected visible uplinks (monitored or backup AP), preventing delays on absent SSIDs.
+- **Firmware**: Added backup AP failover in `ensureDeviceRegistered()` to allow initial zero-trust device provisioning via backup hotspot if primary monitored networks are unavailable.
+- **Documentation**: Audited `README.md` and related docs, removing outdated `LittleFS` references and aligning architecture diagrams and descriptions with NVS `Preferences` persistence and 192 KB raw partition binary spooling (`raw_spool`).
+
 ---
 
 ## [2.0.7 / 1.0.7] - 2026-11-16
