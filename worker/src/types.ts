@@ -246,6 +246,20 @@ export interface BluetoothRecord {
   devices_json?: string | null;
 }
 
+export interface InactiveBluetoothRecord {
+  type: 'ble' | 'classic';
+  address: string;
+  addr_type?: string;
+  name?: string;
+  vendor?: string;
+  category?: string;
+  dev_class?: string;
+  cod?: number;
+  rssi?: number | null;
+  fingerprint?: string;
+  last_seen: number;
+}
+
 export interface TelemetryCyclePayload {
   station_id?: string;
   description?: string;

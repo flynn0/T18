@@ -1,4 +1,4 @@
-import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord, ChannelUtilizationPayload, ChannelUtilizationRecord, BluetoothPayload, BluetoothRecord } from "./types";
+import { Env, StationRecord, MeasurementRecord, ScanSurveyRecord, InactiveSurveyRecord, NetworkDiagnosticsPayload, NetworkDiagnosticsRecord, ChannelUtilizationPayload, ChannelUtilizationRecord, BluetoothPayload, BluetoothRecord, InactiveBluetoothRecord } from "./types";
 
 export class Database {
   private db: D1Database;
@@ -744,6 +744,97 @@ export class Database {
       `).bind(stationId, cutoff).all<BluetoothRecord>();
       return res.results || [];
     } catch {
+      return [];
+    }
+  }
+
+  async getInactiveBluetoothDevices(stationId: string, hours: number = 24): Promise<InactiveBluetoothRecord[]> {
+    const latestBt = await this.getLatestBluetooth(stationId);
+    const activeKeys = new Set<string>();
+    let latestTime = Math.floor(Date.now() / 1000);
+
+    if (latestBt) {
+      if (latestBt.timestamp) latestTime = latestBt.timestamp;
+      if (latestBt.devices_json) {
+        try {
+          const parsed = JSON.parse(latestBt.devices_json);
+          for (const d of (parsed.ble_devices || [])) {
+            const k = (d.address || d.fingerprint || '').trim().toUpperCase();
+            if (k) activeKeys.add(k);
+          }
+          for (const cd of (parsed.classic_devices || [])) {
+            const k = (cd.address || '').trim().toUpperCase();
+            if (k) activeKeys.add(k);
+          }
+        } catch {}
+      }
+    }
+
+    const since = latestTime - (hours * 3600);
+    try {
+      const res = await this.db.prepare(`
+        SELECT timestamp, devices_json
+        FROM station_bluetooth_summary
+        WHERE station_id = ? AND timestamp >= ? AND timestamp < ? AND devices_json IS NOT NULL
+        ORDER BY timestamp DESC
+      `).bind(stationId, since, latestTime).all<{ timestamp: number; devices_json: string }>();
+
+      const seenMap = new Map<string, InactiveBluetoothRecord>();
+
+      for (const row of (res.results || [])) {
+        if (!row.devices_json) continue;
+        try {
+          const parsed = JSON.parse(row.devices_json);
+          // BLE devices
+          for (const d of (parsed.ble_devices || [])) {
+            const key = (d.address || d.fingerprint || '').trim().toUpperCase();
+            if (!key || activeKeys.has(key)) continue;
+            if (!seenMap.has(key)) {
+              seenMap.set(key, {
+                type: 'ble',
+                address: d.address,
+                addr_type: d.addr_type,
+                name: d.name,
+                vendor: d.vendor,
+                category: d.category,
+                rssi: typeof d.rssi === 'number' ? d.rssi : null,
+                fingerprint: d.fingerprint,
+                last_seen: row.timestamp
+              });
+            } else {
+              const existing = seenMap.get(key)!;
+              if (typeof d.rssi === 'number' && (existing.rssi == null || d.rssi > existing.rssi)) {
+                existing.rssi = d.rssi;
+              }
+            }
+          }
+          // Classic devices
+          for (const cd of (parsed.classic_devices || [])) {
+            const key = (cd.address || '').trim().toUpperCase();
+            if (!key || activeKeys.has(key)) continue;
+            if (!seenMap.has(key)) {
+              seenMap.set(key, {
+                type: 'classic',
+                address: cd.address,
+                name: cd.name,
+                dev_class: cd.dev_class,
+                cod: cd.cod,
+                rssi: typeof cd.rssi === 'number' ? cd.rssi : null,
+                last_seen: row.timestamp
+              });
+            } else {
+              const existing = seenMap.get(key)!;
+              if (typeof cd.rssi === 'number' && (existing.rssi == null || cd.rssi > existing.rssi)) {
+                existing.rssi = cd.rssi;
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return Array.from(seenMap.values());
+    } catch (e) {
+      console.error("[Database] Error getting inactive bluetooth devices:", e);
       return [];
     }
   }

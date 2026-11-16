@@ -416,6 +416,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       gap: 2px;
       flex: 1;
+      padding-right: 6px;
     }
     .heatmap-cell {
       flex: 1;
@@ -425,9 +426,10 @@ export function renderDashboardHtml(): string {
       cursor: pointer;
       transition: transform 0.1s ease, outline 0.1s ease;
       background: rgba(100, 116, 139, 0.15);
+      transform-origin: center center;
     }
     .heatmap-cell:hover {
-      transform: scale(1.3);
+      transform: scale(1.25);
       z-index: 10;
       outline: 1.5px solid #fff;
     }
@@ -436,6 +438,7 @@ export function renderDashboardHtml(): string {
       gap: 2px;
       flex: 1;
       margin-bottom: 4px;
+      padding-right: 6px;
     }
     .heatmap-header-col {
       flex: 1;
@@ -443,6 +446,27 @@ export function renderDashboardHtml(): string {
       font-size: 0.65rem;
       color: var(--text-muted);
       text-align: center;
+    }
+    .view-switch-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .view-switch-btn:hover {
+      color: var(--text-main);
+    }
+    .view-switch-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+    }
       overflow: visible;
       white-space: nowrap;
       position: relative;
@@ -743,7 +767,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">WIFI Monitor</span>
-        <span class="brand-tag">v2.0.6</span>
+        <span class="brand-tag">v2.0.7</span>
       </div>
     </a>
     <div class="header-controls">
@@ -942,12 +966,12 @@ export function renderDashboardHtml(): string {
       <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChannelHeatmap()">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Channel Utilization Heatmap (13 Channels)</span>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, Dynamic Nuance Scale)</span>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">24-Hour Spectrum &amp; BLE Heatmap (13 Channels + BLE)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">(48 &times; 30-min Intervals, 13 Wi-Fi Channels + Unique BLE Devices)</span>
           </div>
           <span id="channelHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
         </div>
-        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto;">
+        <div id="channelHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto; overflow-y: hidden;">
           <!-- Heatmap Legend & Hover Info Bar -->
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.75rem;">
             <div style="display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap;">
@@ -966,12 +990,22 @@ export function renderDashboardHtml(): string {
               <span style="display:inline-block; width:12px; height:10px; background:#ef4444; border-radius:2px;" title="40% - 55%"></span>
               <span style="display:inline-block; width:12px; height:10px; background:#dc2626; border-radius:2px;" title="55% - 70%"></span>
               <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 70% (Outlier Spike)"></span>
-              <span style="color:#d946ef; font-weight:600; margin-left:2px;">&gt;70% Spike</span>
+              <span style="color:#d946ef; font-weight:600; margin-left:2px; margin-right:6px;">&gt;70% Spike</span>
+              <span style="display:inline-block; width:1px; height:12px; background:var(--card-border); margin:0 4px;"></span>
+              <span style="color: #38bdf8; font-weight: 600; margin-right: 3px;">BLE:</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#0f2942; border-radius:2px;" title="0 devices"></span>
+              <span style="color:var(--text-muted); margin-right:2px;">0</span>
+              <span style="display:inline-block; width:12px; height:10px; background:#06b6d4; border-radius:2px;" title="1 - 3 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#10b981; border-radius:2px;" title="4 - 8 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#eab308; border-radius:2px;" title="9 - 15 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#f97316; border-radius:2px;" title="16 - 25 devices"></span>
+              <span style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 25 devices (Dense)"></span>
+              <span style="color:#38bdf8; font-weight:600; margin-left:2px;">&gt;25 Dev</span>
             </div>
-            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">Hover over a cell to inspect metrics</div>
+            <div id="heatmapHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.4rem; line-height: 1.4;">Hover over a cell to inspect metrics</div>
           </div>
           <!-- Heatmap Container -->
-          <div id="channelHeatmapContainer" style="min-width: 760px;"></div>
+          <div id="channelHeatmapContainer" style="min-width: 760px; padding: 4px 12px 14px 4px;"></div>
         </div>
       </div>
     </div>
@@ -1143,17 +1177,23 @@ export function renderDashboardHtml(): string {
 
       <!-- Discovered Bluetooth Devices Table Drawer -->
       <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleBluetoothTable()">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 0.5rem;" onclick="toggleBluetoothTable()">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span id="btTableCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted);">▼</span>
-            <span style="font-size: 0.95rem; font-weight: 600;">Discovered Bluetooth Devices (Current Cycle)</span>
+            <span id="btTableTitle" style="font-size: 0.95rem; font-weight: 600;">Discovered Bluetooth Devices (Current Cycle)</span>
             <span id="btDeviceCountBadge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Devices</span>
           </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Click to toggle table</span>
+          <div style="display: flex; align-items: center; gap: 0.75rem;" onclick="event.stopPropagation()">
+            <div style="display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 2px; gap: 2px;">
+              <button id="btBtnCurrent" type="button" class="view-switch-btn active" onclick="switchBtTableMode('current')">Current Cycle</button>
+              <button id="btBtn24h" type="button" class="view-switch-btn" onclick="switchBtTableMode('24h')">Previous 24 Hours</button>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="toggleBluetoothTable()">Toggle</span>
+          </div>
         </div>
         <div id="btTableDrawer" style="display: block; margin-top: 0.85rem; overflow-x: auto;">
           <table>
-            <thead>
+            <thead id="bluetoothTableHead">
               <tr>
                 <th>Type</th>
                 <th>Address</th>
@@ -1402,7 +1442,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="javascript:void(0)" onclick="openFlashModal()" style="font-weight: 600; color: var(--primary);">⚡ Web Flasher</a>
     <span>|</span>
-    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v2.0.6)</a>
+    <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v2.0.7)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -2463,6 +2503,16 @@ export function renderDashboardHtml(): string {
       return '#d946ef'; // > 70% outlier spike
     }
 
+    function getBleHeatmapColor(count) {
+      if (count === null || count === undefined || isNaN(count)) return 'rgba(100, 116, 139, 0.15)';
+      if (count === 0) return '#0f2942'; // near idle / 0 devices
+      if (count <= 3) return '#06b6d4'; // 1-3 devices
+      if (count <= 8) return '#10b981'; // 4-8 devices
+      if (count <= 15) return '#eab308'; // 9-15 devices
+      if (count <= 25) return '#f97316'; // 16-25 devices
+      return '#d946ef';                 // > 25 devices
+    }
+
     function renderChannelHeatmap() {
       const container = document.getElementById("channelHeatmapContainer");
       if (!container || !currentStationData) return;
@@ -2519,6 +2569,52 @@ export function renderDashboardHtml(): string {
             cellData.ctrlFrames += (u.ctrl_frames || 0);
             cellData.transmitters = Math.max(cellData.transmitters, (u.unique_transmitters || 0));
           }
+        }
+      }
+
+      // Initialize BLE slots
+      const bleSlots = new Array(48).fill(null);
+      const btHistory = currentStationData.bluetooth_history || [];
+      for (let i = 0; i < btHistory.length; i++) {
+        const b = btHistory[i];
+        const slotIdx = Math.round((b.timestamp - startSlot) / 1800);
+        if (slotIdx >= 0 && slotIdx < 48) {
+          if (!bleSlots[slotIdx]) {
+            bleSlots[slotIdx] = {
+              count: 1,
+              sumUnique: (b.ble_unique_devices || 0),
+              maxUnique: (b.ble_unique_devices || 0),
+              totalMacs: (b.ble_total_macs || 0),
+              randomMacs: (b.ble_random_macs || 0),
+              publicMacs: (b.ble_public_macs || 0),
+              classicTotal: (b.classic_total || 0)
+            };
+          } else {
+            const bs = bleSlots[slotIdx];
+            bs.count++;
+            bs.sumUnique += (b.ble_unique_devices || 0);
+            bs.maxUnique = Math.max(bs.maxUnique, (b.ble_unique_devices || 0));
+            bs.totalMacs = Math.max(bs.totalMacs, (b.ble_total_macs || 0));
+            bs.randomMacs = Math.max(bs.randomMacs, (b.ble_random_macs || 0));
+            bs.publicMacs = Math.max(bs.publicMacs, (b.ble_public_macs || 0));
+            bs.classicTotal = Math.max(bs.classicTotal, (b.classic_total || 0));
+          }
+        }
+      }
+
+      if (currentStationData.latest_bluetooth && currentStationData.latest_bluetooth.timestamp) {
+        const lb = currentStationData.latest_bluetooth;
+        const lbSlot = Math.round((lb.timestamp - startSlot) / 1800);
+        if (lbSlot >= 0 && lbSlot < 48 && !bleSlots[lbSlot]) {
+          bleSlots[lbSlot] = {
+            count: 1,
+            sumUnique: (lb.ble_unique_devices || 0),
+            maxUnique: (lb.ble_unique_devices || 0),
+            totalMacs: (lb.ble_total_macs || 0),
+            randomMacs: (lb.ble_random_macs || 0),
+            publicMacs: (lb.ble_public_macs || 0),
+            classicTotal: (lb.classic_total || 0)
+          };
         }
       }
 
@@ -2608,6 +2704,65 @@ export function renderDashboardHtml(): string {
         row.appendChild(cellsWrap);
         container.appendChild(row);
       }
+
+      // 3. Render Unique BLE Devices Row
+      const bleRow = document.createElement("div");
+      bleRow.className = "heatmap-row";
+      bleRow.style.marginTop = "4px";
+      bleRow.style.paddingTop = "4px";
+      bleRow.style.borderTop = "1px dashed rgba(100, 116, 139, 0.3)";
+
+      const bleLabel = document.createElement("div");
+      bleLabel.className = "heatmap-row-label";
+      bleLabel.style.color = "#38bdf8";
+      bleLabel.style.fontWeight = "700";
+      bleLabel.innerText = "BLE";
+      bleRow.appendChild(bleLabel);
+
+      const bleCellsWrap = document.createElement("div");
+      bleCellsWrap.className = "heatmap-cells-wrap";
+
+      for (let i = 0; i < 48; i++) {
+        const cell = document.createElement("div");
+        cell.className = "heatmap-cell";
+
+        const bData = bleSlots[i];
+        const slotTime = slots[i];
+        const timeLabel = new Date(slotTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const endTimeLabel = new Date((slotTime + 1800) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (bData) {
+          const devCount = Math.round(bData.sumUnique / bData.count);
+          const color = getBleHeatmapColor(devCount);
+          cell.style.background = color;
+          cell.title = 'BLE Devices (' + timeLabel + ' - ' + endTimeLabel + '): ' + devCount + ' unique devices, ' + bData.totalMacs + ' MACs (' + bData.randomMacs + ' RPA, ' + bData.publicMacs + ' Public)';
+
+          cell.addEventListener("mouseenter", function() {
+            if (hoverInfo) {
+              hoverInfo.innerHTML = '<span style="color:#38bdf8; font-weight:600;">Unique BLE Devices</span> &bull; <span style="color:var(--primary);">' + timeLabel + ' - ' + endTimeLabel + '</span> &bull; Detected: <span style="color:' + color + '; font-weight:700;">' + devCount + ' Unique BLE</span> | Total MACs: ' + bData.totalMacs + ' (' + bData.randomMacs + ' RPA, ' + bData.publicMacs + ' Public) | Classic: ' + bData.classicTotal;
+            }
+          });
+        } else {
+          cell.style.background = "rgba(100, 116, 139, 0.15)";
+          cell.title = 'BLE Devices (' + timeLabel + ' - ' + endTimeLabel + '): No Bluetooth telemetry data';
+          cell.addEventListener("mouseenter", function() {
+            if (hoverInfo) {
+              hoverInfo.innerHTML = '<span style="color:var(--text-muted);">Unique BLE Devices &bull; ' + timeLabel + ' - ' + endTimeLabel + ' &bull; No Bluetooth telemetry recorded</span>';
+            }
+          });
+        }
+
+        cell.addEventListener("mouseleave", function() {
+          if (hoverInfo) {
+            hoverInfo.innerText = "Hover over a cell to inspect metrics";
+          }
+        });
+
+        bleCellsWrap.appendChild(cell);
+      }
+
+      bleRow.appendChild(bleCellsWrap);
+      container.appendChild(bleRow);
     }
 
     const CHANNEL_COLORS_13 = [
@@ -3306,6 +3461,7 @@ export function renderDashboardHtml(): string {
       });
     }
 
+    let currentBtTableMode = 'current';
     let btDrawerOpen = true;
     let bluetoothChartInstance = null;
 
@@ -3315,6 +3471,196 @@ export function renderDashboardHtml(): string {
       const icon = document.getElementById("btTableCollapseIcon");
       if (drawer) drawer.style.display = btDrawerOpen ? "block" : "none";
       if (icon) icon.innerText = btDrawerOpen ? "▼" : "▶";
+    }
+
+    function switchBtTableMode(mode) {
+      currentBtTableMode = mode;
+      const btnCurrent = document.getElementById("btBtnCurrent");
+      const btn24h = document.getElementById("btBtn24h");
+      if (btnCurrent) btnCurrent.classList.toggle("active", mode === "current");
+      if (btn24h) btn24h.classList.toggle("active", mode === "24h");
+      if (!btDrawerOpen) {
+        toggleBluetoothTable();
+      }
+      if (currentStationData) {
+        renderBluetoothTable(currentStationData);
+      }
+    }
+
+    function renderBluetoothTable(data) {
+      const tableHead = document.getElementById("bluetoothTableHead");
+      const tableBody = document.getElementById("bluetoothTableBody");
+      const badgeEl = document.getElementById("btDeviceCountBadge");
+      const titleEl = document.getElementById("btTableTitle");
+      if (!tableBody) return;
+
+      if (currentBtTableMode === "24h") {
+        if (titleEl) titleEl.innerText = "Discovered Bluetooth Devices (Previous 24 Hours)";
+        if (tableHead) {
+          tableHead.innerHTML = '<tr>' +
+            '<th>Type</th>' +
+            '<th>Address</th>' +
+            '<th>Device Name / Beacon Identifier</th>' +
+            '<th>Vendor / Ecosystem</th>' +
+            '<th>Category</th>' +
+            '<th>Signal (Max RSSI)</th>' +
+            '<th>Last Seen</th>' +
+          '</tr>';
+        }
+
+        const inactiveList = (data && Array.isArray(data.inactive_bluetooth)) ? data.inactive_bluetooth : [];
+        if (badgeEl) badgeEl.innerText = inactiveList.length + ' Previously Seen';
+
+        if (inactiveList.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No previous Bluetooth devices recorded in the last 24 hours.</td></tr>';
+          return;
+        }
+
+        let rowsHtml = '';
+        for (const d of inactiveList) {
+          const isBle = d.type === 'ble';
+          const typeBadge = isBle
+            ? '<span class="pill" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">BLE</span>'
+            : '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">Classic</span>';
+
+          const addrBadge = isBle
+            ? (d.addr_type === 'public'
+              ? '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">Public</span>'
+              : (d.addr_type === 'random_rpa'
+                ? '<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.68rem; padding: 1px 6px;">RPA</span>'
+                : '<span class="pill" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 0.68rem; padding: 1px 6px;">Static</span>'))
+            : '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">IEEE Fixed</span>';
+
+          const rssiVal = typeof d.rssi === 'number' && d.rssi !== -100 ? d.rssi : null;
+          const pct = rssiVal !== null ? Math.min(100, Math.max(0, 2 * (rssiVal + 100))) : 0;
+          const rssiBarColor = rssiVal !== null ? (rssiVal >= -65 ? '#10b981' : (rssiVal >= -80 ? '#f59e0b' : '#ef4444')) : '#64748b';
+
+          const catLabel = d.category ? (d.category.charAt(0).toUpperCase() + d.category.slice(1)) : (d.dev_class || 'General');
+          const catBadge = '<span class="pill" style="font-size: 0.72rem; padding: 2px 7px;">' + escapeHtml(catLabel) + '</span>';
+
+          const nameDisplay = d.name
+            ? ('<strong>' + escapeHtml(d.name) + '</strong>')
+            : (isBle
+              ? '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>'
+              : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>');
+
+          const lastSeenDisplay = d.last_seen
+            ? '<span title="' + new Date(d.last_seen * 1000).toLocaleString() + '" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">' + formatLastSeen(d.last_seen) + '</span>'
+            : '<span style="color: var(--text-muted);">—</span>';
+
+          rowsHtml += '<tr style="opacity: 0.85;">' +
+            '<td>' + typeBadge + '</td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(d.address) + '</code> ' + addrBadge + '</div></td>' +
+            '<td>' + nameDisplay + '</td>' +
+            '<td>' + escapeHtml(d.vendor || d.dev_class || 'Generic') + '</td>' +
+            '<td>' + catBadge + '</td>' +
+            '<td>' +
+              (rssiVal !== null
+                ? '<div style="display:flex; align-items:center; gap:0.5rem;"><div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + pct + '%; background:' + rssiBarColor + ';"></div></div></div><span style="font-size:0.75rem; color:var(--text-muted);" title="Max RSSI recorded">' + rssiVal + ' dBm</span></div>'
+                : '<span style="font-size:0.75rem; color:var(--text-muted);">Inquiry ACK</span>') +
+            '</td>' +
+            '<td>' + lastSeenDisplay + '</td>' +
+          '</tr>';
+        }
+        tableBody.innerHTML = rowsHtml;
+      } else {
+        // Current Cycle Mode
+        if (titleEl) titleEl.innerText = "Discovered Bluetooth Devices (Current Cycle)";
+        if (tableHead) {
+          tableHead.innerHTML = '<tr>' +
+            '<th>Type</th>' +
+            '<th>Address</th>' +
+            '<th>Device Name / Beacon Identifier</th>' +
+            '<th>Vendor / Ecosystem</th>' +
+            '<th>Category</th>' +
+            '<th>Signal (RSSI)</th>' +
+          '</tr>';
+        }
+
+        const bt = data ? data.latest_bluetooth : null;
+        if (!bt) {
+          if (badgeEl) badgeEl.innerText = '0 Devices';
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No Bluetooth scan data recorded yet. Node will include Bluetooth in next cycle.</td></tr>';
+          return;
+        }
+
+        let devices = { ble_devices: [], classic_devices: [] };
+        if (bt.devices_json) {
+          try {
+            devices = JSON.parse(bt.devices_json);
+          } catch (e) {
+            console.error("Failed to parse devices_json:", e);
+          }
+        }
+
+        const bleList = Array.isArray(devices.ble_devices) ? devices.ble_devices : [];
+        const classicList = Array.isArray(devices.classic_devices) ? devices.classic_devices : [];
+        const totalDevs = bleList.length + classicList.length;
+
+        if (badgeEl) badgeEl.innerText = totalDevs + ' Devices';
+
+        if (totalDevs === 0) {
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active Bluetooth devices in range during last scan.</td></tr>';
+          return;
+        }
+
+        let rowsHtml = '';
+        // BLE devices
+        for (const d of bleList) {
+          const addrBadge = d.addr_type === 'public'
+            ? '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">Public</span>'
+            : (d.addr_type === 'random_rpa'
+              ? '<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.68rem; padding: 1px 6px;">RPA</span>'
+              : '<span class="pill" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 0.68rem; padding: 1px 6px;">Static</span>');
+
+          const rssiVal = typeof d.rssi === 'number' ? d.rssi : -100;
+          const rssiBarColor = rssiVal >= -65 ? '#10b981' : (rssiVal >= -80 ? '#f59e0b' : '#ef4444');
+          const pct = Math.min(100, Math.max(0, 2 * (rssiVal + 100)));
+
+          const catLabel = d.category ? (d.category.charAt(0).toUpperCase() + d.category.slice(1)) : 'General';
+          const catBadge = '<span class="pill" style="font-size: 0.72rem; padding: 2px 7px;">' + catLabel + '</span>';
+
+          const nameDisplay = d.name ? ('<strong>' + escapeHtml(d.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>';
+
+          rowsHtml += '<tr>' +
+            '<td><span class="pill" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">BLE</span></td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(d.address) + '</code> ' + addrBadge + '</div></td>' +
+            '<td>' + nameDisplay + '</td>' +
+            '<td>' + escapeHtml(d.vendor || 'Generic') + '</td>' +
+            '<td>' + catBadge + '</td>' +
+            '<td>' +
+              '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                '<div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + pct + '%; background:' + rssiBarColor + ';"></div></div></div>' +
+                '<span style="font-size:0.75rem; color:var(--text-muted);">' + rssiVal + ' dBm</span>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }
+
+        // Classic devices
+        for (const cd of classicList) {
+          const cRssi = typeof cd.rssi === 'number' && cd.rssi !== -100 ? cd.rssi : null;
+          const cPct = cRssi !== null ? Math.min(100, Math.max(0, 2 * (cRssi + 100))) : 0;
+          const cBarColor = cRssi !== null ? (cRssi >= -65 ? '#10b981' : (cRssi >= -80 ? '#f59e0b' : '#ef4444')) : '#64748b';
+
+          const cName = cd.name ? ('<strong>' + escapeHtml(cd.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>';
+
+          rowsHtml += '<tr>' +
+            '<td><span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">Classic</span></td>' +
+            '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(cd.address) + '</code> <span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">IEEE Fixed</span></div></td>' +
+            '<td>' + cName + '</td>' +
+            '<td>' + escapeHtml(cd.dev_class || 'Bluetooth Classic') + '</td>' +
+            '<td><span class="pill" style="font-size:0.72rem; padding:2px 7px;">' + escapeHtml(cd.dev_class || 'Classic') + '</span></td>' +
+            '<td>' +
+              (cRssi !== null
+                ? '<div style="display:flex; align-items:center; gap:0.5rem;"><div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + cPct + '%; background:' + cBarColor + ';"></div></div></div><span style="font-size:0.75rem; color:var(--text-muted);">' + cRssi + ' dBm</span></div>'
+                : '<span style="font-size:0.75rem; color:var(--text-muted);">Inquiry ACK</span>') +
+            '</td>' +
+          '</tr>';
+        }
+
+        tableBody.innerHTML = rowsHtml;
+      }
     }
 
     function updateBluetoothUi(data) {
@@ -3327,8 +3673,6 @@ export function renderDashboardHtml(): string {
       const cEl = document.getElementById("stat-classic-total");
       const catEl = document.getElementById("stat-ble-categories");
       const timeEl = document.getElementById("btLastScanTime");
-      const badgeEl = document.getElementById("btDeviceCountBadge");
-      const tableBody = document.getElementById("bluetoothTableBody");
 
       if (!bt) {
         if (uEl) uEl.innerText = "—";
@@ -3337,7 +3681,7 @@ export function renderDashboardHtml(): string {
         if (cEl) cEl.innerText = "—";
         if (catEl) catEl.innerText = "—";
         if (timeEl) timeEl.innerText = "No Bluetooth telemetry received";
-        if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No Bluetooth scan data recorded yet. Node will include Bluetooth in next cycle.</td></tr>';
+        renderBluetoothTable(data);
         renderBluetoothChart([]);
         return;
       }
@@ -3363,85 +3707,7 @@ export function renderDashboardHtml(): string {
         timeEl.innerText = 'Last scan: ' + new Date(bt.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + formatLastSeen(bt.timestamp) + ')';
       }
 
-      // Populate device table
-      let devices = { ble_devices: [], classic_devices: [] };
-      if (bt.devices_json) {
-        try {
-          devices = JSON.parse(bt.devices_json);
-        } catch (e) {
-          console.error("Failed to parse devices_json:", e);
-        }
-      }
-
-      const bleList = Array.isArray(devices.ble_devices) ? devices.ble_devices : [];
-      const classicList = Array.isArray(devices.classic_devices) ? devices.classic_devices : [];
-      const totalDevs = bleList.length + classicList.length;
-
-      if (badgeEl) badgeEl.innerText = totalDevs + ' Devices';
-
-      if (tableBody) {
-        if (totalDevs === 0) {
-          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active Bluetooth devices in range during last scan.</td></tr>';
-        } else {
-          let rowsHtml = '';
-          // BLE devices
-          for (const d of bleList) {
-            const addrBadge = d.addr_type === 'public'
-              ? '<span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">Public</span>'
-              : (d.addr_type === 'random_rpa'
-                ? '<span class="pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.68rem; padding: 1px 6px;">RPA</span>'
-                : '<span class="pill" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 0.68rem; padding: 1px 6px;">Static</span>');
-
-            const rssiVal = typeof d.rssi === 'number' ? d.rssi : -100;
-            const rssiBarColor = rssiVal >= -65 ? '#10b981' : (rssiVal >= -80 ? '#f59e0b' : '#ef4444');
-            const pct = Math.min(100, Math.max(0, 2 * (rssiVal + 100)));
-
-            const catLabel = d.category ? (d.category.charAt(0).toUpperCase() + d.category.slice(1)) : 'General';
-            const catBadge = '<span class="pill" style="font-size: 0.72rem; padding: 2px 7px;">' + catLabel + '</span>';
-
-            const nameDisplay = d.name ? ('<strong>' + escapeHtml(d.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Payload Fingerprinted</span>';
-
-            rowsHtml += '<tr>' +
-              '<td><span class="pill" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">BLE</span></td>' +
-              '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(d.address) + '</code> ' + addrBadge + '</div></td>' +
-              '<td>' + nameDisplay + '</td>' +
-              '<td>' + escapeHtml(d.vendor || 'Generic') + '</td>' +
-              '<td>' + catBadge + '</td>' +
-              '<td>' +
-                '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                  '<div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + pct + '%; background:' + rssiBarColor + ';"></div></div></div>' +
-                  '<span style="font-size:0.75rem; color:var(--text-muted);">' + rssiVal + ' dBm</span>' +
-                '</div>' +
-              '</td>' +
-            '</tr>';
-          }
-
-          // Classic devices
-          for (const cd of classicList) {
-            const cRssi = typeof cd.rssi === 'number' && cd.rssi !== -100 ? cd.rssi : null;
-            const cPct = cRssi !== null ? Math.min(100, Math.max(0, 2 * (cRssi + 100))) : 0;
-            const cBarColor = cRssi !== null ? (cRssi >= -65 ? '#10b981' : (cRssi >= -80 ? '#f59e0b' : '#ef4444')) : '#64748b';
-
-            const cName = cd.name ? ('<strong>' + escapeHtml(cd.name) + '</strong>') : '<span style="color:var(--text-muted); font-style:italic;">Classic Device</span>';
-
-            rowsHtml += '<tr>' +
-              '<td><span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-size: 0.72rem; padding: 2px 7px;">Classic</span></td>' +
-              '<td><div style="display:flex; align-items:center; gap:0.4rem;"><code>' + escapeHtml(cd.address) + '</code> <span class="pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.68rem; padding: 1px 6px;">IEEE Fixed</span></div></td>' +
-              '<td>' + cName + '</td>' +
-              '<td>' + escapeHtml(cd.dev_class || 'Bluetooth Classic') + '</td>' +
-              '<td><span class="pill" style="font-size:0.72rem; padding:2px 7px;">' + escapeHtml(cd.dev_class || 'Classic') + '</span></td>' +
-              '<td>' +
-                (cRssi !== null
-                  ? '<div style="display:flex; align-items:center; gap:0.5rem;"><div class="rssi-bar-wrap" style="min-width:70px;"><div class="rssi-bar"><div class="rssi-fill" style="width:' + cPct + '%; background:' + cBarColor + ';"></div></div></div><span style="font-size:0.75rem; color:var(--text-muted);">' + cRssi + ' dBm</span></div>'
-                  : '<span style="font-size:0.75rem; color:var(--text-muted);">Inquiry ACK</span>') +
-              '</td>' +
-            '</tr>';
-          }
-
-          tableBody.innerHTML = rowsHtml;
-        }
-      }
-
+      renderBluetoothTable(data);
       renderBluetoothChart(history);
     }
 
