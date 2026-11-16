@@ -915,12 +915,52 @@
     "2026-11-16T20:00:00Z": {
       "samples": 3,
       "successful": 3,
-      "avg_assoc_ms": 1053,
+      "avg_assoc_ms": 1054,
       "avg_dhcp_ms": 0,
-      "avg_http_latency_ms": 309,
+      "avg_http_latency_ms": 355,
       "status": "orange",
       "avg_rssi": -61,
       "avg_battery_mv": 3950
+    },
+    "2026-11-16T21:00:00Z": {
+      "samples": 6,
+      "successful": 6,
+      "avg_assoc_ms": 1054,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 310,
+      "status": "orange",
+      "avg_rssi": -59,
+      "avg_battery_mv": 3949
+    },
+    "2026-11-16T22:00:00Z": {
+      "samples": 6,
+      "successful": 6,
+      "avg_assoc_ms": 1054,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 324,
+      "status": "orange",
+      "avg_rssi": -60,
+      "avg_battery_mv": 3946
+    },
+    "2026-11-16T23:00:00Z": {
+      "samples": 6,
+      "successful": 6,
+      "avg_assoc_ms": 1054,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 295,
+      "status": "orange",
+      "avg_rssi": -60,
+      "avg_battery_mv": 3946
+    },
+    "2026-11-17T00:00:00Z": {
+      "samples": 2,
+      "successful": 2,
+      "avg_assoc_ms": 1062,
+      "avg_dhcp_ms": 0,
+      "avg_http_latency_ms": 320,
+      "status": "orange",
+      "avg_rssi": -61,
+      "avg_battery_mv": 3944
     }
   }
 }
