@@ -15,6 +15,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.6 / 1.0.6] - 2026-11-16
+
+### Added
+- **Firmware (v1.0.6)**: 2.4 GHz **Bluetooth Low Energy (BLE)** active scan (3s) and **Bluetooth Classic (BR/EDR)** inquiry scan (3s) integrated into the scheduled 10-minute cycle (`firmware/include/bluetooth_scanner.h`).
+- **Firmware (v1.0.6)**: Deep **BLE Advertising Payload Fingerprinting & De-Randomization Algorithm**:
+  - Distinguishes address privacy types: IEEE Public, Random Static, Resolvable Private Address (RPA), and Non-Resolvable Private Address.
+  - Inspects AD structures to identify Apple iBeacon (`UUID:Major:Minor`), Google Eddystone (`UID:Namespace:Instance`), Apple AirTags / Find My network beacons, and named BLE peripherals.
+  - Clusters anonymous randomized RPAs by vendor company ID (Apple `0x004C`, Google `0x00E0`, Microsoft `0x0006`, Samsung `0x0075`), continuity payload sub-type, service UUIDs, and RSSI spatial zones to determine true unique device presence.
+- **Firmware (v1.0.6)**: Decodes Classic Bluetooth Class of Device (COD) descriptors into human-readable device classifications (Audio / Headset, Smartphone, Laptop, Peripheral, Wearable).
+- **Firmware (v1.0.6)**: Clean dual-radio sequential coordination and controller deinitialization (`BLEDevice::deinit(false)` and `serialBT.end()`), preserving heap and returning radio cleanly to Wi-Fi.
+- **Firmware (v1.0.6)**: Spool manager (`spool_manager.h`) raw binary flash partition persistence for Bluetooth cycle summary when offline.
+- **Database (Migration 0010)**: Added `station_bluetooth_summary` and `station_latest_bluetooth` tables tracking BLE unique device counts, total MACs, RPA vs Public distributions, category breakdowns, and device JSON.
+- **Backend (v2.0.6)**: Cloudflare Worker API endpoints (`/api/station/:id`) return latest Bluetooth scan data and 24-hour historical records. Daily cron maintenance (`cron.ts`) automatically retains 30 days of Bluetooth history.
+- **Web (v2.0.6)**: Dedicated **2.4 GHz Bluetooth & BLE Activity** card in Web UIs:
+  - Quick KPI summary tiles: Unique BLE Devices, Total Observed MACs, Address Privacy ratio (RPA vs Public), Classic BT Devices, and Device Composition.
+  - Interactive 24-Hour Trend Chart (Chart.js) comparing Unique BLE Devices, Randomized MACs, and Classic Bluetooth over time.
+  - Collapsible device drawer listing discovered devices with type badges (`BLE` vs `Classic`), address privacy badges (`RPA`, `Public`, `Static`), friendly names, vendor ecosystem, category, and signal RSSI strength bars.
+- **Documentation**: Added [ADR 0005: 2.4 GHz Bluetooth Classic & BLE Ingestion with Advertising Payload De-Randomization](docs/adr/0005-bluetooth-ble-spectrum-and-derandomization.md).
+
+---
+
 ## [2.0.5 / 1.0.5] - 2026-11-15
 
 ### Added

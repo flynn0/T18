@@ -29,6 +29,8 @@ The `kreier/wifi` platform is built on an edge-native, zero-trust, and power-opt
   Maintains a unified modular codebase in `firmware/include/` that compiles seamlessly in both **PlatformIO** (automated CI/CD pipelines, multi-board target flags) and **Arduino IDE** (single-click desktop flashing without external CLI dependencies).
 - **2.4 GHz Promiscuous RF Contention Profiling**:
   Measures all 13 channels every 30 minutes with 2-second dwell times using ESP-IDF promiscuous mode. Classifies frames (Management, Data, Control), records 4-bracket RSSI histograms, counts unique transmitter MACs, and estimates PHY-modeled airtime percentage.
+- **2.4 GHz Bluetooth Classic & BLE Ingestion ([ADR 0005: Bluetooth Spectrum & Payload De-Randomization](docs/adr/0005-bluetooth-ble-spectrum-and-derandomization.md))**:
+  Dual Bluetooth Low Energy (BLE) active scan and Bluetooth Classic (BR/EDR) inquiry integrated into the 10-minute cycle. Employs advertising payload fingerprinting to defeat MAC address randomization, clustering anonymous RPAs by vendor, service UUIDs, and RSSI zones while uniquely fingerprinting Apple iBeacons, Google Eddystone, AirTags/Find My, and named peripherals. Decodes Classic BT Class of Device (COD) descriptors and visualizes 24h presence trends.
 - **10-Minute Spectrum Scan Variance Tracking**:
   Monitors the duration of full-spectrum scans in milliseconds on every 10-minute cycle, correlating scan latency with RF contention.
 - **Local Network & Dual-Stack Diagnostics**:
@@ -97,31 +99,35 @@ kreier/wifi/
 │   └── adr/                  # Architecture Decision Records
 │       ├── 0001-d1-over-git-storage.md
 │       ├── 0002-per-device-token-provisioning.md
-│       └── 0003-dual-build-layout.md
+│       ├── 0003-dual-build-layout.md
+│       ├── 0004-fleet-ota-and-battery-monitoring.md
+│       └── 0005-bluetooth-ble-spectrum-and-derandomization.md
 ├── firmware/                 # Dual-compatible firmware source
-│   ├── platformio.ini        # PlatformIO targets: t18, devkitv1, t8
+│   ├── platformio.ini        # PlatformIO targets: esp32dev unified
 │   ├── src/
 │   │   └── main.cpp          # PlatformIO compilation entrypoint
 │   ├── wifi/
 │   │   └── wifi.ino          # Arduino IDE sketch entrypoint
 │   └── include/              # Shared modular firmware components
-│       ├── app_config.h      # LittleFS config & NVS token management
+│       ├── app_config.h      # Preferences NVS config & token management
 │       ├── app_main.h        # Top-level state machine & lifecycle
 │       ├── app_state.h       # Shared data models & structures
 │       ├── api_client.h      # HTTPS /register and /data client
-│       ├── board_pins.h      # Compile-time board LED & pin mappings
+│       ├── bluetooth_scanner.h # 2.4 GHz BLE & Classic scan with payload de-randomization
+│       ├── board_pins.h      # Runtime board hardware presets & BatteryReader
 │       ├── captive_portal.h  # Soft-AP, captive DNS server, & setup UI
-│       ├── latency_prober.h  # Association, DHCP, and 5-target HTTP probes
+│       ├── latency_prober.h  # Association, DHCP, DNS, and HTTP latency probes
 │       ├── channel_analyzer.h # Promiscuous 13-channel utilization & airtime analyzer
 │       ├── led_controller.h  # Non-blocking LED status indicator
 │       ├── ntp_sync.h        # SNTP synchronization engine (24h interval)
-│       ├── spool_manager.h   # LittleFS ring buffer (500 KB ceiling)
+│       ├── ota_manager.h     # Background OTA update checker & binary streaming client
+│       ├── spool_manager.h   # Raw flash partition binary circular buffer
 │       └── wifi_scanner.h    # 802.11 b/g/n spectrum analyzer
 ├── worker/                   # Cloudflare Worker & D1 Backend
 │   ├── wrangler.toml         # Worker bindings, D1 config, & cron schedule
 │   ├── package.json          # TypeScript & Cloudflare Worker dependencies
 │   ├── tsconfig.json         # TypeScript compiler configuration
-│   ├── migrations/           # D1 migrations (0001–0006: telemetry, diagnostics, channel utilization)
+│   ├── migrations/           # D1 migrations (0001–0010: telemetry, diagnostics, battery, bluetooth)
 │   └── src/
 │       ├── index.ts          # Request router and scheduled event handler
 │       ├── types.ts          # Domain interfaces & payloads

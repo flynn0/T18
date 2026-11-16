@@ -190,6 +190,62 @@ export interface ChannelUtilizationRecord {
   scan_duration_ms?: number | null;
 }
 
+export interface BleDevicePayload {
+  address: string;
+  addr_type?: string;
+  name?: string;
+  vendor?: string;
+  category?: string;
+  rssi: number;
+  fingerprint?: string;
+}
+
+export interface ClassicBtDevicePayload {
+  address: string;
+  name?: string;
+  cod?: number;
+  dev_class?: string;
+  rssi?: number;
+}
+
+export interface BluetoothPayload {
+  scan_duration_ms?: number;
+  ble_total_packets?: number;
+  ble_total_macs?: number;
+  ble_unique_devices?: number;
+  ble_random_macs?: number;
+  ble_public_macs?: number;
+  ble_categories?: {
+    beacons?: number;
+    smartphones?: number;
+    wearables?: number;
+    audio?: number;
+    other?: number;
+  };
+  ble_devices?: BleDevicePayload[];
+  classic_total?: number;
+  classic_devices?: ClassicBtDevicePayload[];
+}
+
+export interface BluetoothRecord {
+  id?: number;
+  station_id: string;
+  timestamp: number;
+  ble_total_packets: number;
+  ble_total_macs: number;
+  ble_unique_devices: number;
+  ble_random_macs: number;
+  ble_public_macs: number;
+  ble_beacons: number;
+  ble_smartphones: number;
+  ble_wearables: number;
+  ble_audio: number;
+  ble_other: number;
+  classic_total: number;
+  scan_duration_ms?: number | null;
+  devices_json?: string | null;
+}
+
 export interface TelemetryCyclePayload {
   station_id?: string;
   description?: string;
@@ -202,6 +258,7 @@ export interface TelemetryCyclePayload {
   scan_survey?: SurveyPayload[];
   diagnostics?: NetworkDiagnosticsPayload | NetworkDiagnosticsPayload[];
   channel_utilization?: ChannelUtilizationPayload[];
+  bluetooth?: BluetoothPayload;
 }
 
 export interface StationOverviewCacheRecord {

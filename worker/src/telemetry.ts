@@ -140,6 +140,11 @@ export async function handleTelemetry(request: Request, env: Env): Promise<Respo
       );
     }
 
+    // Process Bluetooth BLE and Classic telemetry if present
+    if (cycle.bluetooth) {
+      await db.saveBluetoothTelemetry(station.station_id, cycleTime, cycle.bluetooth);
+    }
+
     // Process scan surveys
     if (Array.isArray(cycle.scan_survey)) {
       for (const item of cycle.scan_survey) {

@@ -111,6 +111,47 @@ struct ChannelUtilizationItem {
     }
 };
 
+struct BleDeviceTelemetry {
+    String address;
+    String addr_type;
+    String name;
+    String vendor;
+    String category;
+    int16_t rssi;
+    String fingerprint;
+};
+
+struct ClassicBtDeviceTelemetry {
+    String address;
+    String name;
+    uint32_t cod;
+    String dev_class;
+    int16_t rssi;
+};
+
+struct BluetoothCycleTelemetry {
+    uint32_t scan_duration_ms;
+    uint32_t ble_total_packets;
+    uint16_t ble_total_macs;
+    uint16_t ble_unique_devices;
+    uint16_t ble_random_macs;
+    uint16_t ble_public_macs;
+    uint16_t ble_beacons;
+    uint16_t ble_smartphones;
+    uint16_t ble_wearables;
+    uint16_t ble_audio;
+    uint16_t ble_other;
+    std::vector<BleDeviceTelemetry> ble_devices;
+    uint16_t classic_total;
+    std::vector<ClassicBtDeviceTelemetry> classic_devices;
+
+    BluetoothCycleTelemetry() :
+        scan_duration_ms(0), ble_total_packets(0), ble_total_macs(0),
+        ble_unique_devices(0), ble_random_macs(0), ble_public_macs(0),
+        ble_beacons(0), ble_smartphones(0), ble_wearables(0),
+        ble_audio(0), ble_other(0), classic_total(0) {}
+};
+
 struct CycleTelemetry {
     String station_id;
     uint64_t timestamp; // UTC epoch seconds
@@ -123,8 +164,10 @@ struct CycleTelemetry {
     std::vector<NetworkDiagnostics> diagnostics;
     bool has_channel_utilization;
     std::vector<ChannelUtilizationItem> channel_utilization;
+    bool has_bluetooth;
+    BluetoothCycleTelemetry bluetooth;
 
     CycleTelemetry() :
         timestamp(0), scan_duration_ms(0), battery_mv(0), board_type("T18"),
-        has_diagnostics(false), has_channel_utilization(false) {}
+        has_diagnostics(false), has_channel_utilization(false), has_bluetooth(false) {}
 };

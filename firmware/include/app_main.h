@@ -13,6 +13,7 @@
 #include "spool_manager.h"
 #include "api_client.h"
 #include "channel_analyzer.h"
+#include "bluetooth_scanner.h"
 #include "ota_manager.h"
 
 #define MEASUREMENT_INTERVAL_SEC 600 // 10 minutes
@@ -29,7 +30,7 @@ public:
         _configMgr.begin();
         SpoolManager::begin();
 
-        bool hasConfig = _configMgr.loadConfig(_config);
+        _configMgr.loadConfig(_config);
 
         // Configure LED pin from saved hardware profile
         _led.setPin(_config.hw.status_led_pin);
@@ -102,6 +103,9 @@ public:
             Serial.printf("[Main] Battery Voltage: %u mV (Divider: %.2f)\n", batteryMv, _config.hw.battery_divider);
         }
 
+        // 4.5. Bluetooth 2.4 GHz Scan (BLE & Classic)
+        BluetoothScanResult btScan = BluetoothScanner::performScan(3, 3000);
+
         // 5. Sequentially probe configured monitored networks
         std::vector<NetworkMeasurement> measurements;
         bool shouldRunDaily = false;
@@ -138,6 +142,41 @@ public:
         cycle.diagnostics = dailyDiags;
         cycle.has_channel_utilization = shouldRunChannelAnalysis;
         cycle.channel_utilization = chanResults;
+
+        // Bluetooth telemetry
+        cycle.has_bluetooth = true;
+        cycle.bluetooth.scan_duration_ms = btScan.scan_duration_ms;
+        cycle.bluetooth.ble_total_packets = btScan.ble_total_packets;
+        cycle.bluetooth.ble_total_macs = btScan.ble_total_macs;
+        cycle.bluetooth.ble_unique_devices = btScan.ble_unique_devices;
+        cycle.bluetooth.ble_random_macs = btScan.ble_random_macs;
+        cycle.bluetooth.ble_public_macs = btScan.ble_public_macs;
+        cycle.bluetooth.ble_beacons = btScan.ble_beacons;
+        cycle.bluetooth.ble_smartphones = btScan.ble_smartphones;
+        cycle.bluetooth.ble_wearables = btScan.ble_wearables;
+        cycle.bluetooth.ble_audio = btScan.ble_audio;
+        cycle.bluetooth.ble_other = btScan.ble_other;
+        for (const auto &bd : btScan.ble_devices) {
+            BleDeviceTelemetry dt;
+            dt.address = bd.address;
+            dt.addr_type = bd.addr_type;
+            dt.name = bd.name;
+            dt.vendor = bd.vendor;
+            dt.category = bd.category;
+            dt.rssi = bd.rssi;
+            dt.fingerprint = bd.fingerprint;
+            cycle.bluetooth.ble_devices.push_back(dt);
+        }
+        cycle.bluetooth.classic_total = btScan.classic_total;
+        for (const auto &cd : btScan.classic_devices) {
+            ClassicBtDeviceTelemetry ct;
+            ct.address = cd.address;
+            ct.name = cd.name;
+            ct.cod = cd.cod;
+            ct.dev_class = cd.dev_class;
+            ct.rssi = cd.rssi;
+            cycle.bluetooth.classic_devices.push_back(ct);
+        }
 
         // 7. Check OTA & Upload Telemetry (In-Memory-First)
         processCycleUploadAndOta(cycle, currentEpoch);
@@ -308,6 +347,46 @@ private:
                 rh.add(item.rssi_hist[3]);
                 co["unique_transmitters"] = item.unique_transmitters;
                 co["airtime_pct"] = round(item.airtime_pct * 10.0f) / 10.0f;
+            }
+        }
+
+        if (cycle.has_bluetooth) {
+            JsonObject bt = doc["bluetooth"].to<JsonObject>();
+            bt["scan_duration_ms"] = cycle.bluetooth.scan_duration_ms;
+            bt["ble_total_packets"] = cycle.bluetooth.ble_total_packets;
+            bt["ble_total_macs"] = cycle.bluetooth.ble_total_macs;
+            bt["ble_unique_devices"] = cycle.bluetooth.ble_unique_devices;
+            bt["ble_random_macs"] = cycle.bluetooth.ble_random_macs;
+            bt["ble_public_macs"] = cycle.bluetooth.ble_public_macs;
+
+            JsonObject cat = bt["ble_categories"].to<JsonObject>();
+            cat["beacons"] = cycle.bluetooth.ble_beacons;
+            cat["smartphones"] = cycle.bluetooth.ble_smartphones;
+            cat["wearables"] = cycle.bluetooth.ble_wearables;
+            cat["audio"] = cycle.bluetooth.ble_audio;
+            cat["other"] = cycle.bluetooth.ble_other;
+
+            JsonArray bleArr = bt["ble_devices"].to<JsonArray>();
+            for (const auto &bd : cycle.bluetooth.ble_devices) {
+                JsonObject o = bleArr.add<JsonObject>();
+                o["address"] = bd.address;
+                o["addr_type"] = bd.addr_type;
+                if (!bd.name.isEmpty()) o["name"] = bd.name;
+                o["vendor"] = bd.vendor;
+                o["category"] = bd.category;
+                o["rssi"] = bd.rssi;
+                if (!bd.fingerprint.isEmpty()) o["fingerprint"] = bd.fingerprint;
+            }
+
+            bt["classic_total"] = cycle.bluetooth.classic_total;
+            JsonArray btArr = bt["classic_devices"].to<JsonArray>();
+            for (const auto &cd : cycle.bluetooth.classic_devices) {
+                JsonObject o = btArr.add<JsonObject>();
+                o["address"] = cd.address;
+                if (!cd.name.isEmpty()) o["name"] = cd.name;
+                o["cod"] = cd.cod;
+                o["dev_class"] = cd.dev_class;
+                o["rssi"] = cd.rssi;
             }
         }
 

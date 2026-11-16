@@ -55,7 +55,7 @@ kreier/wifi/
 ├── docs/
 │   ├── index.html                 # Pre-built dashboard mirror for GitHub Pages
 │   ├── 404.html                   # Routing fallback for deep-linked station URLs
-│   └── adr/                       # Architectural Decision Records (ADRs 0001–0004)
+│   └── adr/                       # Architectural Decision Records (ADRs 0001–0005)
 ├── firmware/
 │   ├── platformio.ini             # Unified PlatformIO build configuration ([env:esp32dev])
 │   ├── partitions/
@@ -69,6 +69,7 @@ kreier/wifi/
 │       ├── app_main.h             # Master state machine: boot, portal, cycle, sleep
 │       ├── app_state.h            # Data structures & in-memory cycle telemetry models
 │       ├── api_client.h           # HTTP client for registration and telemetry POST
+│       ├── bluetooth_scanner.h    # 2.4 GHz BLE & Classic scan with payload de-randomization
 │       ├── board_pins.h           # Hardware profiles (T18, T8, DevKit V1) & BatteryReader
 │       ├── captive_portal.h       # Soft-AP (192.168.4.1) setup web server
 │       ├── channel_analyzer.h     # 13-channel promiscuous airtime & frame analyzer
@@ -84,7 +85,7 @@ kreier/wifi/
     ├── package.json               # Cloudflare Worker dependencies and scripts
     ├── tsconfig.json              # TypeScript compiler configuration
     ├── wrangler.toml              # Cloudflare Worker, D1 bindings, env vars & crons
-    ├── migrations/                # D1 SQL migrations (0001 through 0008)
+    ├── migrations/                # D1 SQL migrations (0001 through 0010)
     └── src/
         ├── index.ts               # Worker router: routes requests to API, OTA, or Frontend
         ├── api.ts                 # REST API endpoints (/api/stations, /api/station/:id)
