@@ -1954,6 +1954,16 @@ export function renderDashboardHtml(): string {
       }
     }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     function formatLastSeen(ts) {
       if (!ts) return "Unknown";
       const now = Math.floor(Date.now() / 1000);
