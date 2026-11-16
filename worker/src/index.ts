@@ -2,7 +2,7 @@ import { Env } from "./types";
 import { handleRegister } from "./register";
 import { handleTelemetry } from "./telemetry";
 import { handleApiStations, handleApiStationDetail, handleApiExport } from "./api";
-import { handleOta, handleSetStationTargetVersion } from "./ota";
+import { handleOta, handleSetStationTargetVersion, handleFirmwareDownload } from "./ota";
 import { handleScheduledMaintenance } from "./cron";
 import { renderDashboardHtml } from "./frontend";
 
@@ -38,6 +38,39 @@ export default {
       // 3. OTA Firmware Updates and Downloads
       if (path === "/api/ota" || path.startsWith("/api/ota/")) {
         return await handleOta(request, env);
+      }
+
+      // 4. Web Flasher Manifest & Firmware Assets
+      if (path === "/manifest.json" || path === "/firmware/manifest.json") {
+        const manifest = {
+          name: "WIFI Monitor (kreier/wifi)",
+          version: env.STABLE_VERSION || "1.0.6",
+          funding_url: "https://github.com/kreier/wifi",
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [
+                { path: "firmware/bootloader.bin", offset: 4096 },
+                { path: "firmware/partitions.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
+      if (path.startsWith("/firmware/")) {
+        const filename = decodeURIComponent(path.substring("/firmware/".length));
+        return await handleFirmwareDownload(filename, request, env);
       }
 
       if (path.startsWith("/api/station/") && path.endsWith("/target-version")) {

@@ -7,9 +7,10 @@
 
 > Autonomous Wi-Fi Spectrum & Latency Telemetry Fleet Node for ESP32 with Cloudflare Worker, D1 SQLite Database, and GitHub Pages.
 
-**Live Telemetry Dashboards**:
+**Live Telemetry Dashboards & Web Installer**:
 - 🌐 **Cloudflare Edge Dashboard**: [https://wifi.kreier.workers.dev/](https://wifi.kreier.workers.dev/)
 - 📄 **GitHub Pages Mirror**: [https://kreier.github.io/wifi/](https://kreier.github.io/wifi/)
+- ⚡ **In-Browser ESP32 Web Flasher**: [https://wifi.kreier.workers.dev/?flash=1](https://wifi.kreier.workers.dev/?flash=1) or [https://kreier.github.io/wifi/?flash=1](https://kreier.github.io/wifi/?flash=1)
 
 **Direct Station Access**:
 Both the Cloudflare Worker and GitHub Pages support deep-linking directly to specific monitoring stations:
@@ -41,6 +42,8 @@ The `kreier/wifi` platform is built on an edge-native, zero-trust, and power-opt
   When Wi-Fi connectivity is unavailable, cycles are binary-buffered into a dedicated 192 KB raw flash circular spool, with in-memory zero-flash-wear fast path during normal connectivity.
 - **Dual Web Dashboards**:
   Edge-hosted server-rendered dashboard on Cloudflare Worker (`wifi.kreier.workers.dev`) coupled with a GitHub Pages static client mirror (`kreier.github.io/wifi`), both supporting client-side station deep-linking and theme switching.
+- **In-Browser Web Serial Flasher**:
+  Zero-install browser flasher leveraging the Web Serial API and ESP Web Tools. Enables operators to flash compiled universal firmware and partition tables directly to ESP32 nodes with real-time progress and live serial console logs from Chrome, Edge, Brave, or Opera without installing local toolchains or Python.
 
 ---
 
@@ -252,34 +255,68 @@ npx wrangler deploy
 
 ## Firmware Build & Flash
 
-### Option A: PlatformIO (Recommended)
+### Option A: In-Browser Web Flasher (Zero-Install — Recommended)
+Flash pre-compiled universal firmware directly to any ESP32 board over USB using your web browser:
+
+1. **Open the Web Flasher**:
+   - 🌐 [https://wifi.kreier.workers.dev/?flash=1](https://wifi.kreier.workers.dev/?flash=1) (Cloudflare Edge)
+   - 📄 [https://kreier.github.io/wifi/?flash=1](https://kreier.github.io/wifi/?flash=1) (GitHub Pages Mirror)
+   - Or click **⚡ Flash Device** in the top navigation header of any dashboard view.
+2. **Connect your ESP32** via a USB data cable to your desktop computer.
+3. Supported browsers: **Google Chrome**, **Microsoft Edge**, **Brave**, or **Opera** on desktop (requires Web Serial API over HTTPS).
+4. Click **⚡ Connect ESP32 & Install Firmware** and select your board's serial port (`CP210x`, `CH340`, or `USB JTAG/serial debug unit`).
+5. Choose **Install WIFI Monitor** and check **Erase device** for a fresh clean installation.
+6. The installer downloads the binary image, writes all partition tables and application slots, and verifies flash in real-time. Once complete, you can open the built-in serial console or proceed to first-boot commissioning!
+
+> **Troubleshooting Connection**: If the browser times out or cannot synchronize with the ESP32 chip, press and hold the **BOOT (GPIO 0)** button on your board while clicking Connect, then release it once erasing/flashing begins.
+
+---
+
+### Option B: Pre-Compiled Binary Flashing (`esptool.py`)
+If you prefer command-line flashing without compiling from source, download the compiled binaries from the Web Flasher dialog or [GitHub Releases](https://github.com/kreier/wifi/releases/latest):
+
+- `firmware.bin` (Application — offset `0x10000`)
+- `partitions.bin` (Partition Table — offset `0x8000`)
+- `bootloader.bin` (Second Stage Bootloader — offset `0x1000`)
+- `boot_app0.bin` (OTA Data Initializer — offset `0xe000`)
+- `firmware-esp32-merged.bin` (Unified all-in-one image — offset `0x0`)
+
+**Multi-part Flash**:
+```bash
+esptool.py --chip esp32 --baud 921600 write_flash \
+  0x1000 bootloader.bin \
+  0x8000 partitions.bin \
+  0xe000 boot_app0.bin \
+  0x10000 firmware.bin
+```
+
+**Single Unified Binary Flash**:
+```bash
+esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin
+```
+
+---
+
+### Option C: PlatformIO (Source Build)
 ```bash
 cd firmware
 
-# Build and upload for T18 (LED on GPIO 5)
-pio run -e t18 -t upload
+# Build and upload for ESP32 Universal Target
+pio run -e esp32dev -t upload
 
-# Build and upload for DevKit V1 (LED on GPIO 2)
-pio run -e devkitv1 -t upload
-
-# Build and upload for T8 (LED on GPIO 21)
-pio run -e t8 -t upload
-
-# Monitor Serial Output
+# Monitor Serial Output (115200 baud)
 pio device monitor -b 115200
 ```
 
-### Option B: Arduino IDE
+---
+
+### Option D: Arduino IDE (Source Build)
 1. Open Arduino IDE 2.x.
 2. Open [`firmware/wifi/wifi.ino`](firmware/wifi/wifi.ino).
 3. Under **Tools > Board**, select **ESP32 Dev Module**.
-4. Set **Partition Scheme** to **Default 4MB with spiffs/littlefs**.
+4. Set **Partition Scheme** to **Default 4MB with spiffs/littlefs** (or custom `min_spiffs.csv`).
 5. Install the **ArduinoJson** library (v7.x) via the Library Manager.
-6. Select your target LED pin at the top of `wifi.ino` if not using T18 defaults:
-   ```cpp
-   #define STATUS_LED_PIN 5  // Pin 5 for T18, 2 for DevKitV1, 21 for T8
-   ```
-7. Click **Upload**.
+6. Click **Upload**.
 
 ---
 

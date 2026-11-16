@@ -57,10 +57,33 @@ jobs:
           cp firmware/.pio/build/esp32dev/partitions.bin release_assets/partitions-esp32-${TAG}.bin
           cp firmware/.pio/build/esp32dev/bootloader.bin release_assets/bootloader-esp32-${TAG}.bin
           
+          BOOT_APP0=$(find ~/.platformio -name "boot_app0.bin" 2>/dev/null | head -n 1)
+          if [ -n "$BOOT_APP0" ] && [ -f "$BOOT_APP0" ]; then
+            cp "$BOOT_APP0" release_assets/boot_app0.bin
+          fi
+
+          python3 -c "
+          import os
+          tag = '${TAG}'
+          fw = open('release_assets/firmware-esp32-' + tag + '.bin', 'rb').read()
+          pt = open('release_assets/partitions-esp32-' + tag + '.bin', 'rb').read()
+          bl = open('release_assets/bootloader-esp32-' + tag + '.bin', 'rb').read()
+          ba = open('release_assets/boot_app0.bin', 'rb').read() if os.path.exists('release_assets/boot_app0.bin') else b''
+          buf = bytearray([0xFF] * (0x10000 + len(fw)))
+          buf[0x1000:0x1000+len(bl)] = bl
+          buf[0x8000:0x8000+len(pt)] = pt
+          if ba:
+              buf[0xe000:0xe000+len(ba)] = ba
+          buf[0x10000:0x10000+len(fw)] = fw
+          open('release_assets/firmware-esp32-merged-' + tag + '.bin', 'wb').write(buf)
+          "
+
           cd release_assets
           sha256sum firmware-esp32-${TAG}.bin > checksums.txt
           sha256sum partitions-esp32-${TAG}.bin >> checksums.txt
           sha256sum bootloader-esp32-${TAG}.bin >> checksums.txt
+          if [ -f boot_app0.bin ]; then sha256sum boot_app0.bin >> checksums.txt; fi
+          if [ -f firmware-esp32-merged-${TAG}.bin ]; then sha256sum firmware-esp32-merged-${TAG}.bin >> checksums.txt; fi
           cat checksums.txt
 
       - name: Upload to GitHub Release
@@ -76,6 +99,8 @@ jobs:
             release_assets/firmware-esp32-${{ steps.vars.outputs.tag }}.bin
             release_assets/partitions-esp32-${{ steps.vars.outputs.tag }}.bin
             release_assets/bootloader-esp32-${{ steps.vars.outputs.tag }}.bin
+            release_assets/boot_app0.bin
+            release_assets/firmware-esp32-merged-${{ steps.vars.outputs.tag }}.bin
             release_assets/checksums.txt
 
       - name: Upload to Cloudflare R2 (Backup / Zero-Egress Primary)

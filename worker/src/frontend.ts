@@ -472,7 +472,270 @@ export function renderDashboardHtml(): string {
       margin-left: 0.5rem;
       vertical-align: middle;
     }
+
+    /* Web Flasher Modal & Controls */
+    .flash-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff !important;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    [data-theme="dark"] .flash-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #075985 100%);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+    .flash-btn:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-window {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      max-width: 760px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      transform: scale(0.96);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-backdrop.active .modal-window {
+      transform: scale(1);
+    }
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.35rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      line-height: 1;
+    }
+    .modal-close-btn:hover {
+      color: var(--text-main);
+      background: var(--input-bg);
+    }
+    .modal-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--card-border);
+      background: var(--input-bg);
+      padding: 0 1.25rem;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .modal-tab-btn:hover {
+      color: var(--text-main);
+      border-color: transparent;
+    }
+    .modal-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .flash-guide-card {
+      background: var(--metric-box-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .flash-step-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .flash-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .flash-step-num {
+      background: var(--primary-dim);
+      color: var(--primary);
+      font-weight: 700;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.8rem;
+    }
+    .serial-status-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .serial-status-banner.supported {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+    .serial-status-banner.unsupported {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--warning);
+    }
+    .install-button-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.25rem;
+      background: var(--input-bg);
+      border: 2px dashed var(--primary);
+      border-radius: 0.75rem;
+      margin: 0.5rem 0;
+      min-height: 80px;
+    }
+    .install-action-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+      color: #ffffff !important;
+      font-size: 1.05rem !important;
+      font-weight: 700 !important;
+      padding: 0.75rem 1.75rem !important;
+      border-radius: 0.65rem !important;
+      border: none !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .install-action-btn:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5) !important;
+    }
+    .bin-download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+    .bin-card {
+      background: var(--metric-box-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .bin-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .bin-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .bin-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .code-block {
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      color: #c9d1d9;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      position: relative;
+      overflow-x: auto;
+    }
+    .copy-code-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0.35rem;
+      color: #c9d1d9;
+      cursor: pointer;
+    }
+    .copy-code-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   </style>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
 <body>
   <header>
@@ -489,6 +752,7 @@ export function renderDashboardHtml(): string {
       </select>
       <button onclick="refreshData()">↻ Refresh</button>
       <button class="primary-btn" onclick="exportData('json')">Export JSON</button>
+      <button class="flash-btn" onclick="openFlashModal()" title="Flash firmware to ESP32 via Web Serial">⚡ Flash Device</button>
       <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
         <span id="themeIcon">☀️</span>
       </button>
@@ -961,12 +1225,182 @@ export function renderDashboardHtml(): string {
     </div>
   </main>
 
+  <!-- ESP32 Web Firmware Flasher Modal -->
+  <div id="flashModal" class="modal-backdrop" onclick="onModalBackdropClick(event)">
+    <div class="modal-window" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚡ ESP32 Web Firmware Installer</span>
+          <span class="fw-badge">v1.0.6 Stable</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
+      </div>
+      
+      <div class="modal-tabs">
+        <button id="tabBtnWebSerial" class="modal-tab-btn active" onclick="switchFlashTab('webserial')">Web Serial Install</button>
+        <button id="tabBtnBinaries" class="modal-tab-btn" onclick="switchFlashTab('binaries')">Direct Downloads &amp; CLI</button>
+        <button id="tabBtnGuide" class="modal-tab-btn" onclick="switchFlashTab('guide')">First-Boot Setup</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Web Serial Install -->
+        <div id="flashTabWebSerial">
+          <div id="serialStatusBanner" class="serial-status-banner supported">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span id="serialStatusIcon">✅</span>
+              <span id="serialStatusText">Web Serial API is supported in your browser!</span>
+            </div>
+            <span style="font-size:0.75rem;opacity:0.8;">Chrome / Edge / Brave / Opera</span>
+          </div>
+
+          <div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-muted);line-height:1.5;">
+            Flash the pre-compiled universal firmware directly to your ESP32 board over USB. No Arduino IDE, PlatformIO, or command-line drivers required.
+          </div>
+
+          <div class="install-button-wrapper">
+            <esp-web-install-button id="espWebInstallBtn" manifest="manifest.json">
+              <button slot="activate" class="install-action-btn">
+                ⚡ Connect ESP32 &amp; Install Firmware
+              </button>
+              <span slot="unsupported" style="color:var(--danger);font-size:0.875rem;font-weight:600;">
+                ⚠️ Web Serial is not supported in this browser. Please open this page in Google Chrome, Microsoft Edge, Brave, or Opera on desktop.
+              </span>
+              <span slot="not-allowed" style="color:var(--danger);font-size:0.875rem;font-weight:600;">
+                ⚠️ Web Serial requires an HTTPS secure connection.
+              </span>
+            </esp-web-install-button>
+          </div>
+
+          <div class="flash-guide-card">
+            <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.25rem;">Quick Flashing Steps:</h4>
+            <ul class="flash-step-list">
+              <li class="flash-step-item">
+                <span class="flash-step-num">1</span>
+                <div><strong>Connect USB:</strong> Plug your ESP32 board into your computer with a USB data cable (ensure it supports data, not power-only).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">2</span>
+                <div><strong>Pair Device:</strong> Click <em>Connect ESP32 &amp; Install Firmware</em> and select the serial port (e.g. <code>CP210x</code>, <code>CH340</code>, or <code>USB JTAG</code>).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">3</span>
+                <div><strong>Install &amp; Erase:</strong> Select <em>Install WIFI Monitor</em>. For fresh boards, check <em>Erase device</em> to clear flash. Progress is shown in real time.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">4</span>
+                <div><strong>Commission Node:</strong> After installation completes, the board boots up and creates a Soft-AP named <code>WIFI-Mon-XXXX</code> (IP <code>192.168.4.1</code>) for captive portal setup.</div>
+              </li>
+            </ul>
+          </div>
+
+          <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:0.5rem;padding:0.75rem 1rem;font-size:0.8rem;color:var(--text-muted);display:flex;align-items:flex-start;gap:0.5rem;">
+            <span style="font-size:1.1rem;line-height:1;">💡</span>
+            <div><strong>Connection Troubleshooting:</strong> If the installer cannot connect or times out waiting for the bootloader, hold down the <strong>BOOT (GPIO 0)</strong> button on your ESP32 board while clicking Connect, then release it once flashing starts.</div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Direct Downloads & CLI -->
+        <div id="flashTabBinaries" style="display:none;display:flex;flex-direction:column;gap:1rem;">
+          <div style="font-size:0.875rem;color:var(--text-muted);line-height:1.5;">
+            Download pre-compiled binary files for offline flashing with <code>esptool.py</code>, PlatformIO, or desktop tools.
+          </div>
+
+          <div class="bin-download-grid">
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Application Firmware</span>
+                <span class="bin-meta">Offset: 0x10000 (app0)</span>
+              </div>
+              <a id="dlFirmwareBin" href="firmware/firmware.bin" download="firmware.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ firmware.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Partition Table</span>
+                <span class="bin-meta">Offset: 0x8000 (partitions)</span>
+              </div>
+              <a id="dlPartitionsBin" href="firmware/partitions.bin" download="partitions.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ partitions.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">Second Stage Bootloader</span>
+                <span class="bin-meta">Offset: 0x1000 (bootloader)</span>
+              </div>
+              <a id="dlBootloaderBin" href="firmware/bootloader.bin" download="bootloader.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ bootloader.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">OTA Boot Initializer</span>
+                <span class="bin-meta">Offset: 0xe000 (otadata)</span>
+              </div>
+              <a id="dlBootApp0Bin" href="firmware/boot_app0.bin" download="boot_app0.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ boot_app0.bin</a>
+            </div>
+          </div>
+
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+            <div class="bin-info">
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (All-in-One)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file full flash)</span>
+            </div>
+            <a id="dlMergedBin" href="firmware/firmware-esp32-merged.bin" download="firmware-esp32-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32-merged.bin</a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Multi-part):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin', this)">Copy</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Merged Single-file):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin', this)">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: First-Boot Setup Guide -->
+        <div id="flashTabGuide" style="display:none;">
+          <div class="flash-guide-card">
+            <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.25rem;">Node Commissioning (Zero-Trust):</h4>
+            <ul class="flash-step-list">
+              <li class="flash-step-item">
+                <span class="flash-step-num">1</span>
+                <div><strong>Connect to Soft-AP:</strong> Search for Wi-Fi network <code>WIFI-Mon-XXXX</code> (where XXXX is the device MAC suffix) and connect (password <code>12345678</code> or open).</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">2</span>
+                <div><strong>Open Portal:</strong> Open your browser to <a href="http://192.168.4.1" target="_blank" style="color:var(--primary);">http://192.168.4.1</a>. The captive setup UI will load.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">3</span>
+                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
+              </li>
+              <li class="flash-step-item">
+                <span class="flash-step-num">4</span>
+                <div><strong>Configure Wi-Fi &amp; Secret:</strong> Enter up to 5 SSIDs/passwords and your <code>MASTER_PHRASE</code> bootstrap secret. The node registers with the backend and begins 10-minute telemetry cycles!</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span>Host: <strong id="hostIndicator">Cloudflare Worker</strong></span>
     <span>|</span>
     <a href="https://wifi.kreier.workers.dev" id="cfWorkerLink">Cloudflare Dashboard</a>
     <span>|</span>
     <a href="https://kreier.github.io/wifi" id="ghPagesLink">GitHub Pages</a>
+    <span>|</span>
+    <a href="javascript:void(0)" onclick="openFlashModal()" style="font-weight: 600; color: var(--primary);">⚡ Web Flasher</a>
     <span>|</span>
     <a href="https://github.com/kreier/wifi" target="_blank">Repository (kreier/wifi v2.0.6)</a>
   </footer>
@@ -1054,6 +1488,95 @@ export function renderDashboardHtml(): string {
     document.getElementById("brandLink").href = basePath;
     document.getElementById("hostIndicator").innerText = isGhPages ? "GitHub Pages" : "Cloudflare Worker";
 
+    function openFlashModal(tab) {
+      const modal = document.getElementById("flashModal");
+      if (modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+      if (tab) {
+        switchFlashTab(tab);
+      }
+      checkSerialSupport();
+      updateFlashManifestUrls();
+    }
+
+    function closeFlashModal() {
+      const modal = document.getElementById("flashModal");
+      if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+    }
+
+    function onModalBackdropClick(e) {
+      if (e.target.id === "flashModal") {
+        closeFlashModal();
+      }
+    }
+
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        closeFlashModal();
+      }
+    });
+
+    function switchFlashTab(tab) {
+      const tabs = ["webserial", "binaries", "guide"];
+      tabs.forEach(function(t) {
+        const el = document.getElementById("flashTab" + (t.charAt(0).toUpperCase() + t.slice(1)));
+        const btn = document.getElementById("tabBtn" + (t.charAt(0).toUpperCase() + t.slice(1)));
+        if (el) el.style.display = (t === tab) ? (t === "binaries" ? "flex" : "block") : "none";
+        if (btn) btn.classList.toggle("active", t === tab);
+      });
+    }
+
+    function checkSerialSupport() {
+      const isSupported = "serial" in navigator;
+      const banner = document.getElementById("serialStatusBanner");
+      const icon = document.getElementById("serialStatusIcon");
+      const text = document.getElementById("serialStatusText");
+      if (banner && icon && text) {
+        if (isSupported) {
+          banner.className = "serial-status-banner supported";
+          icon.innerText = "✅";
+          text.innerText = "Web Serial API is supported in your browser!";
+        } else {
+          banner.className = "serial-status-banner unsupported";
+          icon.innerText = "⚠️";
+          text.innerText = "Web Serial API is not supported in this browser. Please use Chrome, Edge, Brave, or Opera.";
+        }
+      }
+    }
+
+    function updateFlashManifestUrls() {
+      const installBtn = document.getElementById("espWebInstallBtn");
+      if (installBtn) {
+        installBtn.setAttribute("manifest", basePath + "manifest.json");
+      }
+      const links = [
+        { id: "dlFirmwareBin", file: "firmware.bin" },
+        { id: "dlPartitionsBin", file: "partitions.bin" },
+        { id: "dlBootloaderBin", file: "bootloader.bin" },
+        { id: "dlBootApp0Bin", file: "boot_app0.bin" },
+        { id: "dlMergedBin", file: "firmware-esp32-merged.bin" }
+      ];
+      links.forEach(function(l) {
+        const el = document.getElementById(l.id);
+        if (el) el.href = basePath + "firmware/" + l.file;
+      });
+    }
+
+    function copySnippet(text, btn) {
+      navigator.clipboard.writeText(text).then(function() {
+        const orig = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(function() { btn.innerText = orig; }, 2000);
+      }).catch(function() {
+        prompt("Copy command:", text);
+      });
+    }
+
     function getRequestedStationId() {
       // 1. Query parameter override: ?station=9E1-9 or ?id=9E1-9
       const params = new URLSearchParams(window.location.search);
@@ -1068,7 +1591,7 @@ export function renderDashboardHtml(): string {
       }
       while (path.startsWith("/")) path = path.slice(1);
 
-      if (path && path !== "index.html" && path !== "404.html" && path !== "wifi") {
+      if (path && path !== "index.html" && path !== "404.html" && path !== "wifi" && path !== "flash") {
         return decodeURIComponent(path);
       }
       return "";
@@ -3022,6 +3545,12 @@ export function renderDashboardHtml(): string {
     initTheme();
     loadStations();
     setInterval(refreshData, 60000); // 1-minute auto refresh
+
+    // Auto-open Web Flasher dialog if requested via ?flash=1 or URL route /flash
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("flash") === "true" || urlParams.get("flash") === "1" || window.location.pathname.endsWith("/flash")) {
+      setTimeout(function() { openFlashModal(); }, 300);
+    }
   </script>
 </body>
 </html>`;

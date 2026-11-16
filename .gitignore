@@ -59,8 +59,9 @@ dkms.conf
 .pioenvs/
 .piolibdeps/
 
-# Arduino
+# Arduino / Binaries
 *.bin
+!docs/firmware/*.bin
 *.elf
 
 # Node / Cloudflare Workers
