@@ -6,7 +6,7 @@ workers_dev = true
 
 [vars]
 ENVIRONMENT = "production"
-STABLE_VERSION = "1.0.6"
+STABLE_VERSION = "1.0.7"
 
 [observability.logs]
 enabled = true

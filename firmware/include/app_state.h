@@ -21,6 +21,9 @@ struct AppConfig {
     uint8_t network_count;
     bool is_configured;
     bool powerbank_keepalive; // Wake up 500ms every 20s during light sleep
+    bool backup_enabled;      // Failover to backup hotspot if primary Wi-Fi has no internet
+    char backup_ssid[33];     // Backup SSID (default: "S24")
+    char backup_pass[65];     // Backup Password (default: "12345678")
     HardwareProfile hw;
 
     AppConfig() {
@@ -32,6 +35,9 @@ struct AppConfig {
         network_count = 0;
         is_configured = false;
         powerbank_keepalive = false;
+        backup_enabled = false;
+        strncpy(backup_ssid, "S24", sizeof(backup_ssid) - 1);
+        strncpy(backup_pass, "12345678", sizeof(backup_pass) - 1);
         hw.setPreset(BOARD_T18);
     }
 };

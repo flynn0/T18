@@ -15,6 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.7 / 1.0.7] - 2026-11-16
+
+### Changed
+- **Firmware (v1.0.7)**: Redesigned boot and wakeup sequence to eliminate unnecessary 60-second Soft-AP wait on boot and wake from light sleep.
+- **Firmware (v1.0.7)**: Cycle immediately starts with a 13-channel promiscuous congestion survey (`ChannelAnalyzer::measureChannels`).
+- **Firmware (v1.0.7)**: Dynamic LED visual feedback during channel scanning: LED is solid ON while dwelling on a channel, and blinks OFF for 100 ms when transitioning to the next channel.
+- **Firmware (v1.0.7)**: Non-blocking BOOT button monitoring during the 13-channel scan: tapping or holding the BOOT button at any point immediately terminates the scan and launches the Soft-AP captive portal setup. If BOOT is not pressed, the cycle proceeds directly to spectrum survey, diagnostics, and telemetry transmission.
+
+### Added
+- **Firmware (v1.0.7)**: Backup Internet Uplink failover capability (configurable, default SSID: "S24", password: "12345678").
+- **Firmware (v1.0.7)**: Automatic detection of backup AP in the Wi-Fi scan survey. If monitored primary Wi-Fi networks have no internet connection or fail to upload telemetry, the station automatically connects to the backup hotspot to transmit queued offline telemetry and current cycle data.
+- **Setup Web Portal**: Added **Backup Internet Connection** configuration section in the Captive Portal setup UI to enable/disable backup failover and customize backup SSID and password.
+- **Web & Backend (v2.0.7)**: Updated stable firmware version to `v1.0.7` across Worker OTA delivery, Web Serial installer modal, and manifest metadata.
+
+---
+
+---
+
 ## [2.0.6 / 1.0.6] - 2026-11-16
 
 ### Added

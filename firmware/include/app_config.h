@@ -63,6 +63,11 @@ public:
         config.hw.has_wifi6 = prefs.getBool("has_w6", config.hw.has_wifi6);
 
         config.powerbank_keepalive = prefs.getBool("pb_alive", false);
+        config.backup_enabled = prefs.getBool("bkp_en", false);
+        String bkpSsid = prefs.getString("bkp_ssid", "S24");
+        String bkpPass = prefs.getString("bkp_pass", "12345678");
+        strlcpy(config.backup_ssid, bkpSsid.c_str(), sizeof(config.backup_ssid));
+        strlcpy(config.backup_pass, bkpPass.c_str(), sizeof(config.backup_pass));
         config.is_configured = prefs.getBool("is_cfg", (strlen(config.station_id) > 0 && config.network_count > 0));
         prefs.end();
 
@@ -107,6 +112,9 @@ public:
         prefs.putBool("has_w6", config.hw.has_wifi6);
 
         prefs.putBool("pb_alive", config.powerbank_keepalive);
+        prefs.putBool("bkp_en", config.backup_enabled);
+        prefs.putString("bkp_ssid", config.backup_ssid);
+        prefs.putString("bkp_pass", config.backup_pass);
         prefs.putBool("is_cfg", config.is_configured);
         prefs.end();
 

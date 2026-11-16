@@ -1231,7 +1231,7 @@ export function renderDashboardHtml(): string {
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.0.6 Stable</span>
+          <span class="fw-badge">v1.0.7 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>

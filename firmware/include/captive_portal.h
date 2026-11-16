@@ -227,6 +227,29 @@ private:
             html += "<button type='button' class='toggle-btn' onclick='togglePwd(\"pwd_" + String(i) + "\")'>Show</button></div></div></div>";
         }
 
+        // Backup Internet Connection
+        html += F("<div class='section-title'>Backup Internet Connection</div>");
+        html += F("<div class='field' style='display:flex;align-items:flex-start;gap:0.75rem;margin-top:0.5rem;'>"
+                  "<input type='checkbox' id='bkp_en' name='bkp_en' value='1'");
+        if (config.backup_enabled) {
+            html += F(" checked");
+        }
+        html += F(" style='width:1.25rem;min-width:1.25rem;height:1.25rem;accent-color:var(--primary);cursor:pointer;margin-top:0.2rem;'>"
+                  "<div><label for='bkp_en' style='cursor:pointer;margin-bottom:0.15rem;font-weight:600;'>Enable Backup Internet Failover</label>"
+                  "<span style='color:var(--muted);font-size:0.75rem;line-height:1.3;display:block;'>"
+                  "Connect to backup hotspot (e.g. S24) if monitored networks have no internet connection to ensure telemetry upload."
+                  "</span></div></div>");
+
+        html += F("<div class='row'>"
+                  "<div class='field'><label for='bkp_ssid'>Backup Hotspot SSID</label>"
+                  "<input type='text' id='bkp_ssid' name='bkp_ssid' maxlength='32' value='");
+        html += String(strlen(config.backup_ssid) > 0 ? config.backup_ssid : "S24");
+        html += F("'></div>"
+                  "<div class='field'><label for='bkp_pass'>Backup Password</label><div class='pwd-wrap'>"
+                  "<input type='password' id='bkp_pass' name='bkp_pass' maxlength='64' value='");
+        html += String(strlen(config.backup_pass) > 0 ? config.backup_pass : "12345678");
+        html += F("'><button type='button' class='toggle-btn' onclick='togglePwd(\"bkp_pass\")'>Show</button></div></div></div>");
+
         // Worker & Bootstrap Security
         html += F("<div class='section-title'>Cloudflare Worker & Provisioning</div>");
         html += F("<div class='field'><label for='worker_url'>Worker Base URL *</label>"
@@ -311,6 +334,16 @@ private:
         // Power Management
         config.powerbank_keepalive = _server.hasArg("pb_alive");
 
+        // Backup Internet Connection
+        config.backup_enabled = _server.hasArg("bkp_en");
+        String bkpSsid = _server.arg("bkp_ssid");
+        String bkpPass = _server.arg("bkp_pass");
+        bkpSsid.trim();
+        if (bkpSsid.length() == 0) bkpSsid = "S24";
+        if (bkpPass.length() == 0 && !_server.hasArg("bkp_pass")) bkpPass = "12345678";
+        strlcpy(config.backup_ssid, bkpSsid.c_str(), sizeof(config.backup_ssid));
+        strlcpy(config.backup_pass, bkpPass.c_str(), sizeof(config.backup_pass));
+
         // Networks
         config.network_count = 0;
         for (int i = 0; i < MAX_MONITORED_NETWORKS; i++) {
@@ -325,7 +358,7 @@ private:
         }
 
         config.is_configured = (config.network_count > 0);
-        bool saved = _configMgr.saveConfig(config);
+        _configMgr.saveConfig(config);
 
         if (stationIdChanged) {
             Serial.println(F("[Portal] Station ID changed! Clearing device token so station re-registers under new ID."));

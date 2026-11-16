@@ -44,7 +44,7 @@ export default {
       if (path === "/manifest.json" || path === "/firmware/manifest.json") {
         const manifest = {
           name: "WIFI Monitor (kreier/wifi)",
-          version: env.STABLE_VERSION || "1.0.6",
+          version: env.STABLE_VERSION || "1.0.7",
           funding_url: "https://github.com/kreier/wifi",
           builds: [
             {
