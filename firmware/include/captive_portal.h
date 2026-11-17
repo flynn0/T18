@@ -300,6 +300,10 @@ private:
         workerUrl.trim();
         masterPhrase.trim();
 
+        if (workerUrl.indexOf("wifi.kreier.workers.dev") >= 0 || workerUrl.length() == 0) {
+            workerUrl = DEFAULT_WORKER_URL;
+        }
+
         if (stId.length() == 0 || workerUrl.length() == 0) {
             _server.send(400, "text/plain", "Missing required fields: Station ID or Worker URL");
             return;

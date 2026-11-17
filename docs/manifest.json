@@ -1,7 +1,8 @@
 {
   "name": "T18 Wi-Fi Monitor (kreier/T18)",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "funding_url": "https://github.com/kreier/T18",
+  "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32",

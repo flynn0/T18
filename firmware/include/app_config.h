@@ -33,6 +33,17 @@ public:
         strlcpy(config.station_id, stId.c_str(), sizeof(config.station_id));
         strlcpy(config.station_desc, prefs.getString("st_desc", "").c_str(), sizeof(config.station_desc));
         strlcpy(config.worker_url, prefs.getString("worker_url", DEFAULT_WORKER_URL).c_str(), sizeof(config.worker_url));
+        if (strstr(config.worker_url, "wifi.kreier.workers.dev") != nullptr || strlen(config.worker_url) == 0) {
+            Serial.println(F("[Config] Migrating worker_url to T18 worker: " DEFAULT_WORKER_URL));
+            strlcpy(config.worker_url, DEFAULT_WORKER_URL, sizeof(config.worker_url));
+            prefs.end();
+            if (prefs.begin(NVS_NAMESPACE, false)) {
+                prefs.putString("worker_url", config.worker_url);
+                prefs.remove(NVS_KEY_TOKEN);
+                prefs.end();
+            }
+            prefs.begin(NVS_NAMESPACE, true);
+        }
         strlcpy(config.master_phrase, prefs.getString("master", "").c_str(), sizeof(config.master_phrase));
 
         config.network_count = prefs.getUChar("net_cnt", 0);

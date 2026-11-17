@@ -41,11 +41,37 @@ export default {
       }
 
       // 4. Web Flasher Manifest & Firmware Assets
+      if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json") {
+        const manifest = {
+          name: "T18 Wi-Fi Monitor (Update Only)",
+          version: env.STABLE_VERSION || "1.0.3",
+          funding_url: "https://github.com/kreier/T18",
+          new_install_prompt_erase: false,
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [
+                { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
       if (path === "/manifest.json" || path === "/firmware/manifest.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor (kreier/T18)",
-          version: env.STABLE_VERSION || "1.0.2",
+          version: env.STABLE_VERSION || "1.0.3",
           funding_url: "https://github.com/kreier/T18",
+          new_install_prompt_erase: true,
           builds: [
             {
               chipFamily: "ESP32",

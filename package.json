@@ -1,6 +1,6 @@
 {
   "name": "t18-network-monitor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Distributed ESP32 Wi-Fi Reliability Monitor & Telemetry Pipeline",
   "repository": {
     "type": "git",

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2026-11-17
+
+### Fixed
+- **Telemetry Ingestion & Station Registration Routing**:
+  - Corrected compiled firmware binaries and portal defaults so new stations register and upload directly to `https://t18.kreier.workers.dev` instead of the legacy `wifi` worker, ensuring new stations appear in the T18 project.
+  - Added automatic NVS migration in `AppConfigManager` and `CaptivePortalManager` that detects and converts legacy `wifi.kreier.workers.dev` configurations to `https://t18.kreier.workers.dev` and resets device token for clean zero-trust re-registration.
+
+### Added
+- **Preserve Settings & Data Flashing Option (Firmware Update Only)**:
+  - Added installation mode selector in the Web Serial Flasher UI allowing operators to choose between **⚡ Update Firmware Only (Keep Settings & Data)** (default) and **🧹 Clean Install (Full Flash & Partitions)**.
+  - Implemented `manifest-update.json` targeting only the application slot at offset `0x10000`, preserving NVS Wi-Fi credentials, tokens, and offline channel utilization history.
+  - Added `"new_install_prompt_erase": true` in `manifest.json` so full installs prompt for confirmation before erasing flash.
+- **24-Hour 13-Channel Utilization Average Ring Storage & Offline Backlog Sync**:
+  - Implemented `ChannelHistoryManager` storing 48 half-hour average records (13 channels × 48 slots = 24 hours of 30-minute averages) persistently in dedicated flash sectors (`0x1000` to `0x3FFF`).
+  - Rolling average accumulation across 10-minute cycles within each 30-minute interval.
+  - Timestamps recorded during offline periods are automatically calibrated to UTC half-hour epochs upon NTP synchronization.
+  - Automatic transmission of all un-transmitted records (`transmitted == false`) to the T18 worker `/data` endpoint as soon as network connectivity is restored, marking slots as transmitted upon successful worker receipt.
+  - Fixed flash sector boundary erase handling in `SpoolManager` to prevent circular buffer sector over-erasure.
+
 ## [1.0.2] - 2026-11-16
 
 ### Added

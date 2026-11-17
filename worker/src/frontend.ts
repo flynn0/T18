@@ -767,7 +767,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.0.2</span>
+        <span class="brand-tag">v1.0.3</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1272,7 +1272,7 @@ export function renderDashboardHtml(): string {
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.0.2 Stable</span>
+          <span class="fw-badge">v1.0.3 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -1298,10 +1298,30 @@ export function renderDashboardHtml(): string {
             Flash the pre-compiled universal firmware directly to your ESP32 board over USB. No Arduino IDE, PlatformIO, or command-line drivers required.
           </div>
 
+          <div style="margin-top:1rem;margin-bottom:0.75rem;">
+            <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--text);">Choose Flashing Mode:</div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              <label id="modeUpdateLabel" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:2px solid var(--accent);border-radius:0.5rem;background:rgba(56,189,248,0.08);cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashModeRadio" value="update" checked onchange="window.setFlashMode('update')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">⚡ Update Firmware Only (Keep Settings &amp; Data)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">Flashes only application partition (0x10000). Preserves Wi-Fi credentials, tokens, and 24h channel utilization history without wiping flash.</div>
+                </div>
+              </label>
+              <label id="modeCleanLabel" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:1px solid var(--border);border-radius:0.5rem;background:transparent;cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashModeRadio" value="clean" onchange="window.setFlashMode('clean')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">🧹 Clean Install (Full Flash &amp; Partitions)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">For fresh or unconfigured boards. Installs bootloader, partition table, and firmware. Prompts before erasing flash.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <div class="install-button-wrapper">
-            <esp-web-install-button id="espWebInstallBtn" manifest="manifest.json">
-              <button slot="activate" class="install-action-btn">
-                ⚡ Connect ESP32 &amp; Install Firmware
+            <esp-web-install-button id="espWebInstallBtn" manifest="manifest-update.json">
+              <button slot="activate" id="espActivateBtn" class="install-action-btn">
+                ⚡ Connect ESP32 &amp; Update Firmware (Keep Settings)
               </button>
               <span slot="unsupported" style="color:var(--danger);font-size:0.875rem;font-weight:600;">
                 ⚠️ Web Serial is not supported in this browser. Please open this page in Google Chrome, Microsoft Edge, Brave, or Opera on desktop.
@@ -1325,7 +1345,7 @@ export function renderDashboardHtml(): string {
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">3</span>
-                <div><strong>Install &amp; Erase:</strong> Select <em>Install T18 Monitor</em>. For fresh boards, check <em>Erase device</em> to clear flash. Progress is shown in real time.</div>
+                <div><strong>Install Firmware:</strong> Select <em>Install T18 Monitor</em>. In <em>Update Firmware</em> mode, your settings and data are preserved. In <em>Clean Install</em> mode, you can check/uncheck <em>Erase device</em>. Progress is shown in real time.</div>
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">4</span>
@@ -1443,7 +1463,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="javascript:void(0)" onclick="openFlashModal()" style="font-weight: 600; color: var(--primary);">⚡ Web Flasher</a>
     <span>|</span>
-    <a href="https://github.com/kreier/T18" target="_blank">Repository (kreier/T18 v1.0.2)</a>
+    <a href="https://github.com/kreier/T18" target="_blank">Repository (kreier/T18 v1.0.3)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -1591,11 +1611,41 @@ export function renderDashboardHtml(): string {
       }
     }
 
-    function updateFlashManifestUrls() {
+    let currentFlashMode = "update";
+    window.setFlashMode = function(mode) {
+      currentFlashMode = mode;
       const installBtn = document.getElementById("espWebInstallBtn");
-      if (installBtn) {
-        installBtn.setAttribute("manifest", basePath + "manifest.json");
+      const activateBtn = document.getElementById("espActivateBtn");
+      const lblUpdate = document.getElementById("modeUpdateLabel");
+      const lblClean = document.getElementById("modeCleanLabel");
+
+      if (mode === "update") {
+        if (installBtn) installBtn.setAttribute("manifest", basePath + "manifest-update.json");
+        if (activateBtn) activateBtn.innerHTML = "⚡ Connect ESP32 &amp; Update Firmware (Keep Settings)";
+        if (lblUpdate) {
+          lblUpdate.style.border = "2px solid var(--accent)";
+          lblUpdate.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblClean) {
+          lblClean.style.border = "1px solid var(--border)";
+          lblClean.style.background = "transparent";
+        }
+      } else {
+        if (installBtn) installBtn.setAttribute("manifest", basePath + "manifest.json");
+        if (activateBtn) activateBtn.innerHTML = "🧹 Connect ESP32 &amp; Clean Install";
+        if (lblClean) {
+          lblClean.style.border = "2px solid var(--accent)";
+          lblClean.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblUpdate) {
+          lblUpdate.style.border = "1px solid var(--border)";
+          lblUpdate.style.background = "transparent";
+        }
       }
+    };
+
+    function updateFlashManifestUrls() {
+      window.setFlashMode(currentFlashMode);
       const links = [
         { id: "dlFirmwareBin", file: "firmware.bin" },
         { id: "dlPartitionsBin", file: "partitions.bin" },

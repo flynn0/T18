@@ -13,6 +13,7 @@
 #include "spool_manager.h"
 #include "api_client.h"
 #include "channel_analyzer.h"
+#include "channel_history.h"
 #include "bluetooth_scanner.h"
 #include "ota_manager.h"
 
@@ -28,6 +29,7 @@ public:
         delay(500);
 
         _configMgr.begin();
+        ChannelHistory::instance().begin();
         SpoolManager::begin();
 
         _configMgr.loadConfig(_config);
@@ -72,6 +74,11 @@ public:
             _led.setPin(_config.hw.status_led_pin);
             ensureDeviceRegistered();
             return;
+        }
+
+        // Store 30-minute average channel utilization in 48-slot machine history buffer
+        if (!chanResults.empty()) {
+            ChannelHistory::instance().recordCycle(chanResults, _ntp.getCurrentEpoch());
         }
 
         // 2. Perform 2.4 GHz spectrum Wi-Fi scan survey
@@ -279,7 +286,11 @@ private:
 
             String token = _configMgr.getDeviceToken();
 
-            // If there is pending data from past offline cycles, upload it first
+            // 1. Submit un-transmitted 30-minute channel utilization history first
+            ChannelHistory::instance().calibrateTimestamps(currentEpoch);
+            ChannelHistory::instance().submitPendingHistory(_config.worker_url, token, _config.station_id);
+
+            // 2. If there is pending data from past offline cycles, upload it first
             if (SpoolManager::hasPendingData()) {
                 Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
                               (unsigned)SpoolManager::getRecordCount());
@@ -292,11 +303,12 @@ private:
                 }
             }
 
-            // Transmit current cycle directly from RAM (ZERO FLASH WEAR)
+            // 3. Transmit current cycle directly from RAM (ZERO FLASH WEAR)
             String currentPayload = serializeCycleJson(cycle);
             bool ok = ApiClient::uploadTelemetry(_config.worker_url, token, currentPayload);
 
             if (ok) {
+                ChannelHistory::instance().markSlotTransmitted(currentEpoch);
                 Serial.printf("[Main] Telemetry uploaded directly from RAM via '%s'.\n", apName);
             } else {
                 Serial.printf("[Main] Upload failed via '%s' (no internet access).\n", apName);

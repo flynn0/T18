@@ -1,6 +1,6 @@
 {
   "name": "t18-worker",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Cloudflare Worker & D1 backend for kreier/T18 telemetry",
   "main": "src/index.ts",
   "scripts": {
