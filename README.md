@@ -1,16 +1,16 @@
-# kreier/T18
+# flynn0/T18
 
-[![Latest Release](https://img.shields.io/github/v/release/kreier/T18?color=blue&label=version)](https://github.com/kreier/T18/releases)
+[![Latest Release](https://img.shields.io/github/v/release/flynn0/T18?color=blue&label=version)](https://github.com/flynn0/T18/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-t18.kreier.workers.dev-F38020?logo=cloudflare)](https://t18.kreier.workers.dev/)
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-kreier.github.io%2FT18-22c55e?logo=github)](https://kreier.github.io/T18/)
+[![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-t18.dhsp.workers.dev-F38020?logo=cloudflare)](https://t18.dhsp.workers.dev/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-flynn0.github.io%2FT18-22c55e?logo=github)](https://flynn0.github.io/T18/)
 
 > Autonomous Wi-Fi Spectrum, Latency & Bluetooth Telemetry Fleet Node for ESP32 (LILYGO T18 & T8) with Cloudflare Worker, D1 SQLite Database, and GitHub Pages.
 
 **Live Telemetry Dashboards & Web Installer**:
-- 🌐 **Cloudflare Edge Dashboard**: [https://t18.kreier.workers.dev/](https://t18.kreier.workers.dev/)
-- 📄 **GitHub Pages Mirror**: [https://kreier.github.io/T18/](https://kreier.github.io/T18/)
-- ⚡ **In-Browser ESP32 Web Flasher**: [https://t18.kreier.workers.dev/?flash=1](https://t18.kreier.workers.dev/?flash=1) or [https://kreier.github.io/T18/?flash=1](https://kreier.github.io/T18/?flash=1)
+- 🌐 **Cloudflare Edge Dashboard**: [https://t18.dhsp.workers.dev/](https://t18.dhsp.workers.dev/)
+- 📄 **GitHub Pages Mirror**: [https://flynn0.github.io/T18/](https://flynn0.github.io/T18/)
+- ⚡ **In-Browser ESP32 Web Flasher**: [https://t18.dhsp.workers.dev/?flash=1](https://t18.dhsp.workers.dev/?flash=1) or [https://flynn0.github.io/T18/?flash=1](https://flynn0.github.io/T18/?flash=1)
 
 ---
 
@@ -25,8 +25,8 @@
   - **LILYGO T18**: Status LED on **GPIO 5**, battery ADC on **GPIO 35** via 100kΩ/100kΩ divider (ratio 0.50, $V_{\text{bat}} = 2.0 \times V_{\text{pin}}$).
   - **LILYGO T8**: Status LED on **GPIO 21**, battery ADC on **GPIO 35** via 100kΩ/100kΩ divider.
   - **ESP32 DevKit V1**: Status LED on **GPIO 2**, battery monitoring disabled.
-- **2.4 GHz Bluetooth Low Energy (BLE) & Classic Spectrum Survey**:
-  Sequential dual-stack Bluetooth scans during every cycle. Employs advanced advertising payload de-randomization (Apple Find My/AirTag, iBeacon, Eddystone, Tile, Samsung/Google continuity) to track true physical device presence and RF contention without MAC address inflation.
+- **2.4 GHz Bluetooth Low Energy (BLE) Spectrum Survey**:
+  Sequential Bluetooth Low Energy (BLE) scans during every cycle. Employs advanced advertising payload de-randomization (Apple Find My/AirTag, iBeacon, Eddystone, Tile, Samsung/Google continuity) to track true physical device presence and RF contention without MAC address inflation, with unique BLE counts persisted directly into 24-hour local flash storage.
 - **Promiscuous Mode Channel Contention Profiling & LED Feedback**:
   Measures all 13 channels during boot/wake with dwell times using ESP-IDF promiscuous mode. Provides dynamic LED feedback (solid during channel dwell, 100 ms off during transition) and non-blocking BOOT button monitoring to enter the setup portal immediately.
 - **Backup Hotspot Internet Failover**:
@@ -61,8 +61,8 @@
 Flash pre-compiled universal firmware directly to any ESP32 board over USB using your web browser:
 
 1. **Open the Web Flasher**:
-   - 🌐 [https://t18.kreier.workers.dev/?flash=1](https://t18.kreier.workers.dev/?flash=1) (Cloudflare Edge)
-   - 📄 [https://kreier.github.io/T18/?flash=1](https://kreier.github.io/T18/?flash=1) (GitHub Pages Mirror)
+   - 🌐 [https://t18.dhsp.workers.dev/?flash=1](https://t18.dhsp.workers.dev/?flash=1) (Cloudflare Edge)
+   - 📄 [https://flynn0.github.io/T18/?flash=1](https://flynn0.github.io/T18/?flash=1) (GitHub Pages Mirror)
    - Or click **⚡ Flash Device** in the top navigation header of any dashboard view.
 2. **Connect your ESP32** via a USB data cable to your desktop computer.
 3. Supported browsers: **Google Chrome**, **Microsoft Edge**, **Brave**, or **Opera** on desktop (requires Web Serial API over HTTPS).
@@ -75,7 +75,7 @@ Flash pre-compiled universal firmware directly to any ESP32 board over USB using
 ---
 
 ### Option B: Pre-Compiled Binary Flashing (`esptool.py`)
-If you prefer command-line flashing without compiling from source, download the compiled binaries from the Web Flasher dialog or [GitHub Releases](https://github.com/kreier/T18/releases/latest):
+If you prefer command-line flashing without compiling from source, download the compiled binaries from the Web Flasher dialog or [GitHub Releases](https://github.com/flynn0/T18/releases/latest):
 
 - `firmware.bin` (Application — offset `0x10000`)
 - `partitions.bin` (Partition Table — offset `0x8000`)
@@ -125,8 +125,8 @@ pio device monitor -b 115200
 ## Cloudflare Worker & D1 Setup
 
 ### 1. Worker Configuration
-- **Worker Name**: `t18` (accessible at `https://t18.kreier.workers.dev`)
-- **D1 Database**: `t18-mon-db` (`ded19daf-64c6-4f58-bda8-1ffa02ba99f1`)
+- **Worker Name**: `t18` (accessible at `https://t18.dhsp.workers.dev`)
+- **D1 Database**: `t18-mon-db` (`9526b47c-4fa7-41cc-8cc5-ba5b2bd8cf4f`)
 
 ### 2. Deploy Worker & Apply Migrations
 ```bash

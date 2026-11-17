@@ -40,7 +40,7 @@ public:
         pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
         Serial.println(F("\n========================================"));
-        Serial.printf(" kreier/T18 Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
+        Serial.printf(" flynn0/T18 Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
         Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
                       _config.hw.status_led_pin, _config.hw.battery_pin);
         Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (500ms/20s)" : "DISABLED");
@@ -74,11 +74,6 @@ public:
             _led.setPin(_config.hw.status_led_pin);
             ensureDeviceRegistered();
             return;
-        }
-
-        // Store 30-minute average channel utilization in 48-slot machine history buffer
-        if (!chanResults.empty()) {
-            ChannelHistory::instance().recordCycle(chanResults, _ntp.getCurrentEpoch());
         }
 
         // 2. Perform 2.4 GHz spectrum Wi-Fi scan survey
@@ -160,8 +155,13 @@ public:
             Serial.printf("[Main] Battery Voltage: %u mV (Divider: %.2f)\n", batteryMv, _config.hw.battery_divider);
         }
 
-        // 4.5. Bluetooth 2.4 GHz Scan (BLE & Classic)
-        BluetoothScanResult btScan = BluetoothScanner::performScan(3, 3000);
+        // 4.5. Bluetooth 2.4 GHz Scan (BLE only; legacy Bluetooth Classic removed)
+        BluetoothScanResult btScan = BluetoothScanner::performScan(3);
+
+        // Store 30-minute average channel utilization and BLE device count in 48-slot 24h history buffer
+        if (!chanResults.empty() || btScan.ble_unique_devices > 0) {
+            ChannelHistory::instance().recordCycle(chanResults, btScan.ble_unique_devices, currentEpoch);
+        }
 
         // 5. Sequentially probe configured monitored networks
         std::vector<NetworkMeasurement> measurements;

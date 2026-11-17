@@ -29,6 +29,8 @@ struct ChannelSlotRecord {
     uint8_t  sample_count;      // number of cycles averaged in this 30-min slot
     uint8_t  valid;             // 1 = slot contains valid data, 0 = empty
     uint8_t  reserved;          // padding
+    uint16_t ble_unique_devices;// unique BLE devices count averaged across 30-min slot
+    uint16_t reserved2;         // padding for 4-byte struct alignment
     ChannelMetricsSummary channels[CHAN_HIST_CHANS]; // 13 channels (index 0 for Ch 1 .. index 12 for Ch 13)
 };
 
@@ -55,7 +57,7 @@ public:
 
         ChannelHistoryHeader hdr;
         if (esp_partition_read(part, CHAN_HIST_OFFSET, &hdr, sizeof(hdr)) != ESP_OK ||
-            hdr.magic != CHAN_HIST_MAGIC || hdr.slot_count != CHAN_HIST_SLOTS) {
+            hdr.magic != CHAN_HIST_MAGIC || hdr.version != 2 || hdr.slot_count != CHAN_HIST_SLOTS) {
             Serial.println(F("[ChannelHistory] Formatting clean 48-slot 30-min history buffer in flash..."));
             memset(_slots, 0, sizeof(_slots));
             saveToFlash();
@@ -81,8 +83,8 @@ public:
     }
 
     // Accumulates 10-minute cycle measurements into the corresponding 30-minute average slot
-    void recordCycle(const std::vector<ChannelUtilizationItem> &items, uint64_t epoch) {
-        if (items.empty()) return;
+    void recordCycle(const std::vector<ChannelUtilizationItem> &items, uint16_t bleUniqueDevices, uint64_t epoch) {
+        if (items.empty() && bleUniqueDevices == 0) return;
 
         uint32_t uptimeSec = millis() / 1000;
         uint32_t slotTs = 0;
@@ -125,10 +127,11 @@ public:
                     }
                 }
             }
+            slot.ble_unique_devices = (uint16_t)(((uint32_t)slot.ble_unique_devices * n + bleUniqueDevices) / nextN);
             slot.sample_count = nextN;
             slot.transmitted = 0; // New cycle added to 30-min average; mark pending upload
-            Serial.printf("[ChannelHistory] Averaged cycle into 30-min slot %u (sample count: %u)\n",
-                          (unsigned)slotIdx, (unsigned)nextN);
+            Serial.printf("[ChannelHistory] Averaged cycle into 30-min slot %u (sample count: %u, BLE unique: %u)\n",
+                          (unsigned)slotIdx, (unsigned)nextN, (unsigned)slot.ble_unique_devices);
         } else {
             // New 30-minute interval: reset slot and populate initial measurement
             slot.valid = 1;
@@ -136,6 +139,7 @@ public:
             slot.relative_sec = uptimeSec;
             slot.sample_count = 1;
             slot.transmitted = 0;
+            slot.ble_unique_devices = bleUniqueDevices;
             memset(slot.channels, 0, sizeof(slot.channels));
 
             for (const auto &it : items) {
@@ -151,8 +155,8 @@ public:
                     }
                 }
             }
-            Serial.printf("[ChannelHistory] Initialized 30-min slot %u (timestamp: %u)\n",
-                          (unsigned)slotIdx, (unsigned)slotTs);
+            Serial.printf("[ChannelHistory] Initialized 30-min slot %u (timestamp: %u, BLE unique: %u)\n",
+                          (unsigned)slotIdx, (unsigned)slotTs, (unsigned)slot.ble_unique_devices);
         }
 
         saveToFlash();
@@ -208,6 +212,11 @@ public:
                 obj["station_id"] = stationId;
                 obj["timestamp"] = slot.timestamp;
                 obj["scan_duration_ms"] = 26000;
+
+                if (slot.ble_unique_devices > 0) {
+                    JsonObject bt = obj["bluetooth"].to<JsonObject>();
+                    bt["ble_unique_devices"] = slot.ble_unique_devices;
+                }
 
                 JsonArray chArr = obj["channel_utilization"].to<JsonArray>();
                 for (uint8_t c = 1; c <= CHAN_HIST_CHANS; c++) {
@@ -290,7 +299,7 @@ private:
 
         ChannelHistoryHeader hdr;
         hdr.magic = CHAN_HIST_MAGIC;
-        hdr.version = 1;
+        hdr.version = 2;
         hdr.slot_count = CHAN_HIST_SLOTS;
         hdr.reserved = 0;
 

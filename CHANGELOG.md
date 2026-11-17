@@ -1,9 +1,28 @@
 # Changelog
 
-All notable changes to the `kreier/T18` platform will be documented in this file.
+All notable changes to the `flynn0/T18` platform will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.0.4] - 2026-11-17
+
+### Changed
+- **Main Repository & Domain Migration to flynn0**:
+  - Re-anchored primary repository to `flynn0/T18`.
+  - Updated Cloudflare Worker host to `https://t18.dhsp.workers.dev` and static mirror to `https://flynn0.github.io/T18`.
+  - Updated default worker URL and preset domain for authentication in firmware to `https://t18.dhsp.workers.dev`.
+  - Added automatic NVS migration detecting legacy `*.kreier.workers.dev` configurations and resetting device tokens for clean re-authentication with `t18.dhsp.workers.dev`.
+- **Bluetooth Scan Optimization**:
+  - Removed legacy Bluetooth Classic inquiry and `BluetoothSerial` dependency from `BluetoothScanner`, significantly reducing firmware binary footprint and execution latency.
+  - Scan focuses entirely on 2.4 GHz Bluetooth Low Energy (BLE) with de-randomization and categorization.
+
+### Added
+- **24-Hour Unique BLE Device Local Flash Storage**:
+  - Extended `ChannelHistoryManager` (`ChannelSlotRecord` v2) to store and average unique BLE device counts across each of the 48 half-hour slots (24 hours total).
+  - Synchronizes offline BLE unique device count alongside 13-channel utilization metrics directly to the worker backend upon network reconnection.
 
 ---
 

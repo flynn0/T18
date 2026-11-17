@@ -300,7 +300,7 @@ private:
         workerUrl.trim();
         masterPhrase.trim();
 
-        if (workerUrl.indexOf("wifi.kreier.workers.dev") >= 0 || workerUrl.length() == 0) {
+        if (workerUrl.indexOf("kreier.workers.dev") >= 0 || workerUrl.length() == 0) {
             workerUrl = DEFAULT_WORKER_URL;
         }
 

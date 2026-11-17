@@ -7,7 +7,6 @@
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
-#include <BluetoothSerial.h>
 
 struct BleDeviceRecord {
     String address;       // "AA:BB:CC:DD:EE:FF"
@@ -52,71 +51,20 @@ struct BluetoothScanResult {
 
 class BluetoothScanner {
 public:
-    static BluetoothScanResult performScan(uint32_t bleDurationSec = 3, uint32_t classicDurationMs = 3000) {
+    static BluetoothScanResult performScan(uint32_t bleDurationSec = 3) {
         BluetoothScanResult result;
         uint32_t startMs = millis();
-        Serial.println(F("[Bluetooth] Initiating 2.4 GHz BLE and Classic Bluetooth Spectrum Scan..."));
+        Serial.println(F("[Bluetooth] Initiating 2.4 GHz BLE Spectrum Scan..."));
 
-        // 1. BLE Scan Phase
+        // BLE Scan Phase (Legacy Bluetooth Classic removed)
         scanBle(result, bleDurationSec);
 
-        // 2. Bluetooth Classic Inquiry Phase
-        scanClassic(result, classicDurationMs);
-
         result.scan_duration_ms = millis() - startMs;
-        Serial.printf("[Bluetooth] Complete in %lu ms: BLE %lu packets, %u MACs, %u unique devices (Random: %u, Public: %u); Classic: %u devices.\n",
+        Serial.printf("[Bluetooth] Complete in %lu ms: BLE %lu packets, %u MACs, %u unique devices (Random: %u, Public: %u).\n",
                       (unsigned long)result.scan_duration_ms, (unsigned long)result.ble_total_packets,
                       (unsigned)result.ble_total_macs, (unsigned)result.ble_unique_devices,
-                      (unsigned)result.ble_random_macs, (unsigned)result.ble_public_macs,
-                      (unsigned)result.classic_total);
+                      (unsigned)result.ble_random_macs, (unsigned)result.ble_public_macs);
         return result;
-    }
-
-    static String decodeCod(uint32_t cod) {
-        if (cod == 0) return "Unknown";
-        uint8_t major = (cod >> 8) & 0x1F;
-        uint8_t minor = (cod >> 2) & 0x3F;
-
-        switch (major) {
-            case 1: { // Computer
-                if (minor == 1) return "Desktop Computer";
-                if (minor == 2) return "Server";
-                if (minor == 3) return "Laptop";
-                if (minor == 4) return "Handheld PC/PDA";
-                return "Computer";
-            }
-            case 2: { // Phone
-                if (minor == 1) return "Cellular Phone";
-                if (minor == 2) return "Cordless Phone";
-                if (minor == 3) return "Smartphone";
-                return "Phone";
-            }
-            case 3: return "Network AP";
-            case 4: { // Audio / Video
-                if (minor == 1) return "Audio / Headset";
-                if (minor == 2) return "Audio / Handsfree";
-                if (minor == 4) return "Audio / Microphone";
-                if (minor == 5) return "Audio / Loudspeaker";
-                if (minor == 6) return "Audio / Headphones";
-                if (minor == 7) return "Portable Audio";
-                if (minor == 8) return "Car Audio";
-                if (minor == 10) return "HiFi Audio";
-                return "Audio / Video";
-            }
-            case 5: { // Peripheral
-                if (minor & 0x10) return "Keyboard";
-                if (minor & 0x20) return "Mouse / Pointing";
-                return "Peripheral";
-            }
-            case 6: return "Imaging / Printer";
-            case 7: { // Wearable
-                if (minor == 1) return "Smartwatch";
-                return "Wearable";
-            }
-            case 8: return "Toy";
-            case 9: return "Health Device";
-            default: return "Bluetooth Device";
-        }
     }
 
 private:
@@ -418,48 +366,6 @@ private:
                 break;
             default:
                 break;
-        }
-    }
-
-    static void scanClassic(BluetoothScanResult &result, uint32_t durationMs) {
-        BluetoothSerial serialBT;
-        if (!serialBT.begin("WIFI-Mon", true)) {
-            Serial.println(F("[Bluetooth] Warning: BluetoothSerial master initialization failed."));
-            return;
-        }
-
-        BTScanResults* pBtResults = serialBT.discover(durationMs);
-        if (pBtResults) {
-            int count = pBtResults->getCount();
-            result.classic_total = count;
-
-            for (int i = 0; i < count; i++) {
-                BTAdvertisedDevice* bDev = pBtResults->getDevice(i);
-                if (!bDev) continue;
-
-                ClassicBtDeviceRecord rec;
-                rec.address = bDev->getAddress().toString().c_str();
-                rec.address.toUpperCase();
-                rec.name = bDev->haveName() ? bDev->getName().c_str() : "";
-                rec.cod = bDev->haveCOD() ? bDev->getCOD() : 0;
-                rec.dev_class = decodeCod(rec.cod);
-                rec.rssi = bDev->haveRSSI() ? bDev->getRSSI() : -100;
-
-                result.classic_devices.push_back(rec);
-            }
-        }
-
-        serialBT.discoverClear();
-        serialBT.end();
-
-        // Sort classic devices by RSSI descending
-        std::sort(result.classic_devices.begin(), result.classic_devices.end(),
-                  [](const ClassicBtDeviceRecord &a, const ClassicBtDeviceRecord &b) {
-                      return a.rssi > b.rssi;
-                  });
-
-        if (result.classic_devices.size() > 10) {
-            result.classic_devices.resize(10);
         }
     }
 };
