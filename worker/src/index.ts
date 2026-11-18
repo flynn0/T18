@@ -5,6 +5,7 @@ import { handleApiStations, handleApiStationDetail, handleApiExport } from "./ap
 import { handleOta, handleSetStationTargetVersion, handleFirmwareDownload } from "./ota";
 import { handleScheduledMaintenance } from "./cron";
 import { renderDashboardHtml } from "./frontend";
+import { handleAdminApi } from "./admin";
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -119,7 +120,13 @@ export default {
         return await handleApiExport(request, env);
       }
 
-      // 4. Web Dashboard Frontend (Root or direct station route e.g. /9E1-9)
+      // 4. Admin & Fleet Management APIs
+      if (path.startsWith("/api/admin/")) {
+        const subPath = path.substring("/api/admin/".length);
+        return await handleAdminApi(subPath, request, env);
+      }
+
+      // 5. Web Dashboard Frontend (Root or direct station route e.g. /9E1-9)
       if ((request.method === "GET" || request.method === "HEAD") && !path.startsWith("/api/")) {
         return new Response(request.method === "HEAD" ? null : renderDashboardHtml(), {
           status: 200,
