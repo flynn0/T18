@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-11-18
+
+### Fixed
+- **Subcycle Heap Fragmentation & Bluetooth Map Node Exhaustion**:
+  - Replaced dynamic associative containers (`std::map<String, BleDeviceRecord>` and `std::set<String>`) in `BluetoothScanner::scanBle` with linear deduplication in `std::vector` and 64-bit integer MAC hashing, eliminating >600 heap allocations and RB-tree node fragmentation per scan.
+  - Capped maximum unique tracked BLE devices in scan phase to 25 records.
+  - Capped RAM accumulation across 2-minute subcycles in powered mode: `_ramSurvey` strictly capped at 60 APs, `_ramBt.ble_devices` capped at 15, and `_ramBt.classic_devices` capped at 10.
+  - Explicitly scoped Wi-Fi scan results vector in `app_main.h` so 50+ SurveyItems are deallocated from stack/heap before `BluetoothScanner::performScan` starts.
+  - Added `shrink_to_fit()` on RAM accumulators upon 10-minute cycle reset.
+
+---
+
 ## [1.1.1] - 2026-11-18
 
 ### Fixed
