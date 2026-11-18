@@ -55,7 +55,13 @@ public:
     static BluetoothScanResult performScan(uint32_t bleDurationSec = 3, uint32_t classicDurationMs = 2000) {
         BluetoothScanResult result;
         uint32_t startMs = millis();
-        Serial.println(F("[Bluetooth] Initiating 2.4 GHz BLE and Classic Bluetooth Spectrum Scan..."));
+
+        // Ensure Wi-Fi radio is off to maximize available DRAM for Bluedroid stack
+        WiFi.mode(WIFI_OFF);
+        delay(30);
+
+        Serial.printf("[Bluetooth] Initiating 2.4 GHz BLE and Classic Bluetooth Spectrum Scan (Free Heap: %u bytes)...\n",
+                      (unsigned)ESP.getFreeHeap());
 
         // 1. BLE Scan Phase
         scanBle(result, bleDurationSec);
@@ -64,11 +70,11 @@ public:
         scanClassic(result, classicDurationMs);
 
         result.scan_duration_ms = millis() - startMs;
-        Serial.printf("[Bluetooth] Complete in %lu ms: BLE %lu packets, %u MACs, %u unique devices (Random: %u, Public: %u); Classic: %u devices.\n",
+        Serial.printf("[Bluetooth] Complete in %lu ms: BLE %lu packets, %u MACs, %u unique devices (Random: %u, Public: %u); Classic: %u devices. Remaining Heap: %u bytes.\n",
                       (unsigned long)result.scan_duration_ms, (unsigned long)result.ble_total_packets,
                       (unsigned)result.ble_total_macs, (unsigned)result.ble_unique_devices,
                       (unsigned)result.ble_random_macs, (unsigned)result.ble_public_macs,
-                      (unsigned)result.classic_total);
+                      (unsigned)result.classic_total, (unsigned)ESP.getFreeHeap());
         return result;
     }
 
@@ -121,8 +127,19 @@ public:
 
 private:
     static void scanBle(BluetoothScanResult &result, uint32_t durationSec) {
+        if (ESP.getFreeHeap() < 40000) {
+            Serial.printf("[Bluetooth] Warning: Low heap (%u bytes), skipping BLE scan to prevent crash.\n",
+                          (unsigned)ESP.getFreeHeap());
+            return;
+        }
+
         BLEDevice::init("WIFI-Mon");
         BLEScan* pBLEScan = BLEDevice::getScan();
+        if (!pBLEScan) {
+            Serial.println(F("[Bluetooth] Warning: Failed to obtain BLEScan instance."));
+            BLEDevice::deinit(false);
+            return;
+        }
         pBLEScan->setActiveScan(true);
         pBLEScan->setInterval(100);
         pBLEScan->setWindow(99);
@@ -422,6 +439,12 @@ private:
     }
 
     static void scanClassic(BluetoothScanResult &result, uint32_t durationMs) {
+        if (ESP.getFreeHeap() < 35000) {
+            Serial.printf("[Bluetooth] Warning: Low heap (%u bytes), skipping Classic BT scan.\n",
+                          (unsigned)ESP.getFreeHeap());
+            return;
+        }
+
         BluetoothSerial serialBT;
         if (!serialBT.begin("WIFI-Mon", true)) {
             Serial.println(F("[Bluetooth] Warning: BluetoothSerial master initialization failed."));

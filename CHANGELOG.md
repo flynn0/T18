@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-11-18
+
+### Fixed
+- **Bluetooth Scan Heap Exhaustion & OOM Panic**:
+  - Fixed an out-of-memory crash (`abort() was called at PC 0x40201c97 on core 0`) caused by simultaneously running the Wi-Fi station stack and the Bluedroid BLE/Classic Bluetooth stack during congested scans.
+  - Automatically turns off the Wi-Fi radio (`WiFi.mode(WIFI_OFF)`) and deletes scan cache immediately after the Wi-Fi spectrum scan completes, reclaiming >40 KB of internal DRAM for the Bluetooth stack.
+  - Added defensive free heap threshold guards in `BluetoothScanner::scanBle` (min 40 KB) and `BluetoothScanner::scanClassic` (min 35 KB) to prevent fatal `std::bad_alloc` aborts in crowded RF environments.
+  - Added detailed free heap diagnostics logging before and after Bluetooth execution.
+
+---
+
 ## [1.1.0] - 2026-11-17
 
 ### Added
