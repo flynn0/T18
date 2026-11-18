@@ -759,7 +759,7 @@ export function renderDashboardHtml(): string {
       background: rgba(255, 255, 255, 0.2);
     }
     .modal-window.large {
-      max-width: 960px;
+      max-width: 1040px;
     }
     .admin-login-box {
       max-width: 380px;
@@ -840,7 +840,7 @@ export function renderDashboardHtml(): string {
     .admin-table tr:hover td {
       background: var(--table-hover);
     }
-    .heatmap-card {
+    .cal-card {
       background: var(--metric-box-bg);
       border: 1px solid var(--card-border);
       border-radius: 0.75rem;
@@ -849,17 +849,17 @@ export function renderDashboardHtml(): string {
       flex-direction: column;
       gap: 1rem;
     }
-    .heatmap-scroll-wrap {
+    .cal-scroll-wrap {
       overflow-x: auto;
       padding-bottom: 0.5rem;
     }
-    .heatmap-grid-wrap {
+    .cal-grid-wrap {
       display: inline-flex;
       flex-direction: column;
       gap: 3px;
       user-select: none;
     }
-    .heatmap-months-row {
+    .cal-months-row {
       display: grid;
       grid-template-columns: 28px repeat(53, 13px);
       gap: 3px;
@@ -869,20 +869,20 @@ export function renderDashboardHtml(): string {
       height: 15px;
       line-height: 15px;
     }
-    .heatmap-days-row {
+    .cal-days-row {
       display: grid;
       grid-template-columns: 28px repeat(53, 13px);
       gap: 3px;
       align-items: center;
     }
-    .heatmap-weekday-label {
+    .cal-weekday-label {
       font-size: 0.65rem;
       color: var(--text-muted);
       text-align: right;
       padding-right: 4px;
       line-height: 13px;
     }
-    .heatmap-cell {
+    .cal-cell {
       width: 13px;
       height: 13px;
       border-radius: 2px;
@@ -891,29 +891,60 @@ export function renderDashboardHtml(): string {
       cursor: pointer;
       position: relative;
       transition: transform 0.1s, outline 0.1s;
+      box-sizing: border-box;
     }
-    .heatmap-cell:hover {
+    .cal-cell:hover {
       transform: scale(1.35);
       z-index: 10;
       outline: 1.5px solid var(--primary);
     }
-    .heatmap-cell.level-0 { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.06); }
-    .heatmap-cell.level-1 { background: #0e4429; border-color: #006d32; }
-    .heatmap-cell.level-2 { background: #006d32; border-color: #26a641; }
-    .heatmap-cell.level-3 { background: #26a641; border-color: #39d353; }
-    .heatmap-cell.level-4 { background: #39d353; border-color: #56ff74; }
-    [data-theme="light"] .heatmap-cell.level-0 { background: #ebedf0; border-color: #e1e4e8; }
-    [data-theme="light"] .heatmap-cell.level-1 { background: #9be9a8; border-color: #40c463; }
-    [data-theme="light"] .heatmap-cell.level-2 { background: #40c463; border-color: #30a14e; }
-    [data-theme="light"] .heatmap-cell.level-3 { background: #30a14e; border-color: #216e39; }
-    [data-theme="light"] .heatmap-cell.level-4 { background: #216e39; border-color: #144620; }
-    .heatmap-legend {
+    .cal-cell.level-0, .cal-legend-box.level-0 { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.06); }
+    .cal-cell.level-1, .cal-legend-box.level-1 { background: #0e4429; border-color: #006d32; }
+    .cal-cell.level-2, .cal-legend-box.level-2 { background: #006d32; border-color: #26a641; }
+    .cal-cell.level-3, .cal-legend-box.level-3 { background: #26a641; border-color: #39d353; }
+    .cal-cell.level-4, .cal-legend-box.level-4 { background: #39d353; border-color: #56ff74; }
+    [data-theme="light"] .cal-cell.level-0, [data-theme="light"] .cal-legend-box.level-0 { background: #ebedf0; border-color: #e1e4e8; }
+    [data-theme="light"] .cal-cell.level-1, [data-theme="light"] .cal-legend-box.level-1 { background: #9be9a8; border-color: #40c463; }
+    [data-theme="light"] .cal-cell.level-2, [data-theme="light"] .cal-legend-box.level-2 { background: #40c463; border-color: #30a14e; }
+    [data-theme="light"] .cal-cell.level-3, [data-theme="light"] .cal-legend-box.level-3 { background: #30a14e; border-color: #216e39; }
+    [data-theme="light"] .cal-cell.level-4, [data-theme="light"] .cal-legend-box.level-4 { background: #216e39; border-color: #144620; }
+    .cal-legend {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 0.35rem;
+      gap: 0.4rem;
       font-size: 0.75rem;
       color: var(--text-muted);
+    }
+    .cal-legend-box {
+      width: 11px;
+      height: 11px;
+      min-width: 11px;
+      min-height: 11px;
+      border-radius: 2px;
+      box-sizing: border-box;
+      border: 1px solid;
+      flex: none;
+      display: inline-block;
+    }
+    .rel-bar-grid {
+      display: grid;
+      grid-template-columns: repeat(48, 1fr);
+      gap: 2px;
+      height: 14px;
+      align-items: center;
+      user-select: none;
+    }
+    .rel-cell {
+      height: 100%;
+      border-radius: 1.5px;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: transform 0.1s ease;
+    }
+    .rel-cell:hover {
+      transform: scaleY(1.35);
+      z-index: 5;
     }
     .db-meter-bar {
       width: 100%;
@@ -937,7 +968,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.1.2</span>
+        <span class="brand-tag">v1.1.3</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1385,54 +1416,64 @@ export function renderDashboardHtml(): string {
 
     <!-- Surrounding 2.4 GHz Scan Survey Table -->
     <div class="table-container">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 600;">Surrounding 2.4 GHz Spectrum Survey</h3>
-        <span id="surveyCountBadge" style="font-size: 0.8rem; font-weight: 600; color: var(--primary);">0 APs Detected</span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>SSID</th>
-            <th>BSSID</th>
-            <th>Signal (RSSI)</th>
-            <th>Quality</th>
-            <th>Channel</th>
-            <th>Phy Mode</th>
-            <th>Security</th>
-            <th>Last Seen</th>
-          </tr>
-        </thead>
-        <tbody id="surveyTableBody">
-          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No Wi-Fi scan data available yet.</td></tr>
-        </tbody>
-      </table>
-
-      <!-- Previously Detected Networks Section -->
-      <div id="inactiveSurveySection" style="display: none; margin-top: 1.75rem; border-top: 1px solid var(--card-border); padding-top: 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-          <div style="display: flex; align-items: center; gap: 0.6rem;">
-            <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0;">Previously Detected Networks</h4>
-            <span id="inactiveCountBadge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Missing</span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle (last 24h peak)</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleSurveySection()">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">Surrounding 2.4 GHz Spectrum Survey</h3>
+          <span id="surveyCountBadge" style="font-size: 0.8rem; font-weight: 600; color: var(--primary);">0 APs Detected</span>
         </div>
+        <span id="surveyCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted); padding: 0.2rem 0.5rem;">▶</span>
+      </div>
+      <div id="surveyTableDrawer" style="display: none; margin-top: 1rem;">
         <table>
           <thead>
             <tr>
               <th>SSID</th>
               <th>BSSID</th>
-              <th>Signal (Max RSSI)</th>
-              <th>Max Quality</th>
+              <th>Signal (RSSI)</th>
+              <th>Quality</th>
               <th>Channel</th>
               <th>Phy Mode</th>
               <th>Security</th>
               <th>Last Seen</th>
             </tr>
           </thead>
-          <tbody id="inactiveSurveyBody">
-            <!-- Populated via JavaScript -->
+          <tbody id="surveyTableBody">
+            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No Wi-Fi scan data available yet.</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Previously Detected Networks Section -->
+      <div id="inactiveSurveySection" style="display: none; margin-top: 1.75rem; border-top: 1px solid var(--card-border); padding-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; cursor: pointer; user-select: none;" onclick="toggleInactiveSurveySection()">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0;">Previously Detected Networks</h4>
+            <span id="inactiveCountBadge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; font-weight: 600;">0 Missing</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Previously discovered APs absent from latest cycle (last 24h peak)</span>
+            <span id="inactiveCollapseIcon" style="font-size: 0.85rem; color: var(--text-muted); padding: 0.2rem 0.5rem;">▶</span>
+          </div>
+        </div>
+        <div id="inactiveSurveyDrawer" style="display: none; margin-top: 1rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>SSID</th>
+                <th>BSSID</th>
+                <th>Signal (Max RSSI)</th>
+                <th>Max Quality</th>
+                <th>Channel</th>
+                <th>Phy Mode</th>
+                <th>Security</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="inactiveSurveyBody">
+              <!-- Populated via JavaScript -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </main>
@@ -1443,7 +1484,7 @@ export function renderDashboardHtml(): string {
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.1.2 Stable</span>
+          <span class="fw-badge">v1.1.3 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -1727,7 +1768,7 @@ export function renderDashboardHtml(): string {
               </div>
             </div>
 
-            <div class="heatmap-card">
+            <div class="cal-card">
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <div>
                   <h4 style="margin:0; font-size:0.95rem; color:var(--text-main);">
@@ -1744,20 +1785,20 @@ export function renderDashboardHtml(): string {
               </div>
 
               <!-- Calendar Heatmap 52 weeks -->
-              <div class="heatmap-scroll-wrap">
-                <div class="heatmap-calendar" id="calendarHeatmapContainer">
+              <div class="cal-scroll-wrap">
+                <div id="calendarHeatmapContainer">
                   <!-- Generated via renderYearHeatmap() -->
                 </div>
               </div>
 
-              <div class="heatmap-legend">
-                <span>Less</span>
-                <div class="heatmap-cell level-0" style="width:11px; height:11px;"></div>
-                <div class="heatmap-cell level-1" style="width:11px; height:11px;"></div>
-                <div class="heatmap-cell level-2" style="width:11px; height:11px;"></div>
-                <div class="heatmap-cell level-3" style="width:11px; height:11px;"></div>
-                <div class="heatmap-cell level-4" style="width:11px; height:11px;"></div>
-                <span>More</span>
+              <div class="cal-legend">
+                <span id="calMinLegendText">0 cycles / day</span>
+                <div class="cal-legend-box level-0" title="0 cycles"></div>
+                <div class="cal-legend-box level-1" title="1–5 cycles"></div>
+                <div class="cal-legend-box level-2" title="6–25 cycles"></div>
+                <div class="cal-legend-box level-3" title="26–100 cycles"></div>
+                <div class="cal-legend-box level-4" title=">100 cycles"></div>
+                <span id="calMaxLegendText">Peak cycles</span>
               </div>
             </div>
           </div>
@@ -1871,7 +1912,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-weight: 600; color: var(--primary);">⚙️ Settings</a>
     <span>|</span>
-    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.2)</a>
+    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.3)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -2295,27 +2336,38 @@ export function renderDashboardHtml(): string {
     function populateAdminStationDropdowns(stations, currentFilter) {
       // Heatmap filter dropdown
       const hmSel = document.getElementById("heatmapStationFilter");
-      if (hmSel && hmSel.options.length <= 1) {
+      if (hmSel) {
+        const prevVal = currentFilter !== undefined ? currentFilter : hmSel.value;
         hmSel.innerHTML = '<option value="all">All Stations (Fleet-Wide)</option>';
-        stations.forEach(function(st) {
+        (stations || []).forEach(function(st) {
           const opt = document.createElement("option");
           opt.value = st.station_id;
           opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
           hmSel.appendChild(opt);
         });
-        if (currentFilter) hmSel.value = currentFilter;
+        if (prevVal && Array.from(hmSel.options).some(function(o) { return o.value === prevVal; })) {
+          hmSel.value = prevVal;
+        } else {
+          hmSel.value = "all";
+        }
       }
 
       // Cleanup station select
       const clnSel = document.getElementById("cleanupStationSelect");
-      if (clnSel && clnSel.options.length <= 1) {
+      if (clnSel) {
+        const prevVal = clnSel.value || "all";
         clnSel.innerHTML = '<option value="all">All Stations (Fleet-Wide)</option>';
-        stations.forEach(function(st) {
+        (stations || []).forEach(function(st) {
           const opt = document.createElement("option");
           opt.value = st.station_id;
           opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
           clnSel.appendChild(opt);
         });
+        if (prevVal && Array.from(clnSel.options).some(function(o) { return o.value === prevVal; })) {
+          clnSel.value = prevVal;
+        } else {
+          clnSel.value = "all";
+        }
       }
     }
 
@@ -2384,7 +2436,7 @@ export function renderDashboardHtml(): string {
         "- Click Cancel for STABLE (receives stable releases)"
       ].join(String.fromCharCode(10)));
 
-      const newTarget = prompt("Force specific OTA target version (e.g. '1.1.2' or leave blank to follow channel default):", currentTarget);
+      const newTarget = prompt("Force specific OTA target version (e.g. '1.1.3' or leave blank to follow channel default):", currentTarget);
       if (newTarget === null) return;
 
       try {
@@ -2500,10 +2552,10 @@ export function renderDashboardHtml(): string {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const dayNames = ["", "Mon", "", "Wed", "", "Fri", ""];
 
-      let html = '<div class="heatmap-grid-wrap">';
+      let html = '<div class="cal-grid-wrap">';
 
       // 1. Months Header Row (53 columns)
-      html += '<div class="heatmap-months-row"><div></div>';
+      html += '<div class="cal-months-row"><div></div>';
 
       let lastMonthShown = -1;
       for (let w = 0; w < 53; w++) {
@@ -2525,13 +2577,13 @@ export function renderDashboardHtml(): string {
 
       // 2. Weekday Rows (7 rows, 53 cells each)
       for (let r = 0; r < 7; r++) {
-        html += '<div class="heatmap-days-row">';
-        html += '<div class="heatmap-weekday-label">' + dayNames[r] + '</div>';
+        html += '<div class="cal-days-row">';
+        html += '<div class="cal-weekday-label">' + dayNames[r] + '</div>';
 
         for (let w = 0; w < 53; w++) {
           const offset = w * 7 + r - jan1Day;
           if (offset < 0 || offset >= totalDays) {
-            html += '<div class="heatmap-cell" style="visibility:hidden; pointer-events:none;"></div>';
+            html += '<div class="cal-cell" style="visibility:hidden; pointer-events:none;"></div>';
           } else {
             const d = new Date(year, 0, 1 + offset);
             const yyyy = d.getFullYear();
@@ -2547,7 +2599,7 @@ export function renderDashboardHtml(): string {
             else if (count > 100) level = 4;
 
             const tooltip = dateStr + ': ' + count.toLocaleString() + ' measurement cycle' + (count === 1 ? '' : 's');
-            html += '<div class="heatmap-cell level-' + level + '" title="' + tooltip + '" data-date="' + dateStr + '" data-count="' + count + '"></div>';
+            html += '<div class="cal-cell level-' + level + '" title="' + tooltip + '" data-date="' + dateStr + '" data-count="' + count + '"></div>';
           }
         }
         html += '</div>';
@@ -2555,6 +2607,14 @@ export function renderDashboardHtml(): string {
 
       html += '</div>';
       container.innerHTML = html;
+
+      // Update dynamic legend description
+      const minLegend = document.getElementById("calMinLegendText");
+      const maxLegend = document.getElementById("calMaxLegendText");
+      if (minLegend) minLegend.innerText = "0 cycles / day";
+      if (maxLegend) {
+        maxLegend.innerText = maxCount > 0 ? (maxCount.toLocaleString() + " cycles / day (peak)") : "0 cycles";
+      }
     }
 
     function renderDatabaseOverview(database, fleetSummary) {
@@ -2790,6 +2850,118 @@ export function renderDashboardHtml(): string {
       window.open(API_BASE + "/api/export?station_id=" + encodeURIComponent(currentStationId) + "&format=" + fmt);
     }
 
+    function renderReliabilityBarHtml(netSsid, history) {
+      const now = Math.floor(Date.now() / 1000);
+      const intervalSec = 1800; // 30 minutes
+      const totalIntervals = 48; // 24 hours
+      const t0 = now - (totalIntervals * intervalSec);
+
+      // Filter history for this SSID
+      const samples = (history || []).filter(function(m) {
+        return m.ssid === netSsid;
+      });
+
+      let healthyCount = 0;
+      let activeIntervals = 0;
+      let cellsHtml = "";
+
+      for (let i = 0; i < totalIntervals; i++) {
+        const startTs = t0 + (i * intervalSec);
+        const endTs = startTs + intervalSec;
+
+        const bucketSamples = samples.filter(function(m) {
+          return m.timestamp >= startTs && m.timestamp < endTs;
+        });
+
+        const startDate = new Date(startTs * 1000);
+        const endDate = new Date(endTs * 1000);
+        const timeRangeStr = String(startDate.getHours()).padStart(2, '0') + ':' + 
+                             String(startDate.getMinutes()).padStart(2, '0') + '–' + 
+                             String(endDate.getHours()).padStart(2, '0') + ':' + 
+                             String(endDate.getMinutes()).padStart(2, '0');
+
+        let statusColor = "rgba(148, 163, 184, 0.15)";
+        let statusBorder = "1px solid rgba(255, 255, 255, 0.05)";
+        let tooltipDetail = "No test run";
+
+        if (bucketSamples.length > 0) {
+          activeIntervals++;
+
+          let hasAssocTimeout = false;
+          let hasDhcpTimeout = false;
+          let hasGatewayTimeout = false;
+          let hasDnsTimeout = false;
+          let hasHttpTimeout = false;
+
+          bucketSamples.forEach(function(m) {
+            if (m.assoc_ms === -1 || (m.status && m.status.toLowerCase().includes("assoc"))) {
+              hasAssocTimeout = true;
+            }
+            if (m.dhcp_ms === -1 || (m.status && m.status.toLowerCase().includes("dhcp"))) {
+              hasDhcpTimeout = true;
+            }
+            if (m.gateway_ms === -1) {
+              hasGatewayTimeout = true;
+            }
+            if (m.dns_ipv4_ms === -1 || m.dns_ipv6_ms === -1) {
+              hasDnsTimeout = true;
+            }
+            if (m.cloudflare_ms === -1 || m.google_ms === -1 || m.microsoft_ms === -1 || m.facebook_ms === -1 || m.netflix_ms === -1) {
+              hasHttpTimeout = true;
+            }
+          });
+
+          if (hasAssocTimeout) {
+            statusColor = "#0f172a";
+            statusBorder = "1px solid #475569";
+            tooltipDetail = "Association Timeout";
+          } else if (hasDhcpTimeout) {
+            statusColor = "#ef4444";
+            statusBorder = "1px solid #dc2626";
+            tooltipDetail = "DHCP Lease Timeout";
+          } else if (hasGatewayTimeout) {
+            statusColor = "#f97316";
+            statusBorder = "1px solid #ea580c";
+            tooltipDetail = "Gateway RTT Timeout";
+          } else if (hasDnsTimeout) {
+            statusColor = "#f59e0b";
+            statusBorder = "1px solid #d97706";
+            tooltipDetail = "DNS v4/v6 Timeout";
+          } else if (hasHttpTimeout) {
+            statusColor = "#8b5cf6";
+            statusBorder = "1px solid #7c3aed";
+            tooltipDetail = "Some HTTP Probe Latencies were Timeout";
+          } else {
+            statusColor = "#10b981";
+            statusBorder = "1px solid #059669";
+            tooltipDetail = "All HTTP Probes Successful";
+            healthyCount++;
+          }
+        }
+
+        const fullTooltip = timeRangeStr + " (-" + (48 - i) * 30 + "m): " + tooltipDetail;
+        cellsHtml += '<div class="rel-cell" style="background:' + statusColor + '; border:' + statusBorder + ';" title="' + fullTooltip + '"></div>';
+      }
+
+      const relPct = activeIntervals > 0 ? Math.round((healthyCount / activeIntervals) * 100) : 100;
+      const relColor = relPct >= 95 ? "var(--success)" : (relPct >= 80 ? "#f59e0b" : "var(--danger)");
+
+      return '<div style="margin-top:0.85rem; border-top:1px solid var(--card-border); padding-top:0.65rem;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">' +
+          '<span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:0.5px;">24h Reliability (48 × 30m)</span>' +
+          '<span style="font-size:0.75rem; font-weight:700; color:' + relColor + ';">' + relPct + '% healthy <span style="font-size:0.68rem; font-weight:normal; color:var(--text-muted);">(' + activeIntervals + '/48)</span></span>' +
+        '</div>' +
+        '<div class="rel-bar-grid">' + cellsHtml + '</div>' +
+        '<div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--text-muted); margin-top:3px; user-select:none;">' +
+          '<span>-24h</span>' +
+          '<span>-18h</span>' +
+          '<span>-12h</span>' +
+          '<span>-6h</span>' +
+          '<span>Now</span>' +
+        '</div>' +
+      '</div>';
+    }
+
     async function loadStationDetails(stationId) {
       try {
         const res = await fetch(API_BASE + "/api/station/" + encodeURIComponent(stationId) + "?t=" + Date.now());
@@ -2893,6 +3065,8 @@ export function renderDashboardHtml(): string {
                     <div class="pill">Facebook: <span class="pill-val \${getPillClass(net.facebook_ms)}">\${fmtMs(net.facebook_ms)}</span></div>
                   </div>
                 </div>
+
+                \${renderReliabilityBarHtml(net.ssid, data.recent_history)}
               \`;
               netContainer.appendChild(card);
             });
@@ -3544,6 +3718,24 @@ export function renderDashboardHtml(): string {
       if (isHidden) {
         renderChannelHeatmap();
       }
+    }
+
+    function toggleSurveySection() {
+      const drawer = document.getElementById("surveyTableDrawer");
+      const icon = document.getElementById("surveyCollapseIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▼" : "▶";
+    }
+
+    function toggleInactiveSurveySection() {
+      const drawer = document.getElementById("inactiveSurveyDrawer");
+      const icon = document.getElementById("inactiveCollapseIcon");
+      if (!drawer) return;
+      const isHidden = (drawer.style.display === "none" || !drawer.style.display);
+      drawer.style.display = isHidden ? "block" : "none";
+      if (icon) icon.innerText = isHidden ? "▼" : "▶";
     }
 
     function getAirtimeHeatmapColor(pct) {

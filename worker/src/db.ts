@@ -1007,9 +1007,10 @@ export class Database {
       `)
       .all<{ station_id: string; min_ts: number; max_ts: number; measurement_count: number }>();
 
+    const registeredMap = new Map((stations.results || []).map(r => [r.station_id, r]));
     const timeframes = new Map((timeframeQuery.results || []).map(r => [r.station_id, r]));
 
-    return (stations.results || []).map(st => {
+    const result = (stations.results || []).map(st => {
       const tf = timeframes.get(st.station_id);
       return {
         ...st,
@@ -1018,6 +1019,29 @@ export class Database {
         measurement_count: tf?.measurement_count ?? 0
       };
     });
+
+    for (const [stId, tf] of timeframes) {
+      if (!registeredMap.has(stId)) {
+        result.push({
+          station_id: stId,
+          description: "(Decommissioned Data)",
+          device_token: "",
+          created_at: tf.min_ts,
+          last_seen: tf.max_ts,
+          firmware_version: "--",
+          target_version: null,
+          board_type: "Unknown",
+          battery_mv: null,
+          is_canary: 0,
+          ota_url: null,
+          min_timestamp: tf.min_ts,
+          max_timestamp: tf.max_ts,
+          measurement_count: tf.measurement_count
+        });
+      }
+    }
+
+    return result;
   }
 
   async getYearlyActivity(year: number, stationId?: string | null): Promise<Array<{ day: string; count: number }>> {

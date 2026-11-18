@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] - 2026-11-18
+
+### Added
+- **24-Hour Station Reliability Timeline (48 × 30-Minute Interval Bar)**:
+  - Added a 48-cell interactive reliability matrix directly inside each network card below the HTTP probe latencies.
+  - Granular color-coded failure classification:
+    - 🟢 Green: 100% probes and connectivity healthy.
+    - 🟣 Purple: One or more HTTP probe endpoints timed out.
+    - 🟡 Amber: DNS IPv4 or IPv6 resolution timed out.
+    - 🟠 Orange: Gateway ICMP/TCP round-trip timed out.
+    - 🔴 Red: DHCP lease acquisition timed out.
+    - ⚫ Charcoal: Association timeout / failure.
+    - ⚪ Muted Gray: Idle period with no measurement recorded.
+  - Interactive hover tooltips displaying 30-minute time intervals, relative elapsed time, and detailed error summaries.
+- **Collapsible Scan Surveys**:
+  - Made "Surrounding 2.4 GHz Spectrum Survey" and "Previously Detected Networks" collapsible with click-to-expand headers, collapsed by default for a clean, streamlined dashboard.
+
+### Fixed & Improved
+- **Restored 24-Hour Spectrum & BLE Heatmap Geometry**:
+  - Isolated the Settings Year Activity Heatmap styles (`.cal-*`), completely resolving a CSS selector conflict that inadvertently reduced the 24-hour spectrum heatmap cells from 18px height and added horizontal borders.
+- **Calendar Heatmap Layout & Legend Refinements**:
+  - Widened the Settings & Fleet Management dialog to 1040px to eliminate horizontal scrollbars on 52-week activity views.
+  - Transformed legend indicators into strict squares.
+  - Replaced generic "Less / More" labels with dynamic dataset-driven indicators (`0 cycles / day` to `${max} cycles / day (peak)`).
+- **Target Stations Cleanup Selection Integrity**:
+  - Fixed station dropdown population logic in Settings to dynamically refresh on every overview reload, properly reflecting real-time database state and preventing decommissioned stations from lingering in options.
+
+---
+
 ## [1.1.2] - 2026-11-18
 
 ### Fixed
