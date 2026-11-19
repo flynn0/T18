@@ -45,7 +45,7 @@ export default {
       if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor (Update Only)",
-          version: env.STABLE_VERSION || "1.1.4",
+          version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: false,
           builds: [
@@ -53,6 +53,12 @@ export default {
               chipFamily: "ESP32",
               parts: [
                 { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            },
+            {
+              chipFamily: "ESP32-C3",
+              parts: [
+                { path: "firmware/firmware-c3.bin", offset: 65536 }
               ]
             }
           ]
@@ -70,7 +76,7 @@ export default {
       if (path === "/manifest.json" || path === "/firmware/manifest.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor (flynn0/T18)",
-          version: env.STABLE_VERSION || "1.1.4",
+          version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: true,
           builds: [
@@ -81,6 +87,15 @@ export default {
                 { path: "firmware/partitions.bin", offset: 32768 },
                 { path: "firmware/boot_app0.bin", offset: 57344 },
                 { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            },
+            {
+              chipFamily: "ESP32-C3",
+              parts: [
+                { path: "firmware/bootloader-c3.bin", offset: 0 },
+                { path: "firmware/partitions-c3.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware-c3.bin", offset: 65536 }
               ]
             }
           ]

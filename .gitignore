@@ -57,6 +57,7 @@ Thumbs.db
 .pioenvs/
 .piolibdeps/
 compile_commands.json
+*.log
 
 # Arduino / Binaries
 *.bin

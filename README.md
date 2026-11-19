@@ -23,6 +23,7 @@ flowchart TD
             T18["LILYGO TTGO T18<br/>(IO5 LED, IO35 Battery Divider)"]
             T8["LILYGO T8<br/>(IO21 LED, IO35 Battery Divider)"]
             DevKit["ESP32 DevKit V1 / Custom<br/>(IO2 LED / Configurable)"]
+            C3Mini["ESP32-C3 Super Mini<br/>(IO8 LED Active-Low, RISC-V)"]
         end
 
         subgraph CadenceManager["Adaptive Power Cadence & RAM Aggregation"]
@@ -157,6 +158,7 @@ To maximize battery runtime on single-cell 18650 LiPo cells while delivering hig
 | **LILYGO T18** *(Default)* | **GPIO 5** | **GPIO 35** (100k/100k, 0.50f) | **GPIO 0** | `BOARD_T18` |
 | **LILYGO T8** | **GPIO 21** | **GPIO 35** (100k/100k, 0.50f) | **GPIO 0** | `BOARD_T8` |
 | **ESP32 DevKit V1** | **GPIO 2** | N/A | **GPIO 0** | `BOARD_DEVKIT` |
+| **ESP32-C3 Super Mini** | **GPIO 8** *(Active Low)* | N/A | **GPIO 9** | `BOARD_C3_SUPERMINI` |
 | **Custom** | Configurable | Configurable | **GPIO 0** | `BOARD_CUSTOM` |
 
 - **Battery Voltage Calculation**:

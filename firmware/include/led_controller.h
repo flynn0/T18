@@ -11,7 +11,14 @@ enum class LedMode {
 class LedController {
 public:
     LedController(int8_t pin = 5)
-        : _pin(pin), _mode(LedMode::OFF), _blinkIntervalMs(250), _lastToggle(0), _state(false) {}
+        : _pin(pin), _mode(LedMode::OFF), _blinkIntervalMs(250), _lastToggle(0), _state(false), _activeLow(false) {}
+
+    void setActiveLow(bool low) {
+        _activeLow = low;
+        if (_pin >= 0) {
+            setOff();
+        }
+    }
 
     void setPin(int8_t pin) {
         if (_pin >= 0 && _pin != pin) {
@@ -35,7 +42,7 @@ public:
         _mode = on ? LedMode::SOLID_ON : LedMode::OFF;
         _state = on;
         if (_pin >= 0) {
-            digitalWrite(_pin, _state ? HIGH : LOW);
+            digitalWrite(_pin, (_state ^ _activeLow) ? HIGH : LOW);
         }
     }
 
@@ -58,7 +65,7 @@ public:
             if (now - _lastToggle >= _blinkIntervalMs) {
                 _lastToggle = now;
                 _state = !_state;
-                digitalWrite(_pin, _state ? HIGH : LOW);
+                digitalWrite(_pin, (_state ^ _activeLow) ? HIGH : LOW);
             }
         }
     }
@@ -73,4 +80,5 @@ private:
     uint32_t _blinkIntervalMs;
     uint32_t _lastToggle;
     bool _state;
+    bool _activeLow;
 };

@@ -21,6 +21,7 @@ This document serves as the primary technical specification and operational play
 | **BOARD_T18** (LILYGO T18) | GPIO 5 | GPIO 35 | 0.50f (100k/100k) | Standard LiPo 18650 single-cell |
 | **BOARD_T8** (LILYGO T8) | GPIO 21 | GPIO 35 | 0.50f (100k/100k) | Standard LiPo single-cell |
 | **BOARD_DEVKIT** (DevKit V1) | GPIO 2 | -1 (Disabled) | 0.50f | AC / USB powered |
+| **BOARD_C3_SUPERMINI** (ESP32-C3) | GPIO 8 (Active Low) | -1 (Disabled) | 0.50f | RISC-V, Classic BT omitted, BOOT IO9 |
 | **BOARD_CUSTOM** | User-defined | User-defined | User-defined | Custom GPIOs |
 
 ### Battery Voltage Calculations

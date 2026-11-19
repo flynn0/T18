@@ -986,7 +986,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.1.4</span>
+        <span class="brand-tag">v1.1.5</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1030,6 +1030,9 @@ export function renderDashboardHtml(): string {
           <span class="pulse-dot"></span>
           <span id="stStatusText">Checking</span>
         </div>
+        <button id="stConfigBtn" class="admin-btn secondary" style="padding: 0.35rem 0.65rem; font-size: 0.775rem; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; border-radius: 999px;" onclick="openStationConfigFromBanner()" title="Configure station settings, description, and Canary enrollment">
+          <span>⚙️</span> Configure
+        </button>
       </div>
     </div>
 
@@ -1562,7 +1565,7 @@ export function renderDashboardHtml(): string {
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.1.4 Stable</span>
+          <span class="fw-badge">v1.1.5 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -1656,6 +1659,7 @@ export function renderDashboardHtml(): string {
             Download pre-compiled binary files for offline flashing with <code>esptool.py</code>, PlatformIO, or desktop tools.
           </div>
 
+          <div style="font-weight:600;font-size:0.9rem;margin-top:0.5rem;color:var(--text);">Target Architecture: ESP32 Standard (T18, T8, DevKit V1)</div>
           <div class="bin-download-grid">
             <div class="bin-card">
               <div class="bin-info">
@@ -1687,31 +1691,64 @@ export function renderDashboardHtml(): string {
             </div>
           </div>
 
-          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);margin-bottom:0.75rem;">
             <div class="bin-info">
-              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (All-in-One)</span>
-              <span class="bin-meta">Offset: 0x0 (Single-file full flash)</span>
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (ESP32 Full Flash)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file flash)</span>
             </div>
             <a id="dlMergedBin" href="firmware/firmware-esp32-merged.bin" download="firmware-esp32-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32-merged.bin</a>
           </div>
 
-          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+          <div style="font-weight:600;font-size:0.9rem;margin-top:1rem;color:var(--text);">Target Architecture: ESP32-C3 Super Mini (RISC-V)</div>
+          <div class="bin-download-grid">
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C3 Application Firmware</span>
+                <span class="bin-meta">Offset: 0x10000 (app0)</span>
+              </div>
+              <a id="dlC3FirmwareBin" href="firmware/firmware-c3.bin" download="firmware-c3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ firmware-c3.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C3 Partition Table</span>
+                <span class="bin-meta">Offset: 0x8000 (partitions)</span>
+              </div>
+              <a id="dlC3PartitionsBin" href="firmware/partitions-c3.bin" download="partitions-c3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ partitions-c3.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C3 Bootloader</span>
+                <span class="bin-meta">Offset: 0x0 (bootloader)</span>
+              </div>
+              <a id="dlC3BootloaderBin" href="firmware/bootloader-c3.bin" download="bootloader-c3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ bootloader-c3.bin</a>
+            </div>
+          </div>
+
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+            <div class="bin-info">
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (ESP32-C3 Full Flash)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file flash)</span>
+            </div>
+            <a id="dlC3MergedBin" href="firmware/firmware-esp32c3-merged.bin" download="firmware-esp32c3-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32c3-merged.bin</a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.75rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Multi-part):</span>
+              <span style="font-size:0.85rem;font-weight:600;">Flash ESP32 with esptool.py (Merged):</span>
             </div>
             <div class="code-block">
-              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin</code>
-              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin', this)">Copy</button>
+              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin', this)">Copy</button>
             </div>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:0.4rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:0.85rem;font-weight:600;">Flash with esptool.py (Merged Single-file):</span>
+              <span style="font-size:0.85rem;font-weight:600;">Flash ESP32-C3 with esptool.py (Merged):</span>
             </div>
             <div class="code-block">
-              <code>esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin</code>
-              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin', this)">Copy</button>
+              <code>esptool.py --chip esp32c3 --baud 921600 write_flash 0x0 firmware-esp32c3-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32c3 --baud 921600 write_flash 0x0 firmware-esp32c3-merged.bin', this)">Copy</button>
             </div>
           </div>
         </div>
@@ -1731,7 +1768,7 @@ export function renderDashboardHtml(): string {
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">3</span>
-                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
+                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, <strong>ESP32-C3 Super Mini</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">4</span>
@@ -1979,6 +2016,69 @@ export function renderDashboardHtml(): string {
     </div>
   </div>
 
+  <!-- Edit Station Configuration Modal -->
+  <div id="editStationModal" class="modal-backdrop" onclick="onEditStationBackdropClick(event)">
+    <div class="modal-window" onclick="event.stopPropagation()" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚙️ Configure Station</span>
+          <span id="editStationIdBadge" class="brand-tag" style="font-family: monospace;">--</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeEditStationModal()" title="Close dialog">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div class="admin-input-group">
+          <label for="editStationDescInput">Station Description / Location</label>
+          <input type="text" id="editStationDescInput" placeholder="e.g. Office Desk, Lab 3, Rooftop Mast" />
+        </div>
+
+        <div style="background: var(--card-bg, rgba(255,255,255,0.03)); border: 1px solid var(--card-border); border-radius: 0.5rem; padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Current Firmware:</span>
+            <strong id="editStationFwDisplay" style="font-family: monospace;">--</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Board Architecture:</span>
+            <span id="editStationBoardDisplay">--</span>
+          </div>
+        </div>
+
+        <div style="border: 1px solid var(--card-border); border-radius: 0.5rem; padding: 0.85rem; background: rgba(56,189,248,0.03);">
+          <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
+            <input type="checkbox" id="editStationCanaryCheckbox" style="margin-top: 0.25rem; width: 1.1rem; height: 1.1rem; cursor: pointer;" />
+            <div style="flex: 1;">
+              <label for="editStationCanaryCheckbox" style="font-weight: 600; font-size: 0.9rem; cursor: pointer; display: block;">
+                Canary / Pre-Release Channel
+              </label>
+              <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4;">
+                Enroll this node to automatically receive experimental pre-release builds and release candidates.
+              </div>
+            </div>
+          </div>
+          <div id="editStationCanaryWarning" style="display: none; margin-top: 0.65rem; padding: 0.5rem 0.75rem; border-radius: 0.35rem; background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; color: #d97706; font-size: 0.775rem; line-height: 1.4;">
+            ⚠️ <strong>Firmware Upgrade Required:</strong> Canary channel enrollment requires station firmware <strong>v1.1.4 or newer</strong>. This station is currently reporting <span id="editStationCanaryFwNeeded">v1.1.3</span> and cannot be enrolled until updated.
+          </div>
+        </div>
+
+        <div class="admin-input-group">
+          <label for="editStationTargetInput">Pinned OTA Target Version <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Optional)</span></label>
+          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.5" />
+          <div style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Force node to a specific release tag. Leave empty to automatically follow Stable or Canary.
+          </div>
+        </div>
+
+        <div id="editStationError" style="display: none; padding: 0.5rem 0.75rem; border-radius: 0.35rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); font-size: 0.8rem;"></div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+          <button type="button" class="admin-btn secondary" onclick="closeEditStationModal()">Cancel</button>
+          <button type="button" id="editStationSaveBtn" class="admin-btn primary" onclick="submitEditStationModal()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span>Host: <strong id="hostIndicator">Cloudflare Worker</strong></span>
     <span>|</span>
@@ -1990,7 +2090,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-weight: 600; color: var(--primary);">⚙️ Settings</a>
     <span>|</span>
-    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.4)</a>
+    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.5)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -2488,34 +2588,112 @@ export function renderDashboardHtml(): string {
       }).join("");
     }
 
-    function onEditStationBtnClick(btn) {
-      const stationId = btn.getAttribute("data-station");
-      if (!stationId) return;
-      const st = (adminOverviewData && adminOverviewData.stations)
-        ? adminOverviewData.stations.find(function(s) { return s.station_id === stationId; })
-        : null;
-      editStationConfig(stationId, st ? (st.description || "") : "", st ? !!st.is_canary : false, st ? (st.target_version || "") : "");
+    function isFirmwareAtLeast(fw, target) {
+      if (!fw) return false;
+      const cleanFw = String(fw).replace(/^v/, "").split("-")[0];
+      const cleanTarget = String(target).replace(/^v/, "").split("-")[0];
+      const p1 = cleanFw.split(".").map(function(n) { return parseInt(n, 10) || 0; });
+      const p2 = cleanTarget.split(".").map(function(n) { return parseInt(n, 10) || 0; });
+      for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const v1 = p1[i] || 0;
+        const v2 = p2[i] || 0;
+        if (v1 > v2) return true;
+        if (v1 < v2) return false;
+      }
+      return true;
     }
 
-    function onDeleteStationBtnClick(btn) {
-      const stationId = btn.getAttribute("data-station");
-      if (!stationId) return;
-      deleteStationPrompt(stationId);
+    function openStationConfigFromBanner() {
+      if (!currentStationId) return;
+      if (!getAdminToken()) {
+        openSettingsModal();
+        const loginErr = document.getElementById("adminLoginError");
+        if (loginErr) {
+          loginErr.innerText = "Please log in with administrator credentials to configure station settings.";
+          loginErr.style.display = "block";
+        }
+        return;
+      }
+      openEditStationModal(currentStationId);
     }
 
-    async function editStationConfig(stationId, currentDesc, isCanary, currentTarget) {
-      const newDesc = prompt("Update station description for '" + stationId + "':", currentDesc);
-      if (newDesc === null) return;
+    function openEditStationModal(stationId) {
+      if (!stationId) return;
+      const modal = document.getElementById("editStationModal");
+      if (!modal) return;
 
-      const newCanary = confirm([
-        "Enable Canary OTA channel for '" + stationId + "'?",
-        "",
-        "- Click OK for CANARY (receives pre-release candidate firmware)",
-        "- Click Cancel for STABLE (receives stable releases)"
-      ].join(String.fromCharCode(10)));
+      // Find station details
+      let st = null;
+      if (adminOverviewData && adminOverviewData.stations) {
+        st = adminOverviewData.stations.find(function(s) { return s.station_id === stationId; });
+      }
+      if (!st && currentStationData && currentStationData.station && currentStationData.station.station_id === stationId) {
+        st = currentStationData.station;
+      }
 
-      const newTarget = prompt("Force specific OTA target version (e.g. '1.1.4' or leave blank to follow channel default):", currentTarget);
-      if (newTarget === null) return;
+      document.getElementById("editStationIdBadge").innerText = stationId;
+      document.getElementById("editStationDescInput").value = st ? (st.description || "") : "";
+      
+      const fw = st ? (st.firmware_version || "") : "";
+      document.getElementById("editStationFwDisplay").innerText = fw ? ("v" + fw) : "Unknown";
+      document.getElementById("editStationBoardDisplay").innerText = st ? (st.board_type || "Standard ESP32") : "Standard ESP32";
+
+      const canaryBox = document.getElementById("editStationCanaryCheckbox");
+      const canaryWarn = document.getElementById("editStationCanaryWarning");
+      const canaryNeeded = document.getElementById("editStationCanaryFwNeeded");
+
+      const supportsCanary = isFirmwareAtLeast(fw, "1.1.4");
+      if (!supportsCanary) {
+        canaryBox.disabled = true;
+        canaryBox.checked = false;
+        canaryBox.style.cursor = "not-allowed";
+        if (canaryNeeded) canaryNeeded.innerText = fw ? ("v" + fw) : "v1.1.3";
+        if (canaryWarn) canaryWarn.style.display = "block";
+      } else {
+        canaryBox.disabled = false;
+        canaryBox.checked = st ? !!st.is_canary : false;
+        canaryBox.style.cursor = "pointer";
+        if (canaryWarn) canaryWarn.style.display = "none";
+      }
+
+      document.getElementById("editStationTargetInput").value = st ? (st.target_version || "") : "";
+
+      const errBox = document.getElementById("editStationError");
+      if (errBox) errBox.style.display = "none";
+
+      modal.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeEditStationModal() {
+      const modal = document.getElementById("editStationModal");
+      if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+    }
+
+    function onEditStationBackdropClick(e) {
+      if (e.target && e.target.id === "editStationModal") {
+        closeEditStationModal();
+      }
+    }
+
+    async function submitEditStationModal() {
+      const stationId = document.getElementById("editStationIdBadge").innerText;
+      const desc = document.getElementById("editStationDescInput").value.trim();
+      const canaryBox = document.getElementById("editStationCanaryCheckbox");
+      const isCanary = canaryBox.disabled ? false : canaryBox.checked;
+      const targetVer = document.getElementById("editStationTargetInput").value.trim();
+      const errBox = document.getElementById("editStationError");
+      const saveBtn = document.getElementById("editStationSaveBtn");
+
+      if (!stationId) return;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = "Saving...";
+      }
+      if (errBox) errBox.style.display = "none";
 
       try {
         const res = await fetch(API_BASE + "/api/admin/station/update", {
@@ -2523,22 +2701,46 @@ export function renderDashboardHtml(): string {
           headers: getAdminAuthHeaders(),
           body: JSON.stringify({
             station_id: stationId,
-            description: newDesc.trim(),
-            is_canary: newCanary,
-            target_version: newTarget.trim() || null
+            description: desc,
+            is_canary: isCanary,
+            target_version: targetVer || null
           })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(data.message || "Station updated successfully!");
-          loadAdminOverview();
-          loadStations();
+          closeEditStationModal();
+          if (typeof loadAdminOverview === "function") loadAdminOverview();
+          if (typeof loadStations === "function") loadStations();
+          if (currentStationId === stationId) loadStationDetails(stationId);
         } else {
-          alert("Error updating station: " + (data.error || "Unknown error"));
+          if (errBox) {
+            errBox.innerText = data.error || "Failed to update station settings";
+            errBox.style.display = "block";
+          } else {
+            alert("Error: " + (data.error || "Unknown error"));
+          }
         }
       } catch (err) {
-        alert("Failed to communicate with admin endpoint.");
+        if (errBox) {
+          errBox.innerText = "Failed to communicate with admin endpoint.";
+          errBox.style.display = "block";
+        }
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "Save Changes";
+        }
       }
+    }
+
+    function onEditStationBtnClick(btn) {
+      const stationId = btn.getAttribute("data-station");
+      if (!stationId) return;
+      openEditStationModal(stationId);
+    }
+
+    function editStationConfig(stationId) {
+      openEditStationModal(stationId);
     }
 
     async function deleteStationPrompt(stationId) {

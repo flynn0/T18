@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.5] - 2026-11-20
+
+### Added & Enhanced
+- **ESP32-C3 Super Mini Target & Multi-Architecture Build Pipeline**:
+  - Added `BOARD_C3_SUPERMINI` hardware profile with status LED on GPIO 8 (active-low inverted via `LedController::setActiveLow(true)`), BOOT interrupt on GPIO 9, and battery sensing disabled.
+  - Tailored lightweight firmware build for RISC-V architecture without Classic Bluetooth (`BluetoothSerial.h`), saving >400 KB flash space and reducing DRAM footprint by 31% (16.7% vs 24.3%).
+  - Adapted deep sleep and light sleep wakeups for RISC-V core using `gpio_wakeup_enable` and `esp_sleep_enable_gpio_wakeup()` (replacing unsupported Xtensa `esp_sleep_enable_ext0_wakeup`).
+  - Added ESP32-C3 preset option to Captive Portal configuration dropdown (`captive_portal.h`).
+  - Added `[env:esp32c3]` PlatformIO target using `esp32-c3-devkitm-1` and `TARGET_C3_SUPERMINI=1` flag.
+  - Updated Web Serial Flasher manifests (`manifest.json` and `manifest-update.json`) to define dual-build entries for both `ESP32` and `ESP32-C3`, enabling automatic chip interrogation and one-click in-browser flashing.
+- **Dedicated Station Configuration Modal & Canary Gating**:
+  - Replaced browser `prompt()` / `confirm()` dialogs in Fleet Settings with a responsive `#editStationModal` dialog.
+  - Added "⚙️ Configure" shortcut button directly to the Station view header banner.
+  - Added semantic version comparison (`isFirmwareAtLeast(fw, "1.1.4")`) to disable and grey out the Canary enrollment checkbox on nodes running older firmware (e.g. v1.1.3 on station `C703`) with an explicit explanatory notice.
+  - Added direct controls for station description modification and explicit OTA version pinning.
+- **Enhanced Multi-Architecture OTA Routing**:
+  - Updated backend OTA streaming proxy (`worker/src/ota.ts`) to inspect `board` query parameter and stream architecture-specific binaries (`firmware-esp32-v*.bin` vs `firmware-esp32c3-v*.bin`).
+  - Added binary download links and `esptool.py` flashing commands for both standard ESP32 and ESP32-C3 in the Flasher modal.
+
+### Fixed
+- **Unique BLE Device Limit Ceiling**:
+  - Removed the arbitrary 25-device ceiling on BLE scanning.
+  - Expanded live scan tracking buffer in `bluetooth_scanner.h` to 120 unique BLE devices and top 30 prominent devices.
+  - Expanded RAM accumulation buffer in `app_main.h` from 25 to 60 devices for long-run multi-cycle collection before upload.
+
+---
+
 ## [1.1.4] - 2026-11-20
 
 ### Added & Enhanced

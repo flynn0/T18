@@ -77,12 +77,12 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
       targetVersion = env.CANARY_VERSION.trim();
       track = "canary";
     } else {
-      targetVersion = env.STABLE_VERSION || "1.1.4";
+      targetVersion = env.STABLE_VERSION || "1.1.5";
       track = "stable";
     }
   } else {
     // Non-canary station: always follow stable production release
-    targetVersion = env.STABLE_VERSION || "1.1.4";
+    targetVersion = env.STABLE_VERSION || "1.1.5";
     track = "stable";
   }
 
@@ -121,7 +121,8 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
   // Determine binary download URL:
   // Primary: Cloudflare R2 bucket proxy via Worker
   // Fallback: GitHub Releases direct link or Worker proxy
-  const filename = `firmware-esp32-v${targetVersion}.bin`;
+  const isC3 = board.toLowerCase().includes("c3");
+  const filename = isC3 ? `firmware-esp32c3-v${targetVersion}.bin` : `firmware-esp32-v${targetVersion}.bin`;
   let downloadUrl = station?.ota_url?.trim();
 
   if (!downloadUrl) {
@@ -153,7 +154,7 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
 
 // Handles binary delivery with Cloudflare R2 as primary and GitHub Releases / Pages as backup
 export async function handleFirmwareDownload(filename: string, request: Request, env: Env): Promise<Response> {
-  const stableTag = `v${env.STABLE_VERSION || "1.1.4"}`;
+  const stableTag = `v${env.STABLE_VERSION || "1.1.5"}`;
 
   // 1. Try Cloudflare R2 Storage (Zero egress fees, high speed)
   if (env.OTA_BUCKET) {
@@ -186,12 +187,20 @@ export async function handleFirmwareDownload(filename: string, request: Request,
   let releaseFilename = filename;
   if (filename === "firmware.bin") {
     releaseFilename = `firmware-esp32-${tag}.bin`;
+  } else if (filename === "firmware-c3.bin" || filename === "firmware-esp32c3.bin") {
+    releaseFilename = `firmware-esp32c3-${tag}.bin`;
   } else if (filename === "partitions.bin") {
     releaseFilename = `partitions-esp32-${tag}.bin`;
+  } else if (filename === "partitions-c3.bin" || filename === "partitions-esp32c3.bin") {
+    releaseFilename = `partitions-esp32c3-${tag}.bin`;
   } else if (filename === "bootloader.bin") {
     releaseFilename = `bootloader-esp32-${tag}.bin`;
+  } else if (filename === "bootloader-c3.bin" || filename === "bootloader-esp32c3.bin") {
+    releaseFilename = `bootloader-esp32c3-${tag}.bin`;
   } else if (filename === "firmware-esp32-merged.bin") {
     releaseFilename = `firmware-esp32-merged-${tag}.bin`;
+  } else if (filename === "firmware-esp32c3-merged.bin") {
+    releaseFilename = `firmware-esp32c3-merged-${tag}.bin`;
   }
 
   const githubUrl = `https://github.com/flynn0/T18/releases/download/${tag}/${releaseFilename}`;

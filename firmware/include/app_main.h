@@ -36,6 +36,7 @@ public:
 
         // Configure LED pin from saved hardware profile
         _led.setPin(_config.hw.status_led_pin);
+        _led.setActiveLow(_config.hw.led_active_low);
         _led.begin();
         pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
@@ -53,6 +54,7 @@ public:
             _portal.startPortal(_config, 120);
             _configMgr.loadConfig(_config);
             _led.setPin(_config.hw.status_led_pin);
+            _led.setActiveLow(_config.hw.led_active_low);
         }
 
         // Attempt zero-trust token registration if needed
@@ -93,6 +95,7 @@ public:
             _portal.startPortal(_config, 60);
             _configMgr.loadConfig(_config);
             _led.setPin(_config.hw.status_led_pin);
+            _led.setActiveLow(_config.hw.led_active_low);
             ensureDeviceRegistered();
             return;
         }
@@ -109,6 +112,7 @@ public:
                 _portal.startPortal(_config, 60);
                 _configMgr.loadConfig(_config);
                 _led.setPin(_config.hw.status_led_pin);
+                _led.setActiveLow(_config.hw.led_active_low);
                 ensureDeviceRegistered();
                 return;
             }
@@ -320,13 +324,18 @@ public:
         enterLightSleep(sleepMs);
 
         // Check wake up cause
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(TARGET_C3_SUPERMINI)
+        if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_GPIO) {
+#else
         if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+#endif
             Serial.println(F("[Main] Woken up by BOOT button!"));
             if (checkBootButtonHold(2500)) {
                 Serial.println(F("[Main] BOOT button held! Launching captive portal..."));
                 _portal.startPortal(_config, 60);
                 _configMgr.loadConfig(_config);
                 _led.setPin(_config.hw.status_led_pin);
+                _led.setActiveLow(_config.hw.led_active_low);
                 ensureDeviceRegistered();
             }
         }
@@ -386,7 +395,7 @@ private:
                     break;
                 }
             }
-            if (!found && _ramBt.ble_devices.size() < 25) {
+            if (!found && _ramBt.ble_devices.size() < 60) {
                 _ramBt.ble_devices.push_back(dev);
             }
         }
@@ -778,7 +787,12 @@ private:
         WiFi.mode(WIFI_OFF);
         _led.setOff();
 
-        esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(TARGET_C3_SUPERMINI)
+        gpio_wakeup_enable((gpio_num_t)BOOT_BUTTON_PIN, GPIO_INTR_LOW_LEVEL);
+        esp_sleep_enable_gpio_wakeup();
+#else
+        esp_sleep_enable_ext0_wakeup((gpio_num_t)BOOT_BUTTON_PIN, 0);
+#endif
 
         if (!_config.powerbank_keepalive) {
             uint64_t sleepUs = ((uint64_t)sleepDurationMs) * 1000ULL;
@@ -793,14 +807,25 @@ private:
                 uint32_t chunkSleepMs = (remainingMs > INTERVAL_SLEEP_MS) ? INTERVAL_SLEEP_MS : remainingMs;
                 uint64_t chunkSleepUs = ((uint64_t)chunkSleepMs) * 1000ULL;
                 esp_sleep_enable_timer_wakeup(chunkSleepUs);
-                esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(TARGET_C3_SUPERMINI)
+                gpio_wakeup_enable((gpio_num_t)BOOT_BUTTON_PIN, GPIO_INTR_LOW_LEVEL);
+                esp_sleep_enable_gpio_wakeup();
+#else
+                esp_sleep_enable_ext0_wakeup((gpio_num_t)BOOT_BUTTON_PIN, 0);
+#endif
 
                 esp_light_sleep_start();
 
                 // If woken up by BOOT button, exit sleep immediately
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(TARGET_C3_SUPERMINI)
+                if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_GPIO) {
+                    break;
+                }
+#else
                 if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
                     break;
                 }
+#endif
 
                 if (remainingMs > chunkSleepMs) {
                     remainingMs -= chunkSleepMs;
