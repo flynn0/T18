@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] - 2026-11-19
+
+### Added & Enhanced (Canary Release Channel & Fleet Management)
+- **Canary Firmware Enrollment & NVS State**:
+  - Added persistent `is_canary` flag to `AppConfig` and `AppConfigManager` (`setCanaryTrack`, `isCanaryTrack`) stored in ESP32 NVS.
+  - Added "Canary / Beta Release Channel" enrollment checkbox to captive portal setup UI (`captive_portal.h`) and serialized `is_canary` into telemetry cycle payloads.
+- **Unified OTA Firmware Update Check & Dual-Verification**:
+  - Combined OTA check (`GET /api/ota`) with canary entitlement verification and bidirectional synchronization.
+  - Server reports station canary entitlement (`is_canary`) and targeted release channel (`track: "canary" | "stable"`).
+  - Firmware automatically synchronizes local NVS `is_canary` preference if updated by administrator in Cloudflare D1.
+  - Independent firmware verification safeguard: firmware refuses to flash canary / beta candidate binaries unless device is explicitly enrolled in the canary channel.
+  - Enhanced semantic version parsing and comparison in both Cloudflare Worker backend (`worker/src/ota.ts`) and embedded firmware (`ota_manager.h`) to support pre-release tags (e.g. `1.1.4-canary.1`).
+- **Dashboard & Admin Visual Indicators**:
+  - Displayed prominent amber `CANARY` badge on station header and fleet management overview table when a station is enrolled in canary testing.
+  - Added `CANARY_VERSION` environment configuration to `wrangler.toml` enabling independent canary fleet deployments alongside `STABLE_VERSION = "1.1.4"`.
+- **UI Heatmap Palette Schemes (Color Scheme Selector)**:
+  - Added color scheme dropdown in the 24-Hour Spectrum & BLE Heatmap header with 4 scientific color palettes: `Spectrum (Classic)`, `Inferno (Heat)`, `Viridis (Emerald)`, and `Plasma (Neon)`.
+  - Dynamically updates active airtime and Bluetooth legend swatches and applies chosen palette across 24h and 7d heatmaps.
+  - Choice is persisted in browser `localStorage`.
+- **7-Day Historical Heatmaps (Wi-Fi Bands & Bluetooth Activity)**:
+  - Added expandable drawer featuring two 7-day × 48-timeslot matrices (Wi-Fi 2.4 GHz peak channel congestion and Bluetooth unique device activity).
+  - Interactive hover tooltips showing date, timeslot, peak channel airtime, active transmitters, and unique device breakdown.
+- **Channel Utilization Timeframe Selector**:
+  - Added interactive timeframe buttons (`24h`, `48h`, `7d`) in Channel Utilization section dynamically filtering airtime metrics, KPI cards, and trend charts.
+- **Spectrum Scan Duration Calculation Fix & Bluetooth Tracking Buffer Expansion**:
+  - Corrected Wi-Fi spectrum scan duration accumulation in `app_main.h` so single scan durations are reported rather than cumulative subcycle sums.
+  - Expanded unique BLE device tracking buffer to 60 devices and reported details to top 20 prominent devices.
+  - Added automated GitHub release notes generation (`scripts/generate-release-notes.py`) with ESP32 flash and RAM resource utilization statistics.
+
+---
+
 ## [1.1.3] - 2026-11-18
 
 ### Added

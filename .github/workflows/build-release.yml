@@ -45,7 +45,8 @@ jobs:
       - name: Build Unified ESP32 Firmware
         run: |
           cd firmware
-          pio run -e esp32dev
+          pio run -e esp32dev | tee ../pio_build.log
+          cd ..
 
       - name: Stage Artifacts & Compute Checksums
         run: |
@@ -76,6 +77,8 @@ jobs:
           open('release_assets/firmware-esp32-merged-' + tag + '.bin', 'wb').write(buf)
           "
 
+          python3 scripts/generate-release-notes.py "${TAG}"
+
           cd release_assets
           sha256sum firmware-esp32-${TAG}.bin > checksums.txt
           sha256sum partitions-esp32-${TAG}.bin >> checksums.txt
@@ -85,13 +88,14 @@ jobs:
           cat checksums.txt
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: "T18 Release ${{ steps.vars.outputs.tag }}"
           draft: false
           prerelease: false
+          body_path: release_body.md
           files: |
             release_assets/firmware-esp32-${{ steps.vars.outputs.tag }}.bin
             release_assets/partitions-esp32-${{ steps.vars.outputs.tag }}.bin

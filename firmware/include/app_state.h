@@ -24,6 +24,7 @@ struct AppConfig {
     bool backup_enabled;      // Failover to backup hotspot if primary Wi-Fi has no internet
     char backup_ssid[33];     // Backup SSID (default: "S24")
     char backup_pass[65];     // Backup Password (default: "12345678")
+    bool is_canary;           // Canary / Beta release track enrollment flag
     HardwareProfile hw;
 
     AppConfig() {
@@ -36,6 +37,7 @@ struct AppConfig {
         is_configured = false;
         powerbank_keepalive = false;
         backup_enabled = false;
+        is_canary = false;
         strncpy(backup_ssid, "S24", sizeof(backup_ssid) - 1);
         strncpy(backup_pass, "12345678", sizeof(backup_pass) - 1);
         hw.setPreset(BOARD_T18);
