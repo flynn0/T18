@@ -4650,33 +4650,41 @@ export function renderDashboardHtml(): string {
       // Fill from daily_30min_summaries
       daily30.forEach(s => {
         for (let dIdx = 0; dIdx < 7; dIdx++) {
-          if (s.date === days[dIdx].ymd && s.interval_index >= 0 && s.interval_index < 48) {
-            const wCell = wifiMatrix[dIdx][s.interval_index];
-            if (wCell.count === 0 && s.channel_max_airtime) {
-              try {
-                const arr = JSON.parse(s.channel_max_airtime);
-                if (Array.isArray(arr) && arr.length > 0) {
-                  let maxA = 0;
-                  let maxCh = 1;
-                  arr.forEach((val, idx) => {
-                    const num = Number(val) || 0;
-                    if (num > maxA) {
-                      maxA = num;
-                      maxCh = idx + 1;
-                    }
-                  });
-                  wCell.count = 1;
-                  wCell.peakAirtime = maxA;
-                  wCell.peakChannel = maxCh;
-                  wCell.sumAirtime = maxA;
-                }
-              } catch(e) {}
-            }
-            const bCell = btMatrix[dIdx][s.interval_index];
-            if (bCell.count === 0 && (s.ble_max_unique || s.classic_max)) {
-              bCell.count = 1;
-              bCell.maxUnique = (s.ble_max_unique || 0) + (s.classic_max || 0);
-              bCell.classicTotal = s.classic_max || 0;
+          const d = days[dIdx];
+          const isDateMatch = (s.date === d.ymd);
+          const isTsMatch = (s.start_timestamp && s.start_timestamp >= d.startTs && s.start_timestamp < d.endTs);
+          if (isDateMatch || isTsMatch) {
+            const slotIdx = (s.start_timestamp && s.start_timestamp >= d.startTs && s.start_timestamp < d.endTs)
+              ? Math.min(47, Math.max(0, Math.floor((s.start_timestamp - d.startTs) / 1800)))
+              : (s.interval_index >= 0 && s.interval_index < 48 ? s.interval_index : -1);
+            if (slotIdx >= 0) {
+              const wCell = wifiMatrix[dIdx][slotIdx];
+              if (wCell.count === 0 && s.channel_max_airtime) {
+                try {
+                  const arr = JSON.parse(s.channel_max_airtime);
+                  if (Array.isArray(arr) && arr.length > 0) {
+                    let maxA = 0;
+                    let maxCh = 1;
+                    arr.forEach((val, idx) => {
+                      const num = Number(val) || 0;
+                      if (num > maxA) {
+                        maxA = num;
+                        maxCh = idx + 1;
+                      }
+                    });
+                    wCell.count = 1;
+                    wCell.peakAirtime = maxA;
+                    wCell.peakChannel = maxCh;
+                    wCell.sumAirtime = maxA;
+                  }
+                } catch(e) {}
+              }
+              const bCell = btMatrix[dIdx][slotIdx];
+              if (bCell.count === 0 && (s.ble_max_unique || s.classic_max)) {
+                bCell.count = 1;
+                bCell.maxUnique = (s.ble_max_unique || 0) + (s.classic_max || 0);
+                bCell.classicTotal = s.classic_max || 0;
+              }
             }
             break;
           }
