@@ -68,6 +68,7 @@ node_modules/
 dist/
 .wrangler/
 release_assets/
+release_body.md
 
 # Secrets & Environment variables
 *.env

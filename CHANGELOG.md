@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.4] - 2026-11-19
+## [1.1.4] - 2026-11-20
 
-### Added & Enhanced (Canary Release Channel & Fleet Management)
+### Added & Enhanced
 - **Canary Firmware Enrollment & NVS State**:
   - Added persistent `is_canary` flag to `AppConfig` and `AppConfigManager` (`setCanaryTrack`, `isCanaryTrack`) stored in ESP32 NVS.
   - Added "Canary / Beta Release Channel" enrollment checkbox to captive portal setup UI (`captive_portal.h`) and serialized `is_canary` into telemetry cycle payloads.
@@ -28,13 +28,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Choice is persisted in browser `localStorage`.
 - **7-Day Historical Heatmaps (Wi-Fi Bands & Bluetooth Activity)**:
   - Added expandable drawer featuring two 7-day × 48-timeslot matrices (Wi-Fi 2.4 GHz peak channel congestion and Bluetooth unique device activity).
-  - Interactive hover tooltips showing date, timeslot, peak channel airtime, active transmitters, and unique device breakdown.
-- **Channel Utilization Timeframe Selector**:
-  - Added interactive timeframe buttons (`24h`, `48h`, `7d`) in Channel Utilization section dynamically filtering airtime metrics, KPI cards, and trend charts.
-- **Spectrum Scan Duration Calculation Fix & Bluetooth Tracking Buffer Expansion**:
-  - Corrected Wi-Fi spectrum scan duration accumulation in `app_main.h` so single scan durations are reported rather than cumulative subcycle sums.
+  - Dual-index matching by UTC timestamp (`start_timestamp`) and date string (`date`) ensuring timeslots align regardless of client timezone offsets.
+- **Unified Multi-Section Timeframe Selectors (24h / 48h / 7d)**:
+  - **Channel Utilisation & Spectrum Congestion**: Dynamic airtime averaging and KPI stats across 24h, 48h, and 7d windows.
+  - **2.4 GHz Bluetooth & BLE Activity**: Timeframe buttons with dynamic multi-day X-axis labels and adaptive point density.
+  - **Network Latency Trends**: Timeframe selector with dynamic chart headers, multi-day labels, and smooth sampling for long histories.
+- **Telemetry Query Retrospectives**:
+  - Expanded Worker backend query windows in `api.ts` and `db.ts` to 168 hours (7 days) and up to 2,500 measurement records, providing full historical visibility without truncation.
+
+### Fixed
+- **Randomized BLE MACs Periodic Drop to Zero**:
+  - Root cause: In 30-minute historical flash rollups (`channel_history.h`), `ChannelSlotRecord` tracked unique BLE and classic devices but omitted random BLE MACs (`ble_random_macs`), submitting `0` on half-hour boundaries and clobbering database entries.
+  - Firmware fix: Added `ble_random_macs` to `ChannelSlotRecord`, tracked peak RPA counts during `recordCycle()`, and transmitted values during 30-minute batch submissions.
+  - Backend fix: Hardened `db.ts` so `station_bluetooth_summary` upserts preserve non-zero RPA counts and default missing counts safely to `ble_unique_devices - ble_public_macs`.
+  - Frontend fix: Implemented smart interpolation in `renderBluetoothChart()` so historical zero entries smoothly reflect surrounding activity without sharp artificial dips.
+- **Periodic Wi-Fi Spectrum Scan Time Fluctuations (4,006 ms vs 26,000 ms)**:
+  - Removed redundant hardcoded `scan_duration_ms: 26000` constant from 30-minute rolling channel history uploads in `channel_history.h`.
+  - Fixed scan duration accumulation in `app_main.h` so single-scan durations are stored (`_ramScanDurationMs = scanDurationMs;`) rather than compounding subcycle times.
+  - Frontend ignores legacy anomalous values $\ge 15{,}000\text{ ms}$ for Wi-Fi spectrum scan card metric.
+- **Bluetooth Tracking Buffer Expansion**:
   - Expanded unique BLE device tracking buffer to 60 devices and reported details to top 20 prominent devices.
-  - Added automated GitHub release notes generation (`scripts/generate-release-notes.py`) with ESP32 flash and RAM resource utilization statistics.
 
 ---
 

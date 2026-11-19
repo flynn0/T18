@@ -379,7 +379,7 @@ export class Database {
     return [];
   }
 
-  async getRecentMeasurements(stationId: string, limit: number = 288): Promise<MeasurementRecord[]> {
+  async getRecentMeasurements(stationId: string, limit: number = 2500): Promise<MeasurementRecord[]> {
     const result = await this.db
       .prepare(`
         SELECT * FROM measurements
@@ -723,8 +723,10 @@ export class Database {
     const bleTotalPackets = bt.ble_total_packets ?? 0;
     const bleTotalMacs = bt.ble_total_macs ?? 0;
     const bleUniqueDevices = bt.ble_unique_devices ?? 0;
-    const bleRandomMacs = bt.ble_random_macs ?? 0;
     const blePublicMacs = bt.ble_public_macs ?? 0;
+    const bleRandomMacs = (bt.ble_random_macs !== undefined && bt.ble_random_macs > 0)
+      ? bt.ble_random_macs
+      : (bleUniqueDevices > blePublicMacs ? (bleUniqueDevices - blePublicMacs) : 0);
     const bleBeacons = bt.ble_categories?.beacons ?? 0;
     const bleSmartphones = bt.ble_categories?.smartphones ?? 0;
     const bleWearables = bt.ble_categories?.wearables ?? 0;
@@ -749,9 +751,9 @@ export class Database {
           ON CONFLICT(station_id, timestamp) DO UPDATE SET
             ble_total_packets = excluded.ble_total_packets,
             ble_total_macs = excluded.ble_total_macs,
-            ble_unique_devices = excluded.ble_unique_devices,
-            ble_random_macs = excluded.ble_random_macs,
-            ble_public_macs = excluded.ble_public_macs,
+            ble_unique_devices = CASE WHEN excluded.ble_unique_devices > 0 THEN excluded.ble_unique_devices ELSE station_bluetooth_summary.ble_unique_devices END,
+            ble_random_macs = CASE WHEN excluded.ble_random_macs > 0 THEN excluded.ble_random_macs ELSE station_bluetooth_summary.ble_random_macs END,
+            ble_public_macs = CASE WHEN excluded.ble_public_macs > 0 THEN excluded.ble_public_macs ELSE station_bluetooth_summary.ble_public_macs END,
             ble_beacons = excluded.ble_beacons,
             ble_smartphones = excluded.ble_smartphones,
             ble_wearables = excluded.ble_wearables,

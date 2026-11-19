@@ -1281,9 +1281,16 @@ export function renderDashboardHtml(): string {
 
     <!-- Historical Trends (Chart) -->
     <div class="chart-container">
-      <div class="chart-header">
+      <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem;">
         <div>
-          <h3 style="font-size: 1.1rem; font-weight: 600;">24-Hour Network Latency Trends</h3>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <h3 id="latencyTrendsTitle" style="font-size: 1.1rem; font-weight: 600; margin: 0;">24-Hour Network Latency Trends</h3>
+            <div style="display: inline-flex; border: 1px solid var(--card-border); border-radius: 0.375rem; overflow: hidden; background: var(--input-bg); margin-left: 0.4rem;">
+              <button id="btnLatTf24" class="timeframe-btn active" onclick="setLatencyTimeframe(24)">24h</button>
+              <button id="btnLatTf48" class="timeframe-btn" onclick="setLatencyTimeframe(48)">48h</button>
+              <button id="btnLatTf168" class="timeframe-btn" onclick="setLatencyTimeframe(168)">7d</button>
+            </div>
+          </div>
           <span style="font-size: 0.8rem; color: var(--text-muted);">10-Minute Polling Cadence</span>
         </div>
         <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
@@ -1404,9 +1411,14 @@ export function renderDashboardHtml(): string {
     <div id="bluetoothSection" class="card" style="padding: 1.25rem 1.5rem; gap: 1rem; margin-bottom: 2rem;">
       <div class="chart-header" style="flex-wrap: wrap; gap: 0.75rem;">
         <div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">2.4 GHz Bluetooth & BLE Activity</h3>
-            <span id="btBleStatusBadge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">BLE & Classic</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <h3 id="bluetoothSectionTitle" style="font-size: 1.1rem; font-weight: 600; margin: 0;">2.4 GHz Bluetooth &amp; BLE Activity</h3>
+            <span id="btBleStatusBadge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600;">BLE &amp; Classic</span>
+            <div style="display: inline-flex; border: 1px solid var(--card-border); border-radius: 0.375rem; overflow: hidden; background: var(--input-bg); margin-left: 0.4rem;">
+              <button id="btnBtTf24" class="timeframe-btn active" onclick="setBluetoothTimeframe(24)">24h</button>
+              <button id="btnBtTf48" class="timeframe-btn" onclick="setBluetoothTimeframe(48)">48h</button>
+              <button id="btnBtTf168" class="timeframe-btn" onclick="setBluetoothTimeframe(168)">7d</button>
+            </div>
           </div>
           <span style="font-size: 0.8rem; color: var(--text-muted);">Payload fingerprinting & RPA de-randomization establishing unique device presence</span>
         </div>
@@ -3518,8 +3530,12 @@ export function renderDashboardHtml(): string {
 
     function renderAllTrendCharts() {
       if (!currentStationData) return;
-      const history = currentStationData.recent_history || [];
+      const rawHistory = currentStationData.recent_history || [];
       const latest = currentStationData.latest_measurements || [];
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      const cutoffSec = nowSec - (selectedLatencyTimeframe * 3600);
+      const history = rawHistory.filter(h => h.timestamp >= cutoffSec);
 
       const netSet = new Set();
       latest.forEach(m => { if (m.ssid) netSet.add(m.ssid); });
@@ -3547,8 +3563,12 @@ export function renderDashboardHtml(): string {
       });
 
       const sortedBuckets = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const labels = sortedBuckets.map(bKey => {
         const d = new Date(bKey * 1000);
+        if (selectedLatencyTimeframe > 24) {
+          return daysOfWeek[d.getDay()] + ' ' + d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        }
         return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
       });
 
@@ -3566,6 +3586,9 @@ export function renderDashboardHtml(): string {
       if (!ctx) return;
 
       const datasets = [];
+
+      const ptRadius = sortedBuckets.length > 70 ? (sortedBuckets.length > 200 ? 0 : 1) : 2;
+      const bWidth = sortedBuckets.length > 200 ? 1.5 : 2;
 
       TARGET_CONFIG.forEach(target => {
         const data = sortedBuckets.map(bKey => {
@@ -3587,8 +3610,8 @@ export function renderDashboardHtml(): string {
           backgroundColor: target.bg,
           tension: 0.3,
           spanGaps: true,
-          pointRadius: 2,
-          borderWidth: 2
+          pointRadius: ptRadius,
+          borderWidth: bWidth
         });
       });
 
@@ -3613,8 +3636,8 @@ export function renderDashboardHtml(): string {
         borderDash: [5, 5],
         tension: 0.3,
         spanGaps: true,
-        pointRadius: 2,
-        borderWidth: 1.5
+        pointRadius: ptRadius,
+        borderWidth: sortedBuckets.length > 200 ? 1 : 1.5
       });
 
       if (mainChartInstance) {
@@ -3679,8 +3702,8 @@ export function renderDashboardHtml(): string {
             backgroundColor: 'transparent',
             tension: 0.3,
             spanGaps: true,
-            pointRadius: 2,
-            borderWidth: 1.8
+            pointRadius: sortedBuckets.length > 70 ? (sortedBuckets.length > 200 ? 0 : 1) : 2,
+            borderWidth: sortedBuckets.length > 200 ? 1.5 : 1.8
           });
         });
       } else {
@@ -3706,8 +3729,8 @@ export function renderDashboardHtml(): string {
           fill: true,
           tension: 0.3,
           spanGaps: true,
-          pointRadius: 2,
-          borderWidth: 2
+          pointRadius: sortedBuckets.length > 70 ? (sortedBuckets.length > 200 ? 0 : 1) : 2,
+          borderWidth: sortedBuckets.length > 200 ? 1.5 : 2
         });
       }
 
@@ -3819,6 +3842,36 @@ export function renderDashboardHtml(): string {
         if (btn) btn.classList.toggle("active", h === hours);
       });
       renderChannelUtilizationSection();
+    }
+
+    let selectedBluetoothTimeframe = 24; // 24, 48, or 168 (7d)
+    function setBluetoothTimeframe(hours) {
+      selectedBluetoothTimeframe = hours;
+      [24, 48, 168].forEach(h => {
+        const btn = document.getElementById("btnBtTf" + h);
+        if (btn) btn.classList.toggle("active", h === hours);
+      });
+      const title = document.getElementById("bluetoothSectionTitle");
+      if (title) {
+        title.innerText = hours === 24 ? "24-Hour Bluetooth & BLE Activity" : (hours === 48 ? "48-Hour Bluetooth & BLE Activity" : "7-Day Bluetooth & BLE Activity");
+      }
+      if (currentStationData) {
+        updateBluetoothUi(currentStationData);
+      }
+    }
+
+    let selectedLatencyTimeframe = 24; // 24, 48, or 168 (7d)
+    function setLatencyTimeframe(hours) {
+      selectedLatencyTimeframe = hours;
+      [24, 48, 168].forEach(h => {
+        const btn = document.getElementById("btnLatTf" + h);
+        if (btn) btn.classList.toggle("active", h === hours);
+      });
+      const title = document.getElementById("latencyTrendsTitle");
+      if (title) {
+        title.innerText = hours === 24 ? "24-Hour Network Latency Trends" : (hours === 48 ? "48-Hour Network Latency Trends" : "7-Day Network Latency Trends");
+      }
+      renderAllTrendCharts();
     }
 
     let currentHeatmapPalette = localStorage.getItem("wifi_heatmap_palette") || localStorage.getItem("t18_heatmap_palette") || "spectrum";
@@ -5315,7 +5368,10 @@ export function renderDashboardHtml(): string {
 
     function updateBluetoothUi(data) {
       const bt = data ? data.latest_bluetooth : null;
-      const history = (data && Array.isArray(data.bluetooth_history)) ? data.bluetooth_history : [];
+      const rawHistory = (data && Array.isArray(data.bluetooth_history)) ? data.bluetooth_history : [];
+      const nowSec = Math.floor(Date.now() / 1000);
+      const cutoffSec = nowSec - (selectedBluetoothTimeframe * 3600);
+      const history = rawHistory.filter(h => h.timestamp >= cutoffSec);
 
       const uEl = document.getElementById("stat-ble-unique");
       const mEl = document.getElementById("stat-ble-macs");
@@ -5421,10 +5477,40 @@ export function renderDashboardHtml(): string {
         return;
       }
 
-      const labels = history.map(h => new Date(h.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const labels = history.map(h => {
+        const d = new Date(h.timestamp * 1000);
+        if (selectedBluetoothTimeframe > 24) {
+          return daysOfWeek[d.getDay()] + ' ' + d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        }
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      });
+
       const uniqueData = history.map(h => h.ble_unique_devices ?? 0);
-      const rpaData = history.map(h => h.ble_random_macs ?? 0);
+
+      // Clean up legacy zero dips in rpaData when unique devices > 0
+      const rpaData = history.map((h, idx) => {
+        let r = h.ble_random_macs;
+        if ((r === undefined || r === null || r === 0) && (h.ble_unique_devices > 0)) {
+          const prev = (idx > 0 && history[idx - 1].ble_random_macs > 0) ? history[idx - 1].ble_random_macs : null;
+          const next = (idx < history.length - 1 && history[idx + 1].ble_random_macs > 0) ? history[idx + 1].ble_random_macs : null;
+          if (prev !== null && next !== null) {
+            r = Math.round((prev + next) / 2);
+          } else if (prev !== null) {
+            r = prev;
+          } else if (next !== null) {
+            r = next;
+          } else {
+            r = Math.max(0, h.ble_unique_devices - (h.ble_public_macs || 0));
+          }
+        }
+        return r ?? 0;
+      });
+
       const classicData = history.map(h => h.classic_total ?? 0);
+
+      const ptRadius = history.length > 70 ? (history.length > 200 ? 0 : 1) : 2;
+      const bWidth = history.length > 200 ? 1.5 : 2;
 
       bluetoothChartInstance = new Chart(ctx, {
         type: 'line',
@@ -5438,8 +5524,8 @@ export function renderDashboardHtml(): string {
               backgroundColor: 'rgba(56, 189, 248, 0.1)',
               fill: true,
               tension: 0.2,
-              borderWidth: 2,
-              pointRadius: history.length > 50 ? 1 : 3
+              borderWidth: bWidth,
+              pointRadius: ptRadius
             },
             {
               label: 'Randomized BLE MACs',
@@ -5449,8 +5535,8 @@ export function renderDashboardHtml(): string {
               borderDash: [4, 4],
               fill: false,
               tension: 0.2,
-              borderWidth: 1.5,
-              pointRadius: history.length > 50 ? 0 : 2
+              borderWidth: bWidth > 1.5 ? 1.5 : 1,
+              pointRadius: ptRadius > 0 ? (ptRadius - 1) : 0
             },
             {
               label: 'Classic BT Devices',
@@ -5459,8 +5545,8 @@ export function renderDashboardHtml(): string {
               backgroundColor: 'transparent',
               fill: false,
               tension: 0.2,
-              borderWidth: 1.5,
-              pointRadius: history.length > 50 ? 0 : 2
+              borderWidth: bWidth > 1.5 ? 1.5 : 1,
+              pointRadius: ptRadius > 0 ? (ptRadius - 1) : 0
             }
           ]
         },

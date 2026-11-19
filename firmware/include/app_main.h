@@ -232,7 +232,7 @@ public:
 
         // Record 30-minute revolving slot into ChannelHistory buffer (kept in RAM; written to flash only if offline)
         if (is30mBoundary) {
-            ChannelHistory::instance().recordCycle(_ramChan, _ramBt.ble_unique_devices, _ramBt.classic_total, batteryMv, currentEpoch);
+            ChannelHistory::instance().recordCycle(_ramChan, _ramBt.ble_unique_devices, _ramBt.ble_random_macs, _ramBt.classic_total, batteryMv, currentEpoch);
         }
 
         // Package cycle telemetry

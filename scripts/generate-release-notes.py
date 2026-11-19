@@ -51,8 +51,6 @@ def main():
 ### 📖 Release Documentation & Highlights
 {changelog_section if changelog_section else "See [CHANGELOG.md](https://github.com/flynn0/T18/blob/main/CHANGELOG.md) for full release notes."}
 
----
-
 ### 🚀 Installation & Flashing
 - **In-Browser Web Flasher (Zero-install)**: [https://flynn0.github.io/T18](https://flynn0.github.io/T18)
 - **Manual Flashing (esptool.py)**:

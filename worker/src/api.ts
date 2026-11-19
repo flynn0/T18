@@ -109,7 +109,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const latestMeasurements = await db.getLatestMeasurements(stationId);
   const latestSurvey = await db.getLatestSurvey(stationId);
   const inactiveSurvey = await db.getInactiveSurveys(stationId);
-  const recentMeasurements = await db.getRecentMeasurements(stationId, 1000); // 24-48h across all monitored SSIDs (144 samples/day per SSID)
+  const recentMeasurements = await db.getRecentMeasurements(stationId, 2500); // 7 days across monitored SSIDs (144 samples/day per SSID)
   const dailySummaries = await db.getDailySummaries(stationId, 30);
   const diagnostics = await db.getLatestDiagnostics(stationId);
   const channelUtilization = await db.getRecentChannelUtilization(stationId, 168); // 7-day spectrum congestion history
