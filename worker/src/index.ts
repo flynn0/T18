@@ -41,20 +41,14 @@ export default {
         return await handleOta(request, env);
       }
 
-      // 4. Web Flasher Manifest & Firmware Assets
-      if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json") {
+      // 4. Web Flasher Manifests & Firmware Assets
+      if (path === "/manifest-c3-update.json" || path === "/firmware/manifest-c3-update.json" || path === "/manifest-esp32c3-update.json") {
         const manifest = {
-          name: "T18 Wi-Fi Monitor (Update Only)",
+          name: "T18 Wi-Fi Monitor - ESP32-C3 (Update Only)",
           version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: false,
           builds: [
-            {
-              chipFamily: "ESP32",
-              parts: [
-                { path: "firmware/firmware.bin", offset: 65536 }
-              ]
-            },
             {
               chipFamily: "ESP32-C3",
               parts: [
@@ -73,9 +67,62 @@ export default {
         });
       }
 
-      if (path === "/manifest.json" || path === "/firmware/manifest.json") {
+      if (path === "/manifest-c3.json" || path === "/firmware/manifest-c3.json" || path === "/manifest-esp32c3.json") {
         const manifest = {
-          name: "T18 Wi-Fi Monitor (flynn0/T18)",
+          name: "T18 Wi-Fi Monitor - ESP32-C3",
+          version: env.STABLE_VERSION || "1.1.5",
+          funding_url: "https://github.com/flynn0/T18",
+          new_install_prompt_erase: true,
+          builds: [
+            {
+              chipFamily: "ESP32-C3",
+              parts: [
+                { path: "firmware/bootloader-c3.bin", offset: 0 },
+                { path: "firmware/partitions-c3.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware-c3.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
+      if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json" || path === "/manifest-esp32-update.json") {
+        const manifest = {
+          name: "T18 Wi-Fi Monitor - ESP32 (Update Only)",
+          version: env.STABLE_VERSION || "1.1.5",
+          funding_url: "https://github.com/flynn0/T18",
+          new_install_prompt_erase: false,
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [
+                { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
+      if (path === "/manifest.json" || path === "/firmware/manifest.json" || path === "/manifest-esp32.json") {
+        const manifest = {
+          name: "T18 Wi-Fi Monitor - ESP32",
           version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: true,
@@ -87,15 +134,6 @@ export default {
                 { path: "firmware/partitions.bin", offset: 32768 },
                 { path: "firmware/boot_app0.bin", offset: 57344 },
                 { path: "firmware/firmware.bin", offset: 65536 }
-              ]
-            },
-            {
-              chipFamily: "ESP32-C3",
-              parts: [
-                { path: "firmware/bootloader-c3.bin", offset: 0 },
-                { path: "firmware/partitions-c3.bin", offset: 32768 },
-                { path: "firmware/boot_app0.bin", offset: 57344 },
-                { path: "firmware/firmware-c3.bin", offset: 65536 }
               ]
             }
           ]

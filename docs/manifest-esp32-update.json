@@ -1,0 +1,14 @@
+{
+  "name": "T18 Wi-Fi Monitor - ESP32 (Update Only)",
+  "version": "1.1.5",
+  "funding_url": "https://github.com/flynn0/T18",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "firmware/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

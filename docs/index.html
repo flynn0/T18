@@ -1590,8 +1590,40 @@
             Flash the pre-compiled universal firmware directly to your ESP32 board over USB. No Arduino IDE, PlatformIO, or command-line drivers required.
           </div>
 
+          <!-- Step 1: Target Hardware Architecture -->
           <div style="margin-top:1rem;margin-bottom:0.75rem;">
-            <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--text);">Choose Flashing Mode:</div>
+            <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--text);display:flex;align-items:center;gap:0.4rem;">
+              <span style="background:var(--accent);color:#0f172a;font-size:0.75rem;padding:0.1rem 0.45rem;border-radius:999px;font-weight:700;">1</span>
+              <span>Select Hardware Target:</span>
+            </div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              <label id="targetEsp32Label" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:2px solid var(--accent);border-radius:0.5rem;background:rgba(56,189,248,0.08);cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashTargetRadio" value="esp32" checked onchange="window.setFlashTarget('esp32')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">Standard ESP32 (Xtensa Dual-Core)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">
+                    For <strong>LILYGO TTGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, and custom WROOM / WROVER modules. Includes Classic Bluetooth + BLE.
+                  </div>
+                </div>
+              </label>
+              <label id="targetC3Label" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:1px solid var(--border);border-radius:0.5rem;background:transparent;cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashTargetRadio" value="c3" onchange="window.setFlashTarget('c3')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">ESP32-C3 Super Mini (RISC-V Single-Core)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">
+                    For <strong>ESP32-C3 Super Mini</strong>, C3 DevKit, and compact RISC-V nodes. GPIO 8 active-low status LED, lightweight build without Classic Bluetooth.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Step 2: Choose Flashing Mode -->
+          <div style="margin-top:0.75rem;margin-bottom:0.75rem;">
+            <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--text);display:flex;align-items:center;gap:0.4rem;">
+              <span style="background:var(--accent);color:#0f172a;font-size:0.75rem;padding:0.1rem 0.45rem;border-radius:999px;font-weight:700;">2</span>
+              <span>Choose Flashing Mode:</span>
+            </div>
             <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
               <label id="modeUpdateLabel" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:2px solid var(--accent);border-radius:0.5rem;background:rgba(56,189,248,0.08);cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
                 <input type="radio" name="flashModeRadio" value="update" checked onchange="window.setFlashMode('update')" style="margin-top:0.25rem;">
@@ -1607,6 +1639,19 @@
                   <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">For fresh or unconfigured boards. Installs bootloader, partition table, and firmware. Prompts before erasing flash.</div>
                 </div>
               </label>
+            </div>
+          </div>
+
+          <!-- Target & Mode Summary Banner -->
+          <div id="flashTargetSummary" style="background:var(--card-bg, rgba(255,255,255,0.04));border:1px solid var(--card-border);border-radius:0.5rem;padding:0.6rem 0.85rem;font-size:0.8rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span style="color:var(--text-muted);">Target:</span>
+              <strong id="summaryTargetName" style="color:var(--primary);">Standard ESP32</strong>
+              <span style="color:var(--text-muted);font-size:0.75rem;">•</span>
+              <span id="summaryModeName" style="color:var(--text);">Update (Keep Settings)</span>
+            </div>
+            <div style="font-family:monospace;font-size:0.75rem;color:var(--text-muted);">
+              Manifest: <code id="summaryManifestName" style="color:var(--accent);">manifest-update.json</code>
             </div>
           </div>
 
@@ -2238,47 +2283,121 @@
       }
     }
 
+    let currentFlashTarget = "esp32";
     let currentFlashMode = "update";
-    window.setFlashMode = function(mode) {
-      currentFlashMode = mode;
-      const installBtn = document.getElementById("espWebInstallBtn");
-      const activateBtn = document.getElementById("espActivateBtn");
-      const lblUpdate = document.getElementById("modeUpdateLabel");
-      const lblClean = document.getElementById("modeCleanLabel");
 
-      if (mode === "update") {
-        if (installBtn) installBtn.setAttribute("manifest", basePath + "manifest-update.json");
-        if (activateBtn) activateBtn.innerHTML = "⚡ Connect ESP32 &amp; Update Firmware (Keep Settings)";
-        if (lblUpdate) {
-          lblUpdate.style.border = "2px solid var(--accent)";
-          lblUpdate.style.background = "rgba(56,189,248,0.08)";
-        }
-        if (lblClean) {
-          lblClean.style.border = "1px solid var(--border)";
-          lblClean.style.background = "transparent";
-        }
-      } else {
-        if (installBtn) installBtn.setAttribute("manifest", basePath + "manifest.json");
-        if (activateBtn) activateBtn.innerHTML = "🧹 Connect ESP32 &amp; Clean Install";
-        if (lblClean) {
-          lblClean.style.border = "2px solid var(--accent)";
-          lblClean.style.background = "rgba(56,189,248,0.08)";
-        }
-        if (lblUpdate) {
-          lblUpdate.style.border = "1px solid var(--border)";
-          lblUpdate.style.background = "transparent";
-        }
-      }
+    window.setFlashTarget = function(target) {
+      currentFlashTarget = target;
+      updateFlasherUI();
     };
 
+    window.setFlashMode = function(mode) {
+      currentFlashMode = mode;
+      updateFlasherUI();
+    };
+
+    function updateFlasherUI() {
+      const installBtn = document.getElementById("espWebInstallBtn");
+      const activateBtn = document.getElementById("espActivateBtn");
+      const lblTargetEsp32 = document.getElementById("targetEsp32Label");
+      const lblTargetC3 = document.getElementById("targetC3Label");
+      const lblModeUpdate = document.getElementById("modeUpdateLabel");
+      const lblModeClean = document.getElementById("modeCleanLabel");
+      const summaryTarget = document.getElementById("summaryTargetName");
+      const summaryMode = document.getElementById("summaryModeName");
+      const summaryManifest = document.getElementById("summaryManifestName");
+
+      const isC3 = (currentFlashTarget === "c3");
+      const isClean = (currentFlashMode === "clean");
+
+      // Update styling for Step 1 (Target Architecture)
+      if (isC3) {
+        if (lblTargetC3) {
+          lblTargetC3.style.border = "2px solid var(--accent)";
+          lblTargetC3.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblTargetEsp32) {
+          lblTargetEsp32.style.border = "1px solid var(--border)";
+          lblTargetEsp32.style.background = "transparent";
+        }
+      } else {
+        if (lblTargetEsp32) {
+          lblTargetEsp32.style.border = "2px solid var(--accent)";
+          lblTargetEsp32.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblTargetC3) {
+          lblTargetC3.style.border = "1px solid var(--border)";
+          lblTargetC3.style.background = "transparent";
+        }
+      }
+
+      // Update styling for Step 2 (Flashing Mode)
+      if (isClean) {
+        if (lblModeClean) {
+          lblModeClean.style.border = "2px solid var(--accent)";
+          lblModeClean.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblModeUpdate) {
+          lblModeUpdate.style.border = "1px solid var(--border)";
+          lblModeUpdate.style.background = "transparent";
+        }
+      } else {
+        if (lblModeUpdate) {
+          lblModeUpdate.style.border = "2px solid var(--accent)";
+          lblModeUpdate.style.background = "rgba(56,189,248,0.08)";
+        }
+        if (lblModeClean) {
+          lblModeClean.style.border = "1px solid var(--border)";
+          lblModeClean.style.background = "transparent";
+        }
+      }
+
+      let manifestFile = "";
+      let buttonHtml = "";
+
+      if (isC3) {
+        if (isClean) {
+          manifestFile = "manifest-c3.json";
+          buttonHtml = "🧹 Connect ESP32-C3 &amp; Clean Install";
+        } else {
+          manifestFile = "manifest-c3-update.json";
+          buttonHtml = "⚡ Connect ESP32-C3 &amp; Update Firmware (Keep Settings)";
+        }
+      } else {
+        if (isClean) {
+          manifestFile = "manifest.json";
+          buttonHtml = "🧹 Connect ESP32 &amp; Clean Install";
+        } else {
+          manifestFile = "manifest-update.json";
+          buttonHtml = "⚡ Connect ESP32 &amp; Update Firmware (Keep Settings)";
+        }
+      }
+
+      if (summaryTarget) summaryTarget.innerText = isC3 ? "ESP32-C3 Super Mini (RISC-V)" : "Standard ESP32 (Xtensa)";
+      if (summaryMode) summaryMode.innerText = isClean ? "Clean Install (Full Flash)" : "Update Firmware (Keep Settings)";
+      if (summaryManifest) summaryManifest.innerText = manifestFile;
+
+      if (installBtn) {
+        const fullManifestPath = basePath + manifestFile;
+        installBtn.setAttribute("manifest", fullManifestPath);
+      }
+      if (activateBtn) {
+        activateBtn.innerHTML = buttonHtml;
+      }
+    }
+
     function updateFlashManifestUrls() {
-      window.setFlashMode(currentFlashMode);
+      updateFlasherUI();
       const links = [
         { id: "dlFirmwareBin", file: "firmware.bin" },
         { id: "dlPartitionsBin", file: "partitions.bin" },
         { id: "dlBootloaderBin", file: "bootloader.bin" },
         { id: "dlBootApp0Bin", file: "boot_app0.bin" },
-        { id: "dlMergedBin", file: "firmware-esp32-merged.bin" }
+        { id: "dlMergedBin", file: "firmware-esp32-merged.bin" },
+        { id: "dlC3FirmwareBin", file: "firmware-c3.bin" },
+        { id: "dlC3PartitionsBin", file: "partitions-c3.bin" },
+        { id: "dlC3BootloaderBin", file: "bootloader-c3.bin" },
+        { id: "dlC3MergedBin", file: "firmware-esp32c3-merged.bin" }
       ];
       links.forEach(function(l) {
         const el = document.getElementById(l.id);
