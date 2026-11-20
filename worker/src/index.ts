@@ -44,14 +44,17 @@ export default {
       // 4. Web Flasher Manifests & Firmware Assets
       if (path === "/manifest-c3-update.json" || path === "/firmware/manifest-c3-update.json" || path === "/manifest-esp32c3-update.json") {
         const manifest = {
-          name: "T18 Wi-Fi Monitor - ESP32-C3 (Update Only)",
+          name: "T18 Wi-Fi Monitor - ESP32-C3 (Update)",
           version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
-          new_install_prompt_erase: false,
+          new_install_skip_erase: true,
           builds: [
             {
               chipFamily: "ESP32-C3",
               parts: [
+                { path: "firmware/bootloader-c3.bin", offset: 0 },
+                { path: "firmware/partitions-c3.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
                 { path: "firmware/firmware-c3.bin", offset: 65536 }
               ]
             }
@@ -95,16 +98,19 @@ export default {
         });
       }
 
-      if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json" || path === "/manifest-esp32-update.json") {
+      if (path === "/manifest-esp32-update.json" || path === "/firmware/manifest-esp32-update.json") {
         const manifest = {
-          name: "T18 Wi-Fi Monitor - ESP32 (Update Only)",
+          name: "T18 Wi-Fi Monitor - ESP32 (Update)",
           version: env.STABLE_VERSION || "1.1.5",
           funding_url: "https://github.com/flynn0/T18",
-          new_install_prompt_erase: false,
+          new_install_skip_erase: true,
           builds: [
             {
               chipFamily: "ESP32",
               parts: [
+                { path: "firmware/bootloader.bin", offset: 4096 },
+                { path: "firmware/partitions.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
                 { path: "firmware/firmware.bin", offset: 65536 }
               ]
             }
@@ -120,7 +126,7 @@ export default {
         });
       }
 
-      if (path === "/manifest.json" || path === "/firmware/manifest.json" || path === "/manifest-esp32.json") {
+      if (path === "/manifest-esp32.json" || path === "/firmware/manifest-esp32.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor - ESP32",
           version: env.STABLE_VERSION || "1.1.5",
@@ -134,6 +140,80 @@ export default {
                 { path: "firmware/partitions.bin", offset: 32768 },
                 { path: "firmware/boot_app0.bin", offset: 57344 },
                 { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
+      if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json") {
+        const manifest = {
+          name: "T18 Wi-Fi Monitor (Update)",
+          version: env.STABLE_VERSION || "1.1.5",
+          funding_url: "https://github.com/flynn0/T18",
+          new_install_skip_erase: true,
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [
+                { path: "firmware/bootloader.bin", offset: 4096 },
+                { path: "firmware/partitions.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            },
+            {
+              chipFamily: "ESP32-C3",
+              parts: [
+                { path: "firmware/bootloader-c3.bin", offset: 0 },
+                { path: "firmware/partitions-c3.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware-c3.bin", offset: 65536 }
+              ]
+            }
+          ]
+        };
+        return new Response(JSON.stringify(manifest, null, 2), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+
+      if (path === "/manifest.json" || path === "/firmware/manifest.json") {
+        const manifest = {
+          name: "T18 Wi-Fi Monitor",
+          version: env.STABLE_VERSION || "1.1.5",
+          funding_url: "https://github.com/flynn0/T18",
+          new_install_prompt_erase: true,
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [
+                { path: "firmware/bootloader.bin", offset: 4096 },
+                { path: "firmware/partitions.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware.bin", offset: 65536 }
+              ]
+            },
+            {
+              chipFamily: "ESP32-C3",
+              parts: [
+                { path: "firmware/bootloader-c3.bin", offset: 0 },
+                { path: "firmware/partitions-c3.bin", offset: 32768 },
+                { path: "firmware/boot_app0.bin", offset: 57344 },
+                { path: "firmware/firmware-c3.bin", offset: 65536 }
               ]
             }
           ]

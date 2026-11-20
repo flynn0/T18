@@ -1630,7 +1630,7 @@ export function renderDashboardHtml(): string {
                 <input type="radio" name="flashModeRadio" value="update" checked onchange="window.setFlashMode('update')" style="margin-top:0.25rem;">
                 <div>
                   <div style="font-weight:600;font-size:0.9rem;color:var(--text);">⚡ Update Firmware Only (Keep Settings &amp; Data)</div>
-                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">Flashes only application partition (0x10000). Preserves Wi-Fi credentials, tokens, and 24h channel utilization history without wiping flash.</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">Installs updated firmware and bootloader without erasing flash. Preserves Wi-Fi credentials, tokens, and 24h channel utilization history in NVS.</div>
                 </div>
               </label>
               <label id="modeCleanLabel" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:1px solid var(--border);border-radius:0.5rem;background:transparent;cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
@@ -2366,10 +2366,10 @@ export function renderDashboardHtml(): string {
         }
       } else {
         if (isClean) {
-          manifestFile = "manifest.json";
+          manifestFile = "manifest-esp32.json";
           buttonHtml = "🧹 Connect ESP32 &amp; Clean Install";
         } else {
-          manifestFile = "manifest-update.json";
+          manifestFile = "manifest-esp32-update.json";
           buttonHtml = "⚡ Connect ESP32 &amp; Update Firmware (Keep Settings)";
         }
       }
@@ -2378,12 +2378,14 @@ export function renderDashboardHtml(): string {
       if (summaryMode) summaryMode.innerText = isClean ? "Clean Install (Full Flash)" : "Update Firmware (Keep Settings)";
       if (summaryManifest) summaryManifest.innerText = manifestFile;
 
-      if (installBtn) {
+      const wrapper = document.querySelector(".install-button-wrapper");
+      if (wrapper) {
         const fullManifestPath = basePath + manifestFile;
-        installBtn.setAttribute("manifest", fullManifestPath);
-      }
-      if (activateBtn) {
-        activateBtn.innerHTML = buttonHtml;
+        wrapper.innerHTML = '<esp-web-install-button id="espWebInstallBtn" manifest="' + fullManifestPath + '">' +
+          '<button slot="activate" id="espActivateBtn" class="flash-btn primary" style="font-size:1.05rem;padding:0.85rem 1.75rem;border-radius:0.5rem;box-shadow:0 4px 14px rgba(56,189,248,0.3);display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;">' +
+            buttonHtml +
+          '</button>' +
+        '</esp-web-install-button>';
       }
     }
 
