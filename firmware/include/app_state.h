@@ -20,7 +20,7 @@ struct AppConfig {
     WifiNetworkConfig networks[MAX_MONITORED_NETWORKS];
     uint8_t network_count;
     bool is_configured;
-    bool powerbank_keepalive; // Wake up 500ms every 20s during light sleep
+    bool powerbank_keepalive; // Wake up 120ms every 20s during light sleep and switch to energy-preserving mode
     bool backup_enabled;      // Failover to backup hotspot if primary Wi-Fi has no internet
     char backup_ssid[33];     // Backup SSID (default: "S24")
     char backup_pass[65];     // Backup Password (default: "12345678")

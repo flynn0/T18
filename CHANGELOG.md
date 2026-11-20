@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.8] - 2026-11-20
+
+### Added & Enhanced
+- **Automatic Energy-Preserving Switch on Power Bank Keep-Alive**:
+  - When `powerbank_keepalive` is enabled (even on boards without battery voltage sensing like the ESP32-C3 SuperMini where Vbat appears permanently powered), the firmware now automatically switches from aggressive 2-minute AC mains cadence to battery-optimized 10-minute cadence.
+  - Promiscuous 13-channel congestion survey and network latency probing are automatically throttled to the 30-minute boundary (`is30mBoundary`), reducing radio active duty cycle from 27.7% to only ~3%.
+  - Optimizes 13-channel survey dwell time: reduced from 2000 ms to 800 ms per channel in battery/power bank modes, saving 15.6 seconds of active radio time per 30 minutes ($10.4\text{ s}$ total vs $26.0\text{ s}$).
+  - Maximizes light sleep dwelling between cycles, boosting ESP32-C3 power bank runtime from ~7.1 days to **62.7+ days** on a 10,000 mAh 5V power bank!
+- **20-Second Keep-Alive Pulse Optimization**:
+  - Extended the power bank keep-alive wake pulse interval from 15 seconds to **20 seconds** (`INTERVAL_SLEEP_MS = 20000`).
+  - Reduces keep-alive wakeups by 25% (from 240 to 180 pulses/hour), lowering quiescent sleep draw from $1.85\text{ mA} \to \mathbf{1.664\text{ mA}}$ on ESP32-C3.
+- **18-Day Offline 30-Minute Average Ring Buffer Storage**:
+  - Offline spooling policy updated: intermediate cycles accumulate solely in RAM. Only once every 30 minutes at the boundary is a consolidated slot persisted to flash ring buffer (`spool_manager.h` and `channel_history.h`).
+  - Streamlined binary serialization: 30-minute offline records omit verbose AP scan lists and retain essential 30-minute metrics (13-channel airtimes, unique transmitters, monitored network reliability, BLE unique devices, and battery mV), shrinking records to ~110-120 bytes.
+  - 176 KB circular flash buffer now holds **1,500+ records**, guaranteeing **over 31 days** (well exceeding the 18 days / 864 slots requirement) of offline telemetry during complete network blackout.
+  - Drastically cuts flash write wear to at most 48 writes per day (giving the NOR flash over 5,700 years of life).
+- **Comprehensive Power Model Documentation**:
+  - Added `docs/power-consumption.md` detailing exact mathematical modeling, measured light sleep benchmarks (1.0 mA on C3, 2.5 mA on T18 LiPo, 17.0 mA on DevKit V1), duty cycle derivations, and hardware runtime projections across 2000 mAh LiPo and 10,000 mAh power bank configurations.
+
+---
+
 ## [1.1.7] - 2026-11-20
 
 ### Added & Enhanced

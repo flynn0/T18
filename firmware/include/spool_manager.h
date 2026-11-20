@@ -163,44 +163,9 @@ public:
             buffer[offset++] = (uint8_t)cycle.bluetooth.classic_total;
         }
 
-        // 4. Wi-Fi Survey / Historical Discovered Networks (cap at 20)
-        uint8_t surveyCount = (cycle.survey.size() > 20) ? 20 : cycle.survey.size();
+        // 4. Wi-Fi Survey (Omitted on 30-min offline records to guarantee 18+ days / 864+ slot retention)
+        uint8_t surveyCount = 0;
         buffer[offset++] = surveyCount;
-        for (uint8_t i = 0; i < surveyCount; i++) {
-            const auto &item = cycle.survey[i];
-            uint8_t mac[6] = {0};
-            parseMac(item.bssid, mac);
-            memcpy(buffer + offset, mac, 6); offset += 6;
-
-            int8_t rssi = (int8_t)item.rssi;
-            buffer[offset++] = (uint8_t)rssi;
-            buffer[offset++] = item.channel;
-            buffer[offset++] = item.quality;
-
-            // Phy mode (max 8 chars)
-            uint8_t plen = item.phy_mode.length() > 8 ? 8 : item.phy_mode.length();
-            buffer[offset++] = plen;
-            if (plen > 0) {
-                memcpy(buffer + offset, item.phy_mode.c_str(), plen);
-                offset += plen;
-            }
-
-            // Security (max 8 chars)
-            uint8_t elen = item.encryption.length() > 8 ? 8 : item.encryption.length();
-            buffer[offset++] = elen;
-            if (elen > 0) {
-                memcpy(buffer + offset, item.encryption.c_str(), elen);
-                offset += elen;
-            }
-
-            // SSID (max 24 chars)
-            uint8_t slen = item.ssid.length() > 24 ? 24 : item.ssid.length();
-            buffer[offset++] = slen;
-            if (slen > 0) {
-                memcpy(buffer + offset, item.ssid.c_str(), slen);
-                offset += slen;
-            }
-        }
 
         // Update record length
         uint16_t totalRecLen = offset;

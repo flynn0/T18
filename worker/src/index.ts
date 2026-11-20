@@ -45,7 +45,7 @@ export default {
       if (path === "/manifest-c3-update.json" || path === "/firmware/manifest-c3-update.json" || path === "/manifest-esp32c3-update.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor - ESP32-C3 (Update)",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_skip_erase: true,
           builds: [
@@ -73,7 +73,7 @@ export default {
       if (path === "/manifest-c3.json" || path === "/firmware/manifest-c3.json" || path === "/manifest-esp32c3.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor - ESP32-C3",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: true,
           builds: [
@@ -101,7 +101,7 @@ export default {
       if (path === "/manifest-esp32-update.json" || path === "/firmware/manifest-esp32-update.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor - ESP32 (Update)",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_skip_erase: true,
           builds: [
@@ -129,7 +129,7 @@ export default {
       if (path === "/manifest-esp32.json" || path === "/firmware/manifest-esp32.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor - ESP32",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: true,
           builds: [
@@ -157,7 +157,7 @@ export default {
       if (path === "/manifest-update.json" || path === "/firmware/manifest-update.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor (Update)",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_skip_erase: true,
           builds: [
@@ -194,7 +194,7 @@ export default {
       if (path === "/manifest.json" || path === "/firmware/manifest.json") {
         const manifest = {
           name: "T18 Wi-Fi Monitor",
-          version: env.STABLE_VERSION || "1.1.7",
+          version: env.STABLE_VERSION || "1.1.8",
           funding_url: "https://github.com/flynn0/T18",
           new_install_prompt_erase: true,
           builds: [

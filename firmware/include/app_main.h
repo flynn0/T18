@@ -44,7 +44,7 @@ public:
         Serial.printf(" flynn0/T18 Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
         Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
                       _config.hw.status_led_pin, _config.hw.battery_pin);
-        Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi/15s)" : "DISABLED");
+        Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi/20s)" : "DISABLED");
         Serial.printf(" Backup Internet: %s (SSID: %s)\n", _config.backup_enabled ? "ENABLED" : "DISABLED", _config.backup_ssid);
         Serial.println(F("========================================"));
 
@@ -66,18 +66,24 @@ public:
 
         // 1. Read battery voltage and determine power mode
         uint16_t batteryMv = BatteryReader::readBatteryMilliVolts(_config.hw);
-        bool onBattery = (_config.hw.battery_pin >= 0 && batteryMv > 0 && batteryMv <= 4200);
+        // Automatic energy-preserving switch: if powerbank_keepalive is enabled, system is on a power bank
+        bool onBattery = (_config.hw.battery_pin >= 0 && batteryMv > 0 && batteryMv <= 4200) || _config.powerbank_keepalive;
 
-        uint32_t targetIntervalSec = onBattery ? 600 : 120; // 10m on battery, 2m if powered (> 4.2V or no battery)
+        uint32_t targetIntervalSec = onBattery ? 600 : 120; // 10m on battery/power bank, 2m if powered (> 4.2V without keepalive)
         bool is10mBoundary = false;
         bool is30mBoundary = false;
 
         if (onBattery) {
-            // Every cycle on battery is a 10-minute cycle
+            // Every cycle on battery or power bank is a 10-minute cycle
             is10mBoundary = true;
             is30mBoundary = (_batteryCycleCount % 3 == 0);
-            Serial.printf("\n>>> [Battery Mode: %u mV] Starting 10-Min Cycle #%u (30-Min Cadence: %s) <<<\n",
-                          batteryMv, (unsigned)_batteryCycleCount, is30mBoundary ? "YES" : "NO");
+            if (_config.powerbank_keepalive && (_config.hw.battery_pin < 0 || batteryMv > 4200)) {
+                Serial.printf("\n>>> [Power Bank Energy Preserving Mode: Keep-Alive 20s] Starting 10-Min Cycle #%u (30-Min Cadence: %s) <<<\n",
+                              (unsigned)_batteryCycleCount, is30mBoundary ? "YES" : "NO");
+            } else {
+                Serial.printf("\n>>> [Battery Mode: %u mV] Starting 10-Min Cycle #%u (30-Min Cadence: %s) <<<\n",
+                              batteryMv, (unsigned)_batteryCycleCount, is30mBoundary ? "YES" : "NO");
+            }
         } else {
             // Powered mode: 2-minute cycle, accumulating into 10-minute interval
             _usbSubcycle++;
@@ -101,12 +107,13 @@ public:
         }
 
         // 3. Promiscuous 13-channel congestion survey (Task 3)
-        // On battery: every 30 minutes; Powered: every 2 minutes
+        // On battery/power bank: every 30 minutes with 800ms dwell; Powered: every 2 minutes with 2000ms dwell
         bool shouldScanChannels = onBattery ? is30mBoundary : true;
         std::vector<ChannelUtilizationItem> chanResults;
         if (shouldScanChannels) {
             bool bootPressed = false;
-            chanResults = ChannelAnalyzer::measureChannels(2000, &_led, &bootPressed);
+            uint32_t dwellMs = onBattery ? 800 : 2000;
+            chanResults = ChannelAnalyzer::measureChannels(dwellMs, &_led, &bootPressed);
             if (bootPressed) {
                 Serial.println(F("[Main] BOOT button pressed during channel scan! Launching setup portal..."));
                 _portal.startPortal(_config, 60);
@@ -295,11 +302,16 @@ public:
             Serial.println(F("[Main] No monitored networks or backup 'S24' visible; skipping Wi-Fi connect to preserve battery."));
         }
 
-        // Flash persistence ONLY if upload is impossible
+        // Flash persistence ONLY if upload is impossible and at 30-minute boundary
+        // Both battery powered and permanently powered only need 30-min average values in the 18-day ring buffer
         if (!uploadSuccess) {
-            Serial.println(F("[Main] Offline / Upload not possible: Persisting 30-min channel history and buffering cycle to flash spool."));
-            ChannelHistory::instance().saveToFlash();
-            SpoolManager::appendCycle(cycle);
+            if (is30mBoundary) {
+                Serial.println(F("[Main] Offline / Upload not possible: Persisting 30-min consolidated history slot to flash ring buffer."));
+                ChannelHistory::instance().saveToFlash();
+                SpoolManager::appendCycle(cycle);
+            } else {
+                Serial.println(F("[Main] Offline / Upload not possible: Accumulating intermediate metrics in RAM until 30-min boundary to preserve flash & battery."));
+            }
         }
 
         // Reset 10-minute RAM accumulators
@@ -788,7 +800,7 @@ private:
     void enterLightSleep(uint32_t sleepDurationMs) {
         Serial.printf("[Main] Entering Light Sleep for %u seconds (Power Bank Keep-Alive: %s)...\n",
                       (unsigned)(sleepDurationMs / 1000),
-                      _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi burst / 15s)" : "DISABLED");
+                      _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi burst / 20s)" : "DISABLED");
         Serial.flush();
 
         WiFi.disconnect(true);
@@ -808,7 +820,7 @@ private:
             esp_light_sleep_start();
         } else {
             uint32_t remainingMs = sleepDurationMs;
-            const uint32_t INTERVAL_SLEEP_MS = 15000; // 15 seconds
+            const uint32_t INTERVAL_SLEEP_MS = 20000; // 20 seconds (energy-optimized keep-alive pulse)
             const uint32_t WAKE_PULSE_MS = 120;       // 120 ms high-current burst
 
             while (remainingMs > 0) {
