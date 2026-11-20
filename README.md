@@ -5,155 +5,148 @@
 [![Cloudflare Worker](https://img.shields.io/badge/Cloudflare-t18.dhsp.workers.dev-F38020?logo=cloudflare)](https://t18.dhsp.workers.dev/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-flynn0.github.io%2FT18-22c55e?logo=github)](https://flynn0.github.io/T18/)
 
-> Autonomous Wi-Fi Spectrum, Latency & Bluetooth Telemetry Fleet Node for ESP32 (LILYGO T18 & T8) with Cloudflare Worker, D1 SQLite Database, and GitHub Pages.
-
-**Live Telemetry Dashboards & Web Installer**:
-- 🌐 **Cloudflare Edge Dashboard**: [https://t18.dhsp.workers.dev/](https://t18.dhsp.workers.dev/)
-- 📄 **GitHub Pages Mirror**: [https://flynn0.github.io/T18/](https://flynn0.github.io/T18/)
-- ⚡ **In-Browser ESP32 Web Flasher**: [https://t18.dhsp.workers.dev/?flash=1](https://t18.dhsp.workers.dev/?flash=1) or [https://flynn0.github.io/T18/?flash=1](https://flynn0.github.io/T18/?flash=1)
+> **Autonomous 2.4 GHz Wi-Fi Spectrum, Network Latency & Bluetooth Fleet Telemetry System** tailored for the **LILYGO TTGO T18** (and fully compatible with **LILYGO T8**, **ESP32 DevKit V1**, and **ESP32-C3 Super Mini**), backed by a serverless Cloudflare Worker, Cloudflare D1 SQLite database, and dual real-time web dashboards.
 
 ---
 
-## Architecture Overview
+## Quick Navigation
+
+| Resource | URL / Location | Description |
+|---|---|---|
+| 🌐 **Live Cloudflare Dashboard** | [https://t18.dhsp.workers.dev/](https://t18.dhsp.workers.dev/) | Server-rendered live telemetry, settings, and fleet analytics |
+| 📄 **GitHub Pages Mirror** | [https://flynn0.github.io/T18/](https://flynn0.github.io/T18/) | Static client-side dashboard mirror |
+| ⚡ **In-Browser Web Flasher** | [https://flynn0.github.io/T18/?flash=1](https://flynn0.github.io/T18/?flash=1) | Zero-install USB flashing via Web Serial API |
+| 📦 **GitHub Releases** | [https://github.com/flynn0/T18/releases](https://github.com/flynn0/T18/releases) | Official firmware binaries, merged images, and changelogs |
+
+### Documentation Index
+- ⚡ **[Power Consumption & Battery Modeling](docs/power-consumption.md)** — Empirical current measurements, keep-alive pulse derivations, and runtime math.
+- ⚙️ **[Firmware Specification](docs/firmware-specification.md)** — Hardware lifecycle, captive setup portal, promiscuous scanning, and OTA architecture.
+- 🏗️ **[System Architecture](docs/architecture.md)** — Edge-to-cloud data flow, dual dashboards, and isolate caching layers.
+- 🗄️ **[Data Schema & Telemetry](docs/data-schema.md)** — Cloudflare D1 SQLite tables, JSON payloads, and automated 30-day retention.
+- ☁️ **[Cloudflare Worker Backend](docs/cloudflare-worker.md)** — Zero-trust bearer authentication, D1 queries, and daily cron maintenance.
+- 📊 **[Telemetry Dashboard](docs/dashboard.md)** — 48-slot reliability bars, 24-hour RF heatmaps, and admin console.
+
+---
+
+## System Overview & Architecture
 
 ```mermaid
 flowchart TD
-    subgraph EdgeNodes["Edge Fleet Nodes (ESP32 Microcontrollers)"]
+    subgraph EdgeNodes["Edge Fleet Nodes (ESP32 & ESP32-C3)"]
         subgraph HardwareProfiles["Hardware Targets"]
             T18["LILYGO TTGO T18<br/>(IO5 LED, IO35 Battery Divider)"]
             T8["LILYGO T8<br/>(IO21 LED, IO35 Battery Divider)"]
-            DevKit["ESP32 DevKit V1 / Custom<br/>(IO2 LED / Configurable)"]
+            DevKit["ESP32 DevKit V1<br/>(IO2 LED, Mains/USB)"]
             C3Mini["ESP32-C3 Super Mini<br/>(IO8 LED Active-Low, RISC-V)"]
         end
 
-        subgraph CadenceManager["Adaptive Power Cadence & RAM Aggregation"]
-            PowerSense{"Battery Sensing (IO35)<br/>Vbat <= 4.2V ?"}
-            BatMode["Battery Cadence (10-min interval)<br/>• Wi-Fi Scan: Every 10m<br/>• BLE + Classic Scan: Every 10m<br/>• 13-Ch Airtime: Every 30m<br/>• Speed/Latency Probes: Every 30m"]
-            PwrMode["Powered Cadence (2-min interval)<br/>• Wi-Fi Scan: Every 2m (RAM Max)<br/>• BLE + Classic Scan: Every 2m (RAM Max)<br/>• 13-Ch Airtime: Every 2m (RAM Max)<br/>• Speed/Latency Probes: Every 10m"]
-            RAMBuffer["In-Memory RAM Accumulator<br/>(Max RSSI, Max Airtime %, Unique BT Devices)"]
+        subgraph CadenceManager["Adaptive Energy-Preserving Cadence"]
+            PowerSense{"Power Mode?<br/>(Battery <= 4.2V OR Keep-Alive On)"}
+            BatMode["Battery / Power Bank Cadence (10-Min)<br/>• Wi-Fi Scan: Every 10m<br/>• BLE Sweep: Every 10m<br/>• 13-Ch Survey: Every 30m (800ms dwell)<br/>• Latency Probes: Every 30m<br/>• Light Sleep: ~560-590s per cycle"]
+            PwrMode["Mains Powered Cadence (2-Min)<br/>• Wi-Fi Scan: Every 2m (RAM Max)<br/>• BLE Sweep: Every 2m (RAM Max)<br/>• 13-Ch Survey: Every 2m (2000ms dwell)<br/>• Latency Probes: Every 10m"]
+            RAMBuffer["In-Memory RAM Accumulator<br/>(Peak RSSI, Unique Devices, Airtime %)"]
         end
 
-        subgraph StoragePipeline["Storage & Spooling Engine"]
-            ChanHistRAM["48-Slot 24h Revolving Buffer<br/>(In-Memory Channel & BT History)"]
-            FlashSpool["Offline SPI Flash Spool<br/>(Raw Circular Buffer, 190 KB)"]
-            FlashHist["Flash Channel History Sectors<br/>(Preserved only when offline)"]
+        subgraph StoragePipeline["18-Day Zero-Wear Ring Storage"]
+            ChanHistRAM["30-Min Rolling Slot Buffer<br/>(Held in RAM when online)"]
+            FlashSpool["176 KB Circular Flash Spool<br/>(864+ Thirty-Minute Average Slots,<br/>Persisted ONLY when offline)"]
         end
     end
 
-    subgraph RFEnvironment["Wireless Spectrum & Targets"]
+    subgraph RFEnvironment["Wireless Environment & Uplink"]
         APScan["2.4 GHz 802.11b/g/n Spectrum<br/>(Survey APs & BSSIDs)"]
-        AirtimeScan["13 Promiscuous Channels<br/>(Frame Counters & Contention %)"]
-        BTScan["Bluetooth Low Energy & Classic<br/>(RPA De-randomization & OUI / COD)"]
-        SpeedProbe["Target Network Gateways<br/>(DHCP, DNS IPv4/v6, HTTP Latencies)"]
-        BackupAP["Backup Uplink Hotspot<br/>('S24' / Emergency Access Point)"]
+        AirtimeScan["13 Promiscuous Channels<br/>(Airtime Contention & Frames)"]
+        BTScan["BLE & Classic Bluetooth<br/>(Advertising De-randomization)"]
+        SpeedProbe["Target Gateways & DNS<br/>(DHCP, IPv4/v6, HTTP Probes)"]
+        BackupAP["Backup Uplink Hotspot<br/>('S24' Emergency Failover)"]
     end
 
     subgraph CloudflareEdge["Cloudflare Serverless Edge Infrastructure"]
         WorkerRouter["Cloudflare Worker Router<br/>(https://t18.dhsp.workers.dev)"]
-        AuthIngest["Bearer Token & Zero-Trust Validation<br/>(/data, /register)"]
-        OTAService["OTA Firmware Streaming Proxy<br/>(/api/ota, /firmware/*)"]
-        CronJob["Daily Maintenance Cron (00:15 UTC)<br/>• 48-Interval 30-min Rollups<br/>• Change-Only Diagnostics History<br/>• 30-Day Purge & Rotation"]
-
-        subgraph D1Database["Cloudflare D1 SQLite Database (t18-mon-db)"]
-            T_Meas["measurements & daily_summaries"]
-            T_30Min["daily_30min_summaries (48 slots/day)"]
-            T_Chan["station_channel_utilization"]
-            T_BT["station_bluetooth_summary & latest"]
-            T_Diag["station_network_diagnostics<br/>& diagnostics_history (Change-only)"]
-            T_Bat["station_battery_history"]
-        end
+        AuthIngest["Zero-Trust Telemetry Ingestion<br/>(/data, /register)"]
+        OTAService["OTA Streaming Proxy<br/>(/api/ota, /firmware/*)"]
+        CronJob["Daily Maintenance Cron (00:15 UTC)<br/>• 48-Slot 30-min Rollups<br/>• 30-Day Purge & Data Retention"]
+        D1Database[("Cloudflare D1 Database<br/>(t18-mon-db)")]
     end
 
-    subgraph FrontendClients["Dual Dashboards & Management Tools"]
+    subgraph Dashboards["Dual Dashboards & Management"]
         WorkerUI["Server-Rendered Dashboard<br/>(Cloudflare Worker SSR)"]
-        PagesUI["Static Dashboard Mirror<br/>(GitHub Pages: flynn0.github.io/T18)"]
+        PagesUI["Static Dashboard Mirror<br/>(GitHub Pages)"]
         WebFlasher["Web Serial Browser Flasher<br/>(ESP Web Tools Zero-Install)"]
     end
 
-    %% Edge node data flows
+    %% Data flows
     HardwareProfiles --> PowerSense
-    PowerSense -->|Battery <= 4.2V| BatMode
-    PowerSense -->|USB / AC > 4.2V| PwrMode
+    PowerSense -->|Battery or Keep-Alive| BatMode
+    PowerSense -->|Mains USB without Keep-Alive| PwrMode
     BatMode --> RAMBuffer
     PwrMode --> RAMBuffer
 
-    RAMBuffer --> APScan
-    RAMBuffer --> AirtimeScan
-    RAMBuffer --> BTScan
-    RAMBuffer --> SpeedProbe
-
-    SpeedProbe -.->|Probe only if visible| APScan
-
+    RAMBuffer --> APScan & AirtimeScan & BTScan & SpeedProbe
     RAMBuffer --> ChanHistRAM
 
-    ChanHistRAM -->|Online Direct RAM Stream| WorkerRouter
-    ChanHistRAM -->|Upload Failed / Offline| FlashHist
-    RAMBuffer -->|Upload Failed / Offline| FlashSpool
-
+    ChanHistRAM -->|Online: Zero Flash Wear| WorkerRouter
+    ChanHistRAM -->|Offline: Commit 30m Slot| FlashSpool
     BackupAP -.->|Failover Uplink| WorkerRouter
 
-    %% Worker backend flows
-    WorkerRouter --> AuthIngest
-    WorkerRouter --> OTAService
-    AuthIngest --> D1Database
+    WorkerRouter --> AuthIngest --> D1Database
+    WorkerRouter --> OTAService --> WebFlasher
     CronJob --> D1Database
-
-    %% Frontend client flows
-    D1Database --> WorkerUI
-    D1Database --> PagesUI
-    OTAService --> WebFlasher
+    D1Database --> WorkerUI & PagesUI
 ```
 
 ---
 
-## Power-Aware Measurement Cadence Matrix
+## Power Consumption & Battery Autonomy
 
-To maximize battery runtime on single-cell 18650 LiPo cells while delivering high-resolution spectrum telemetry, the firmware dynamically selects measurement cadences based on voltage sensed on **IO35**:
+The firmware is heavily tuned for unattended low-power deployment using **Light Sleep (`esp_light_sleep_start()`)**. The CPU is clock-gated and the radio is powered down between measurement windows, with RAM fully preserved.
 
-| Measurement Task | Battery Powered ($\le 4.20\text{ V}$) | USB / AC Powered ($> 4.20\text{ V}$ / No Bat) | RAM Storage & Rollup Invariant |
-| :--- | :---: | :---: | :--- |
-| **1) Wi-Fi Spectrum Scan** | Every 10 minutes | Every 2 minutes | Peak RSSI & quality accumulated in RAM per 10m window |
-| **2) BLE & Classic Bluetooth Scan** | Every 10 minutes | Every 2 minutes | Max unique BLE & Classic BT devices accumulated in RAM |
-| **3) 13-Channel Airtime Utilization** | Every 30 minutes | Every 2 minutes | Max airtime % across 13 channels accumulated in RAM |
-| **4) Station Speed & Latency Probes** | Every 30 minutes *(Visible APs Only)* | Every 10 minutes *(Visible APs Only)* | Gateway, DHCP, DNS, and HTTP latency probes |
-| **Telemetry Upload Attempt** | Every 10 minutes *(If AP or S24 visible)* | Every 10 minutes *(If AP or S24 visible)* | Directly transmitted from RAM (Zero flash wear when online) |
-| **Flash Persistence** | Offline only (30-min buffer + spool) | Offline only (30-min buffer + spool) | No flash writes when telemetry upload succeeds |
+### Measured Current Benchmarks
+
+| Hardware Target | Light Sleep Draw | Daily Consumption (10m Cadence) | Average Current | Expected Battery Life |
+|---|---|---|---|---|
+| **LILYGO TTGO T18** *(LiPo)* | **2.5 mA** | **131.1 – 155.6 mAh / day** | **5.46 – 6.48 mA** | **12.9 – 15.3 days** *(2000 mAh 18650)*<br/>**~19.3 days** *(2500 mAh 18650)* |
+| **ESP32-C3 Super Mini** *(Power Bank)* | **1.0 mA** *(1.66 mA eff)* | **83.2 – 100.3 mAh / day** | **3.47 – 4.18 mA** | **62.7 – 75.5 days** *(10,000 mAh 5V Power Bank)* |
+| **ESP32 DevKit V1** *(Reference)* | **17.0 mA** *(CP2102 draw)* | **491.8 mAh / day** | **20.49 mA** | **4.1 days** *(2000 mAh LiPo reference)* |
+
+> 📖 **Deep Dive**: Detailed mathematical derivations, pulse duty-cycle formulas, and hardware power models are available in [`docs/power-consumption.md`](docs/power-consumption.md).
+
+### Power Bank Keep-Alive Automatic Switch
+- **The Problem**: Standard USB power banks automatically shut off when load drops below $\approx 30\text{--}50\text{ mA}$ for more than 15–30 seconds.
+- **The Solution**: On the ESP32-C3, activating the keep-alive setting injects a **120 ms RF probe pulse every 20 seconds**, keeping the power bank alive while adding only **$+0.66\text{ mA}$** to the baseline sleep draw ($1.66\text{ mA}$ effective).
+- **Automatic Energy-Preserving Mode**: Because power-bank-powered boards lack direct battery ADC sensing, enabling the keep-alive trigger automatically switches the node to the **10-minute cadence with 800ms survey dwell**, preventing rapid battery depletion.
 
 ---
 
-## Key Architectural Features
+## Offline Data Storage & Retention (18-Day Ring Buffer)
 
-- **Settings & Fleet Management Console**:
-  Password-protected administrative suite with cryptographically signed HMAC-SHA256 session tokens. Enables operators to configure station descriptions, switch nodes between stable and canary OTA release tracks, pin explicit firmware versions, decommission nodes, execute selective historical data cleanups, and inspect live Cloudflare D1 table storage breakdown and 52-week activity heatmaps.
-- **24-Hour Station Reliability Timeline (48 × 30-Minute Intervals)**:
-  Embedded inside each monitored network card, providing instant visual health audits over the preceding 24 hours categorized by health status: 100% healthy (green), HTTP probe timeout (purple), DNS resolution timeout (amber), gateway RTT timeout (orange), DHCP lease timeout (red), association failure (charcoal), or idle (gray).
-- **In-Browser Web Serial Firmware Flasher**:
-  Zero-install browser flashing leveraging the Web Serial API and ESP Web Tools. Enables operators to flash compiled universal firmware, partition tables, and bootloaders directly to ESP32 nodes over USB with real-time progress and serial console logs from Google Chrome, Microsoft Edge, Brave, or Opera without installing local toolchains or Python.
-- **Serverless Edge Storage & Analytics**:
-  All telemetry cycles, spectrum scans, channel congestion metrics, and daily rollups are stored in **Cloudflare D1** (`t18-mon-db`). Automated daily cron triggers aggregate 24-hour summaries and enforce 30-day raw data retention.
-- **Hardware Targets: LILYGO T18 & T8 with IO35 Voltage Sensing**:
-  Tailored out-of-the-box for the **LILYGO TTGO T18 (T-Energy v3.0)**, while also fully supporting the **LILYGO T8**, ESP32 DevKit V1, and custom boards:
-  - **LILYGO T18**: Status LED on **GPIO 5**, battery ADC on **GPIO 35** via 100kΩ/100kΩ divider (ratio 0.50, $V_{\text{bat}} = 2.0 \times V_{\text{pin}}$).
-  - **LILYGO T8**: Status LED on **GPIO 21**, battery ADC on **GPIO 35** via 100kΩ/100kΩ divider.
-  - **ESP32 DevKit V1**: Status LED on **GPIO 2**, battery monitoring disabled.
-- **2.4 GHz Bluetooth Low Energy (BLE) Spectrum Survey**:
-  Sequential Bluetooth Low Energy (BLE) scans during every cycle. Employs advanced advertising payload de-randomization (Apple Find My/AirTag, iBeacon, Eddystone, Tile, Samsung/Google continuity) to track true physical device presence and RF contention without MAC address inflation, with unique BLE counts persisted directly into 24-hour local flash storage.
-- **Promiscuous Mode Channel Contention Profiling & LED Feedback**:
-  Measures all 13 channels during boot/wake with dwell times using ESP-IDF promiscuous mode. Provides dynamic LED feedback (solid during channel dwell, 100 ms off during transition) and non-blocking BOOT button monitoring to enter the setup portal immediately.
-- **Backup Hotspot Internet Failover**:
-  Automatic detection of backup AP (e.g. "S24"). If primary monitored networks lack internet connectivity or fail to upload telemetry, the station automatically routes data through the backup uplink to prevent data loss.
-- **Over-The-Air (OTA) Updates**:
-  Automated edge OTA updates (`/api/ota`) with zero-redirect binary streaming proxies (`/api/ota/download/:filename`) backed by GitHub Releases and Cloudflare R2, with strict SemVer downgrade protection and canary routing.
-- **Local Network & Dual-Stack Diagnostics**:
-  Gateway TCP SYN-ACK latency, IPv4 vs. IPv6 DNS resolution benchmarking, captive portal HTTP canary hijacking detection, and automated daily firewall audits.
-- **Zero-Flash-Wear Telemetry & Raw Spooling**:
-  Normal telemetry cycles transmit directly from memory without touching flash. During offline periods, records are safely buffered into a dedicated 190 KB raw SPI flash binary circular spool partition (`raw_spool`).
+The system is designed to survive extended power outages and network blackouts without losing telemetry:
+
+- **30-Minute Average Invariant**: Both battery-powered and permanently powered nodes store **only consolidated 30-minute average records** in flash.
+- **Zero Flash Wear Online**: Intermediate 2-minute and 10-minute measurements accumulate solely in RAM. When internet connectivity is active, telemetry uploads directly from RAM; flash is **never touched**.
+- **18 to 31 Days Offline Retention**:
+  - The dedicated 176 KB SPI flash circular buffer partition (`spiffs`) stores **864+ thirty-minute average records** ($864 \times 30\text{ min} = 432\text{ hours} = \mathbf{18.0\text{ days}}$ guaranteed).
+  - Streamlined binary serialization without verbose AP lists reduces records to ~110–120 bytes, allowing up to **1,500 records (31+ days)** of continuous history.
+- **Flash Endurance**: Committing at most 48 writes per day extends NOR flash life to **over 5,700 years**.
+
+---
+
+## Power-Aware Cadence Matrix
+
+| Task | Battery / Power Bank Mode (10m) | Mains Powered Mode (2m) | Operational Details |
+|---|:---:|:---:|---|
+| **1) Wi-Fi Spectrum Scan** | Every 10 minutes | Every 2 minutes | Discovers active SSIDs, BSSIDs, RSSI, and encryption |
+| **2) BLE & Bluetooth Scan** | Every 10 minutes | Every 2 minutes | De-randomizes BLE advertising; counts unique devices |
+| **3) 13-Channel Airtime Survey** | Every 30 minutes *(800ms dwell)* | Every 2 minutes *(2000ms dwell)* | Promiscuous frame counting & RF channel contention % |
+| **4) Network Latency Probes** | Every 30 minutes *(Visible APs)* | Every 10 minutes *(Visible APs)* | Gateway RTT, DHCP time, DNS, HTTP target latencies |
+| **Telemetry Upload Attempt** | Every 10 minutes | Every 10 minutes | Direct from RAM; uploads backlogged flash records if any |
+| **Flash Persistence** | Offline only (30-min boundary) | Offline only (30-min boundary) | Zero flash wear during normal online operation |
 
 ---
 
 ## Hardware Pinout Reference
 
-| Target Board | Status LED Pin | Battery ADC Pin (Divider) | BOOT Button | Default Preset |
+| Target Board | Status LED Pin | Battery ADC Pin (Divider) | BOOT Button | Default Target |
 | :--- | :---: | :---: | :---: | :--- |
 | **LILYGO T18** *(Default)* | **GPIO 5** | **GPIO 35** (100k/100k, 0.50f) | **GPIO 0** | `BOARD_T18` |
 | **LILYGO T8** | **GPIO 21** | **GPIO 35** (100k/100k, 0.50f) | **GPIO 0** | `BOARD_T8` |
@@ -161,13 +154,13 @@ To maximize battery runtime on single-cell 18650 LiPo cells while delivering hig
 | **ESP32-C3 Super Mini** | **GPIO 8** *(Active Low)* | N/A | **GPIO 9** | `BOARD_C3_SUPERMINI` |
 | **Custom** | Configurable | Configurable | **GPIO 0** | `BOARD_CUSTOM` |
 
-- **Battery Voltage Calculation**:
+- **Battery Sensing Formula**:
   On both T18 and T8, the battery voltage is measured on **IO35** using the onboard 100kΩ / 100kΩ resistor divider:
   $$V_{\text{battery}} = \frac{V_{\text{ADC}}}{0.50} = 2.0 \times V_{\text{ADC}}$$
 
 ---
 
-## Firmware Build & Flashing
+## Installation & Flashing
 
 ### Option A: In-Browser Web Flasher (Zero-Install — Recommended)
 Flash pre-compiled universal firmware directly to any ESP32 board over USB using your web browser:
@@ -175,103 +168,96 @@ Flash pre-compiled universal firmware directly to any ESP32 board over USB using
 1. **Open the Web Flasher**:
    - 🌐 [https://t18.dhsp.workers.dev/?flash=1](https://t18.dhsp.workers.dev/?flash=1) (Cloudflare Edge)
    - 📄 [https://flynn0.github.io/T18/?flash=1](https://flynn0.github.io/T18/?flash=1) (GitHub Pages Mirror)
-   - Or click **⚡ Flash Device** in the top navigation header of any dashboard view.
-2. **Connect your ESP32** via a USB data cable to your desktop computer.
-3. Supported browsers: **Google Chrome**, **Microsoft Edge**, **Brave**, or **Opera** on desktop (requires Web Serial API over HTTPS).
-4. Click **⚡ Connect ESP32 & Install Firmware** and select your board's serial port (`CP210x`, `CH340`, or `USB JTAG`).
-5. Choose **Install T18 Monitor** and check **Erase device** for a fresh clean installation.
-6. The installer downloads the binary image, writes all partition tables and application slots, and verifies flash in real-time.
+   - Or click **⚡ Flash Device** in the top navigation bar of the dashboard.
+2. Connect your ESP32 board to your computer with a USB data cable.
+3. Supported browsers: **Google Chrome**, **Microsoft Edge**, **Brave**, or **Opera** on desktop.
+4. Click **⚡ Connect ESP32 & Install Firmware** and select your board's serial port.
+5. Choose **Install T18 Monitor** and check **Erase device** for a fresh installation.
+6. The browser downloads the verified binary release, writes all partition tables and application slots, and verifies flash in real-time.
 
-> **Troubleshooting Connection**: If the browser times out or cannot synchronize with the ESP32 chip, press and hold the **BOOT (GPIO 0)** button on your board while clicking Connect, then release it once erasing/flashing begins.
+> **Troubleshooting**: If the browser times out synchronizing with the ESP32 chip, press and hold the **BOOT (GPIO 0 / GPIO 9 on C3)** button on your board while clicking Connect, then release it once flashing begins.
 
 ---
 
-### Option B: Pre-Compiled Binary Flashing (`esptool.py`)
-If you prefer command-line flashing without compiling from source, download the compiled binaries from the Web Flasher dialog or [GitHub Releases](https://github.com/flynn0/T18/releases/latest):
+### Option B: Command-Line Flashing (`esptool.py`)
+Download pre-compiled binaries from [GitHub Releases](https://github.com/flynn0/T18/releases/latest):
 
-- `firmware.bin` (Application — offset `0x10000`)
-- `partitions.bin` (Partition Table — offset `0x8000`)
-- `bootloader.bin` (Second Stage Bootloader — offset `0x1000`)
-- `boot_app0.bin` (OTA Data Initializer — offset `0xe000`)
-- `firmware-esp32-merged.bin` (Unified all-in-one image — offset `0x0`)
-
-**Multi-part Flash**:
-```bash
-esptool.py --chip esp32 --baud 921600 write_flash \
-  0x1000 bootloader.bin \
-  0x8000 partitions.bin \
-  0xe000 boot_app0.bin \
-  0x10000 firmware.bin
-```
-
-**Single Unified Binary Flash**:
+**Standard ESP32 (Single Unified Binary @ `0x0`)**:
 ```bash
 esptool.py --chip esp32 --baud 921600 write_flash 0x0 firmware-esp32-merged.bin
 ```
 
+**ESP32-C3 Super Mini (Single Unified Binary @ `0x0`)**:
+```bash
+esptool.py --chip esp32c3 --baud 921600 write_flash 0x0 firmware-esp32c3-merged.bin
+```
+
 ---
 
-### Option C: PlatformIO (Source Build)
+### Option C: Source Build (PlatformIO)
 ```bash
 cd firmware
 
-# Build and upload for ESP32 Universal Target
+# Build and upload for standard ESP32 (T18, T8, DevKit V1)
 pio run -e esp32dev -t upload
 
-# Monitor Serial Output (115200 baud)
+# Build and upload for ESP32-C3 Super Mini
+pio run -e esp32c3 -t upload
+
+# Open Serial Monitor (115200 baud)
 pio device monitor -b 115200
 ```
 
 ---
 
-### Option D: Arduino IDE (Source Build)
-1. Open Arduino IDE.
-2. Open [`firmware/T18/T18.ino`](firmware/T18/T18.ino).
-3. Under **Tools > Board**, select **ESP32 Dev Module**.
-4. Set **Partition Scheme** to **Minimal SPIFFS (Large APPS with OTA)**.
-5. Install the **ArduinoJson** library (v7.x).
-6. Click **Upload**.
+## First Boot & Setup Captive Portal
+
+1. On initial power-up (or holding the BOOT button for >1.5s), the station launches a Wi-Fi Access Point:
+   - **SSID**: `T18-Setup-<MAC_SUFFIX>`
+   - **Portal IP**: `http://192.168.4.1`
+2. Connect with your smartphone or laptop. The configuration portal opens automatically:
+   - **Station ID & Location**: Unique name (e.g., `C-103`) and location description.
+   - **Monitored Networks**: Configure up to 4 Wi-Fi SSIDs and passwords to benchmark.
+   - **Power Bank Keep-Alive**: Enable if powering an ESP32-C3 from an external USB power bank.
+   - **Backup Internet**: Configure an emergency failover hotspot (default: `S24`).
+3. Click **Save & Reboot**. The node immediately provisions a zero-trust cryptographic bearer token and starts monitoring.
 
 ---
 
-## Cloudflare Worker & D1 Setup
+## Live Monitoring Dashboards & Admin Features
 
-### 1. Worker Configuration
-- **Worker Name**: `t18` (accessible at `https://t18.dhsp.workers.dev`)
-- **D1 Database**: `t18-mon-db` (`9526b47c-4fa7-41cc-8cc5-ba5b2bd8cf4f`)
+### 1. Dual Real-Time Dashboards
+- **Cloudflare Edge (`https://t18.dhsp.workers.dev`)**: Serverless edge-rendered dashboard backed by Cloudflare D1 with instant two-tier isolate caching.
+- **GitHub Pages (`https://flynn0.github.io/T18`)**: Serverless static mirror reading directly from Cloudflare Worker APIs.
 
-### 2. Deploy Worker & Apply Migrations
+### 2. Dashboard Analytics
+- **24-Hour Network Reliability Bar (48 × 30-min intervals)**: Color-coded health timeline showing 100% passed (green), HTTP timeout (purple), DNS failure (amber), gateway timeout (orange), DHCP failure (red), or association failure (charcoal).
+- **24-Hour Spectrum Heatmap**: Half-hour airtime congestion percentages across all 13 Wi-Fi channels.
+- **7-Day BLE Activity Drawer**: Hourly unique Bluetooth device density with dynamic peak color scaling.
+- **Discovered AP Catalog**: Live and historical archive of all surrounding APs with signal strength history.
+
+### 3. Settings & Admin Console (`/api/admin/*`)
+- Authenticate with administrator credentials to inspect live D1 database sizing, row counts, and 52-week activity heatmaps.
+- Update station descriptions, toggle canary OTA release channels, or pin explicit firmware targets.
+- Execute timeframe-based telemetry pruning to optimize database storage.
+
+---
+
+## Cloudflare Worker & D1 Deployment
+
 ```bash
 cd worker
 npm install
+
+# Apply database migrations to remote D1
 npm run d1:migrate:remote
+
+# Recompile frontend and validate syntax
 npm run build:docs
+
+# Deploy to Cloudflare Edge (preserves secrets and passwords)
 npx wrangler deploy --keep-vars
 ```
-
----
-
-## API Endpoints
-
-### Public & Telemetry APIs
-- `GET /` — Responsive Server-Rendered Telemetry Dashboard
-- `GET /manifest.json` — ESP Web Tools flasher manifest
-- `GET /firmware/:filename` — Binary distribution for Web Serial flashing
-- `POST /register` — Zero-Trust Station Token Provisioning
-- `POST /data` — Ingestion endpoint for 10-minute telemetry cycles
-- `GET /api/stations` — Public station list and health status
-- `GET /api/station/:id` — Detailed station metrics, Bluetooth activity, history, and diagnostics
-- `GET /api/ota` — OTA check endpoint for firmware update dispatch
-- `GET /api/ota/download/:filename` — Direct binary streaming proxy for ESP32 OTA updates
-- `GET /api/export` — Telemetry export in CSV or JSON format
-
-### Administrative APIs (Protected by HMAC Bearer Token)
-- `POST /api/admin/login` — Administrator authentication & session issuance
-- `GET /api/admin/verify` — Admin session validation
-- `GET /api/admin/overview` — D1 storage metrics, table row counts, operational span, and yearly activity heatmap
-- `POST /api/admin/station/update` — Update node description, canary OTA flag, and target firmware version
-- `POST /api/admin/station/delete` — Decommission node with optional telemetry purge
-- `POST /api/admin/data/delete` — Timeframe-based raw measurement and survey pruning
 
 ---
 

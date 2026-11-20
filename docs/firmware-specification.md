@@ -178,26 +178,26 @@ When the station boots fresh with no prior NTP sync (e.g. after a cold battery i
 
 ---
 
-## 7. Measured Power Consumption & Battery Autonomy (2500 mAh)
+## 7. Measured Power Consumption & Battery Autonomy
 
-Based on empirical measurements on the TTGO T18 board (TP5400, 3.7V–4.2V Li-ion cell):
+> 📖 **Comprehensive Power Modeling**: For full mathematical models, pulse duty-cycle derivations, and energy-saving strategies, see [`docs/power-consumption.md`](power-consumption.md).
 
-| Operating State | Measured Current | Notes |
-|:---|:---:|:---|
-| **Active (CPU 240MHz, Wi-Fi off, LED on)** | **45.10 mA** | Baseline CPU draw |
-| **Wi-Fi Active Scan / Association** | **150.00 mA** | Peak radio transmission & scanning |
-| **Active Wi-Fi off (LED on)** | **44.90 mA** | Post-disconnect radio shutoff |
-| **Light Sleep (`esp_light_sleep_start`)** | **1.91 mA** | CPU paused, RAM retained, LED off |
-| **Active Resume (LED on)** | **44.80 mA** | Post-sleep CPU resume |
-| **Deep Sleep (`esp_deep_sleep_start`)** | **0.17 mA** (170 µA) | CPU & RAM off, RTC slow clock only |
+Empirical current benchmarks across hardware platforms:
 
-### Runtime Projections on a 2500 mAh 18650 Battery:
-- **Station in Light Sleep (10-minute probe cycle)**:
-  - Daily consumption: $\approx 65.9\text{ mAh/day}$ ($I_{\text{avg}} \approx 2.75\text{ mA}$).
-  - **Expected Runtime**: **~38 days (~5.5 weeks)**.
-- **Station in Deep Sleep (10-minute probe cycle)**:
-  - Daily consumption: $\approx 29.5\text{ mAh/day}$ ($I_{\text{avg}} \approx 1.23\text{ mA}$).
-  - **Expected Runtime**: **~85 days (~2.8 months)**.
-- **Pure Standby Shelf Life**:
-  - Light Sleep: **~54.5 days** (1,309 hours).
-  - Deep Sleep: **~612 days / 1.67 years** (14,705 hours).
+| Operating State | ESP32 T18 (LiPo) | ESP32 DevKit V1 | ESP32-C3 SuperMini | Operational Details |
+|:---|:---:|:---:|:---:|:---|
+| **Light Sleep (`esp_light_sleep_start`)** | **2.50 mA** | **17.00 mA** | **1.00 mA** *(1.66 mA eff)* | Radio OFF, CPU clock-gated, RAM retained. C3 includes 20s keep-alive pulse. |
+| **Wi-Fi Transmission & Upload** | **120.00 mA** | **120.00 mA** | **84.00 mA** | Active 802.11 transmission during NTP sync, probes, and HTTP upload. |
+| **Wi-Fi Promiscuous / AP Scan** | **120.00 mA** | **120.00 mA** | **84.00 mA** | 13-channel congestion survey and AP discovery. |
+| **Bluetooth Sweep (BLE + Classic)** | **110.00 mA** | **110.00 mA** | **84.00 mA** | BLE scanning (3.0s) + Classic BT inquiry (2.0s on ESP32; omitted on C3). |
+
+### Real-World Battery & Power Bank Autonomy (10-Minute Cadence):
+- **LILYGO TTGO T18 on 2000 mAh LiPo Battery**:
+  - Daily consumption: $\approx 131.1\text{--}155.6\text{ mAh/day}$ ($I_{\text{avg}} \approx 5.46\text{--}6.48\text{ mA}$).
+  - **Expected Runtime**: **12.9 to 15.3 days** (or **~19.3 days** on a 2500 mAh 18650 cell).
+- **ESP32-C3 SuperMini on 10,000 mAh 5V USB Power Bank**:
+  - Daily consumption: $\approx 83.2\text{--}100.3\text{ mAh/day}$ ($I_{\text{avg}} \approx 3.47\text{--}4.18\text{ mA}$).
+  - **Expected Runtime**: **62.7 to 75.5 days (over 2 months!)**.
+- **18-Day Zero-Wear Offline Ring Buffer**:
+  - In-flash circular buffer partition (`spiffs`, 176 KB) stores **864+ thirty-minute average records** (over **18 to 31 days** offline retention without internet).
+  - Online operation streams directly from RAM (zero flash writes). Offline writes occur at most 48 times per day, giving flash memory over 5,700 years of endurance.

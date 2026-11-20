@@ -117,3 +117,13 @@ Trigger Upload (Initial Assessment, Catch-Up, or Daily Batch)
   │
   └─► Enter Light Sleep
 ```
+
+---
+
+## Related Documentation
+
+- ⚡ **[Power Consumption & Battery Modeling](power-consumption.md)** — Hardware current benchmarks, light sleep analysis, keep-alive pulse math, and 18-day offline ring buffer.
+- ⚙️ **[Firmware Specification](firmware-specification.md)** — Embedded state machine, promiscuous 13-channel survey, and BLE de-randomization.
+- 🗄️ **[Data Schema & Telemetry](data-schema.md)** — Cloudflare D1 tables and 30-day automated retention.
+- ☁️ **[Cloudflare Worker Backend](cloudflare-worker.md)** — Ingestion routing, edge caching, and daily cron maintenance.
+- 📊 **[Dashboard & Analytics](dashboard.md)** — 48-interval reliability timelines and 24-hour spectrum heatmaps.
