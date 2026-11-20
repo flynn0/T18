@@ -985,7 +985,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.1.5</span>
+        <span class="brand-tag">v1.1.6</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1237,8 +1237,8 @@
               <span class="ble-legend-swatch" style="display:inline-block; width:12px; height:10px; background:#10b981; border-radius:2px;" title="4 - 8 devices"></span>
               <span class="ble-legend-swatch" style="display:inline-block; width:12px; height:10px; background:#eab308; border-radius:2px;" title="9 - 15 devices"></span>
               <span class="ble-legend-swatch" style="display:inline-block; width:12px; height:10px; background:#f97316; border-radius:2px;" title="16 - 25 devices"></span>
-              <span class="ble-legend-swatch" style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="&gt; 25 devices (Dense)"></span>
-              <span style="color:#38bdf8; font-weight:600; margin-left:2px;">&gt;25 Dev</span>
+              <span class="ble-legend-swatch" style="display:inline-block; width:12px; height:10px; background:#d946ef; border-radius:2px;" title="Peak devices"></span>
+              <span id="bleLegendMaxText" style="color:#38bdf8; font-weight:600; margin-left:2px;">Dynamic</span>
             </div>
           </div>
           <!-- Dedicated Full-Width Hover Info Bar (Permanently allocated height to prevent hover flicker) -->
@@ -1271,8 +1271,11 @@
           <!-- 2. Bluetooth 7-Day Matrix -->
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
-              <span style="font-size:0.78rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Bluetooth Device Activity (Unique BLE &amp; Classic Devices)</span>
-              <span style="font-size:0.72rem; color:var(--text-muted);">7-Day unique Bluetooth transmitters detected per 30-min window</span>
+              <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                <span style="font-size:0.78rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Bluetooth Device Activity (Unique BLE &amp; Classic Devices)</span>
+                <span id="weeklyBtLegendBadge" style="font-size:0.72rem; color:var(--text-muted);">(Dynamic 7-Day Scale)</span>
+              </div>
+              <div id="weeklyBtLegendWrap" style="display:inline-flex; align-items:center; gap:3px; font-size:0.72rem;"></div>
             </div>
             <div id="weeklyBtHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.4rem; line-height: 1.4; margin-bottom: 0.4rem;">Hover over a cell to inspect Bluetooth metrics</div>
             <div id="weeklyBtHeatmapContainer" style="min-width: 760px; padding: 4px 12px 10px 4px;"></div>
@@ -1564,7 +1567,7 @@
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.1.5 Stable</span>
+          <span class="fw-badge">v1.1.6 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -2107,7 +2110,7 @@
 
         <div class="admin-input-group">
           <label for="editStationTargetInput">Pinned OTA Target Version <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Optional)</span></label>
-          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.5" />
+          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.6" />
           <div style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
             Force node to a specific release tag. Leave empty to automatically follow Stable or Canary.
           </div>
@@ -2134,7 +2137,7 @@
     <span>|</span>
     <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-weight: 600; color: var(--primary);">⚙️ Settings</a>
     <span>|</span>
-    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.5)</a>
+    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.6)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -4228,7 +4231,7 @@
       renderWeeklyHeatmaps();
     }
 
-    function updateHeatmapLegends(palName) {
+    function updateHeatmapLegends(palName, maxTarget, actualPeak) {
       const pal = HEATMAP_PALETTES[palName || currentHeatmapPalette] || HEATMAP_PALETTES.spectrum;
       const airSwatches = document.querySelectorAll(".airtime-legend-swatch");
       airSwatches.forEach(function(sw, idx) {
@@ -4238,6 +4241,30 @@
       bleSwatches.forEach(function(sw, idx) {
         if (pal.ble[idx]) sw.style.backgroundColor = pal.ble[idx];
       });
+
+      const max = Math.max(10, maxTarget || 25);
+      const t1 = Math.max(1, Math.round(max * 0.15));
+      const t2 = Math.max(t1 + 1, Math.round(max * 0.35));
+      const t3 = Math.max(t2 + 1, Math.round(max * 0.60));
+      const t4 = Math.max(t3 + 1, Math.round(max * 0.85));
+
+      if (bleSwatches.length >= 6) {
+        bleSwatches[0].title = "0 devices (Quiet)";
+        bleSwatches[1].title = "1 – " + t1 + " devices";
+        bleSwatches[2].title = (t1 + 1) + " – " + t2 + " devices";
+        bleSwatches[3].title = (t2 + 1) + " – " + t3 + " devices";
+        bleSwatches[4].title = (t3 + 1) + " – " + t4 + " devices";
+        bleSwatches[5].title = "≥ " + (t4 + 1) + " devices (Peak: " + (actualPeak !== undefined ? actualPeak : max) + ")";
+      }
+
+      const bleMaxText = document.getElementById("bleLegendMaxText");
+      if (bleMaxText) {
+        if (actualPeak !== undefined && actualPeak > 0) {
+          bleMaxText.innerText = "Peak " + actualPeak + " (Scale " + max + ")";
+        } else {
+          bleMaxText.innerText = "Scale " + max + " Dev";
+        }
+      }
     }
 
     function getAirtimeHeatmapColor(pct, palName) {
@@ -4257,14 +4284,20 @@
       return pal[11];
     }
 
-    function getBleHeatmapColor(count, palName) {
+    function getBleHeatmapColor(count, palName, maxTarget) {
       if (count === null || count === undefined || isNaN(count)) return 'rgba(100, 116, 139, 0.15)';
       const pal = (HEATMAP_PALETTES[palName || currentHeatmapPalette] || HEATMAP_PALETTES.spectrum).ble;
-      if (count === 0) return pal[0];
-      if (count <= 3) return pal[1];
-      if (count <= 8) return pal[2];
-      if (count <= 15) return pal[3];
-      if (count <= 25) return pal[4];
+      if (count <= 0) return pal[0];
+      const max = Math.max(10, maxTarget || 25);
+      const t1 = Math.max(1, Math.round(max * 0.15));
+      const t2 = Math.max(t1 + 1, Math.round(max * 0.35));
+      const t3 = Math.max(t2 + 1, Math.round(max * 0.60));
+      const t4 = Math.max(t3 + 1, Math.round(max * 0.85));
+
+      if (count <= t1) return pal[1];
+      if (count <= t2) return pal[2];
+      if (count <= t3) return pal[3];
+      if (count <= t4) return pal[4];
       return pal[5];
     }
 
@@ -4476,6 +4509,17 @@
       }
 
       // 3. Render Unique BLE Devices Row
+      let max24hBle = 0;
+      for (let i = 0; i < 48; i++) {
+        const bData = bleSlots[i];
+        if (bData && bData.count > 0) {
+          const devCount = Math.round(bData.sumUnique / bData.count);
+          if (devCount > max24hBle) max24hBle = devCount;
+        }
+      }
+      const dynamicBleMax24h = Math.max(10, Math.ceil(max24hBle / 5) * 5);
+      updateHeatmapLegends(currentHeatmapPalette, dynamicBleMax24h, max24hBle);
+
       const bleRow = document.createElement("div");
       bleRow.className = "heatmap-row";
       bleRow.style.marginTop = "4px";
@@ -4503,7 +4547,7 @@
 
         if (bData) {
           const devCount = Math.round(bData.sumUnique / bData.count);
-          const color = getBleHeatmapColor(devCount, currentHeatmapPalette);
+          const color = getBleHeatmapColor(devCount, currentHeatmapPalette, dynamicBleMax24h);
           cell.style.background = color;
           cell.title = 'BLE Devices (' + timeLabel + ' - ' + endTimeLabel + '): ' + devCount + ' unique devices, ' + bData.totalMacs + ' MACs (' + bData.randomMacs + ' RPA, ' + bData.publicMacs + ' Public)';
 
@@ -5158,6 +5202,40 @@
       }
 
       // --- 2. Bluetooth Activity Heatmap ---
+      let max7dBle = 0;
+      for (let dIdx = 0; dIdx < 7; dIdx++) {
+        for (let slot = 0; slot < 48; slot++) {
+          const cell = btMatrix[dIdx][slot];
+          if (cell && cell.maxUnique > max7dBle) {
+            max7dBle = cell.maxUnique;
+          }
+        }
+      }
+      const dynamicBleMax7d = Math.max(10, Math.ceil(max7dBle / 5) * 5);
+
+      const btBadge = document.getElementById("weeklyBtLegendBadge");
+      if (btBadge) {
+        btBadge.innerHTML = '<span style="color:#38bdf8; font-weight:600;">(Dynamic Scale: Peak ' + max7dBle + ' &bull; Scale 0–' + dynamicBleMax7d + ' devices)</span>';
+      }
+      const btLegendWrap = document.getElementById("weeklyBtLegendWrap");
+      if (btLegendWrap) {
+        const pal = (HEATMAP_PALETTES[currentHeatmapPalette] || HEATMAP_PALETTES.spectrum).ble;
+        const t1 = Math.max(1, Math.round(dynamicBleMax7d * 0.15));
+        const t2 = Math.max(t1 + 1, Math.round(dynamicBleMax7d * 0.35));
+        const t3 = Math.max(t2 + 1, Math.round(dynamicBleMax7d * 0.60));
+        const t4 = Math.max(t3 + 1, Math.round(dynamicBleMax7d * 0.85));
+        btLegendWrap.innerHTML =
+          '<span style="color:var(--text-muted); margin-right:2px;">Scale:</span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[0] + '; border-radius:2px;" title="0 devices"></span>' +
+          '<span style="color:var(--text-muted); margin-right:2px;">0</span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[1] + '; border-radius:2px;" title="1 – ' + t1 + ' devices"></span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[2] + '; border-radius:2px;" title="' + (t1+1) + ' – ' + t2 + ' devices"></span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[3] + '; border-radius:2px;" title="' + (t2+1) + ' – ' + t3 + ' devices"></span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[4] + '; border-radius:2px;" title="' + (t3+1) + ' – ' + t4 + ' devices"></span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[5] + '; border-radius:2px;" title="≥ ' + (t4+1) + ' devices (Peak ' + max7dBle + ')"></span>' +
+          '<span style="color:#38bdf8; font-weight:600; margin-left:2px;">≥' + (t4+1) + '</span>';
+      }
+
       btContainer.appendChild(createTimeHeaderRow());
       const btHover = document.getElementById("weeklyBtHoverInfo");
 
@@ -5190,7 +5268,7 @@
           const timeRange = startH + ':' + startM + ' – ' + endH + ':' + endM;
 
           if (cellData.count > 0 && cellData.maxUnique > 0) {
-            const color = getBleHeatmapColor(cellData.maxUnique, currentHeatmapPalette);
+            const color = getBleHeatmapColor(cellData.maxUnique, currentHeatmapPalette, dynamicBleMax7d);
             cell.style.background = color;
             cell.title = d.dayLabel + ' (' + timeRange + '): ' + cellData.maxUnique + ' unique devices (' + cellData.classicTotal + ' Classic)';
 

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.6] - 2026-11-20
+
+### Added & Enhanced
+- **Dynamic Flexible Maximum Target for BLE Heatmaps**:
+  - Replaced the hardcoded 25-device ceiling in Bluetooth heatmaps with automatic dynamic scaling calculated directly from the station's observed peak activity.
+  - **24-Hour Congestion Heatmap**: Dynamically calculates peak BLE devices across the 48 half-hour timeslots, scales palette color thresholds proportionally across all 6 tiers (`0`, `1–15%`, `16–35%`, `36–60%`, `61–85%`, and `≥86% Peak`), and dynamically updates legend swatch tooltips and peak badge (`Peak X (Scale Y)`).
+  - **7-Day Historical Heatmap (Bluetooth Activity)**: Scans all 336 timeslots (7 days × 48 half-hour windows) to determine the weekly maximum, applies proportionate threshold bins, and renders an active inline color scale legend with live peak indicator in the drawer header.
+  - Environments with low BLE presence (e.g. 5–8 devices) now utilize the full color palette instead of remaining clamped at the bottom tiers; high-density environments (e.g. 30–120+ devices) scale smoothly without saturation clipping.
+- **ESP32-C3 Active Power Bank Keep-Alive Routine**:
+  - Implemented high-current keep-alive pulse mechanism in `app_main.h` (every 15 s) during light sleep: powers on Wi-Fi modem (`WiFi.mode(WIFI_STA)`), transmits active 802.11 probe frames at +20 dBm via `WiFi.scanNetworks(true, false)`, activates LED, and executes a 120 ms CPU burn loop.
+  - Spikes ESP32-C3 current draw from ~18 mA baseline to >120–180 mA peak, reliably resetting auto-off timers on low-threshold USB power banks.
+
+### Fixed
+- **Web Serial Flasher "invalid header" Bootloop**:
+  - Fixed `invalid header: 0xffffffff` watchdog reboot loop on ESP32-C3 after web flashing caused by `new_install_prompt_erase: false` triggering automatic flash erase.
+  - Configured `"new_install_skip_erase": true` across all update manifests (`manifest-update.json`, `manifest-c3-update.json`, `manifest-esp32-update.json`) so NVS credentials and settings are safely retained without flash wipe.
+  - Included full structural partition sets in update manifests: bootloader (`0x0` for C3, `0x1000` for ESP32), partition table (`0x8000`), `boot_app0.bin` (`0xe000` resetting `otadata`), and application firmware (`0x10000`).
+  - Updated DOM instantiation in `frontend.ts` to fully reconstruct `<esp-web-install-button>` upon radio toggles, eliminating stale manifest caching.
+
+---
+
 ## [1.1.5] - 2026-11-20
 
 ### Added & Enhanced

@@ -1,6 +1,6 @@
 {
   "name": "T18 Wi-Fi Monitor (Update)",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "funding_url": "https://github.com/flynn0/T18",
   "new_install_skip_erase": true,
   "builds": [
