@@ -212,7 +212,7 @@ private:
         html += F(" style='width:1.25rem;min-width:1.25rem;height:1.25rem;accent-color:var(--primary);cursor:pointer;margin-top:0.2rem;'>"
                   "<div><label for='pb_alive' style='cursor:pointer;margin-bottom:0.15rem;font-weight:600;'>Power Bank Keep-Alive Workaround</label>"
                   "<span style='color:var(--muted);font-size:0.75rem;line-height:1.3;display:block;'>"
-                  "Wake up ESP32 from light sleep for 500 ms every 20 seconds to draw current and prevent external power banks from auto-shutting off."
+                  "Wake up from light sleep every 15s with a high-current Wi-Fi &amp; CPU burst (120 ms, ~150 mA) to prevent external USB power banks from auto-shutting off."
                   "</span></div></div>");
 
         // Monitored Networks

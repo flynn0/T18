@@ -44,7 +44,7 @@ public:
         Serial.printf(" flynn0/T18 Unified Firmware v%s (%s)\n", FIRMWARE_VERSION, _config.hw.board_name);
         Serial.printf(" Target LED: GPIO %d | Battery Pin: GPIO %d\n",
                       _config.hw.status_led_pin, _config.hw.battery_pin);
-        Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (500ms/20s)" : "DISABLED");
+        Serial.printf(" Power Bank Keep-Alive: %s\n", _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi/15s)" : "DISABLED");
         Serial.printf(" Backup Internet: %s (SSID: %s)\n", _config.backup_enabled ? "ENABLED" : "DISABLED", _config.backup_ssid);
         Serial.println(F("========================================"));
 
@@ -780,7 +780,7 @@ private:
     void enterLightSleep(uint32_t sleepDurationMs) {
         Serial.printf("[Main] Entering Light Sleep for %u seconds (Power Bank Keep-Alive: %s)...\n",
                       (unsigned)(sleepDurationMs / 1000),
-                      _config.powerbank_keepalive ? "ENABLED (500ms pulse every 20s)" : "DISABLED");
+                      _config.powerbank_keepalive ? "ENABLED (120ms Wi-Fi burst / 15s)" : "DISABLED");
         Serial.flush();
 
         WiFi.disconnect(true);
@@ -800,8 +800,8 @@ private:
             esp_light_sleep_start();
         } else {
             uint32_t remainingMs = sleepDurationMs;
-            const uint32_t INTERVAL_SLEEP_MS = 20000; // 20 seconds
-            const uint32_t WAKE_PULSE_MS = 500;       // 500 ms
+            const uint32_t INTERVAL_SLEEP_MS = 15000; // 15 seconds
+            const uint32_t WAKE_PULSE_MS = 120;       // 120 ms high-current burst
 
             while (remainingMs > 0) {
                 uint32_t chunkSleepMs = (remainingMs > INTERVAL_SLEEP_MS) ? INTERVAL_SLEEP_MS : remainingMs;
@@ -833,9 +833,23 @@ private:
                     break;
                 }
 
-                // Keep-alive pulse: wake for 500 ms with active current draw to keep power bank awake
+                // Keep-alive pulse:
+                // Baseline draw without Wi-Fi is only ~18mA on ESP32-C3, which causes USB power banks to auto shut-off.
+                // We spike consumption to ~120-180mA by turning on LED, activating Wi-Fi modem,
+                // triggering active RF probe transmissions, and running a busy CPU burn loop for 120 ms.
                 _led.setSolid(true);
-                delay(WAKE_PULSE_MS);
+                WiFi.mode(WIFI_STA);
+                WiFi.scanNetworks(true, false);
+
+                uint32_t pulseStart = millis();
+                volatile uint32_t burnCounter = 0;
+                while (millis() - pulseStart < WAKE_PULSE_MS) {
+                    burnCounter += 1;
+                }
+
+                WiFi.scanDelete();
+                WiFi.disconnect(true);
+                WiFi.mode(WIFI_OFF);
                 _led.setOff();
 
                 if (remainingMs > WAKE_PULSE_MS) {
