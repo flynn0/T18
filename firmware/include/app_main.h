@@ -234,10 +234,8 @@ public:
         }
         _led.setOff();
 
-        // Record 30-minute revolving slot into ChannelHistory buffer (kept in RAM; written to flash only if offline)
-        if (is30mBoundary) {
-            ChannelHistory::instance().recordCycle(_ramChan, _ramBt.ble_unique_devices, _ramBt.ble_random_macs, _ramBt.classic_total, batteryMv, currentEpoch);
-        }
+        // Record cycle into 30-minute revolving slot in ChannelHistory buffer (kept in RAM; written to flash only if offline)
+        ChannelHistory::instance().recordCycle(_ramChan, _ramBt.ble_unique_devices, _ramBt.ble_random_macs, _ramBt.classic_total, batteryMv, currentEpoch);
 
         // Package cycle telemetry
         CycleTelemetry cycle;
@@ -473,15 +471,25 @@ private:
             ChannelHistory::instance().calibrateTimestamps(currentEpoch);
             ChannelHistory::instance().submitPendingHistory(_config.worker_url, token, _config.station_id);
 
-            // 2. If there is pending data from past offline cycles, upload it first
+            // 2. If there is pending data from past offline cycles, upload all backlog in chunks of 12
             if (SpoolManager::hasPendingData()) {
-                Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog...\n",
+                Serial.printf("[Main] Found %u pending offline records in flash spool. Uploading backlog in chunks...\n",
                               (unsigned)SpoolManager::getRecordCount());
-                String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id);
-                if (spooledBatch.length() > 2) {
+                while (SpoolManager::hasPendingData()) {
+                    uint32_t nextOffset = 0;
+                    uint32_t batchCount = 0;
+                    String spooledBatch = SpoolManager::readNextBatchJson(_config.station_id, 12, nextOffset, batchCount);
+                    if (batchCount == 0 || spooledBatch.length() <= 2) break;
+
+                    Serial.printf("[Main] Uploading backlog chunk (%u records, remaining: %u)...\n",
+                                  (unsigned)batchCount, (unsigned)SpoolManager::getRecordCount());
                     if (ApiClient::uploadTelemetry(_config.worker_url, token, spooledBatch)) {
-                        SpoolManager::clearSpool();
-                        Serial.println(F("[Main] Offline backlog successfully transmitted and cleared."));
+                        SpoolManager::confirmBatchUploaded(nextOffset, batchCount);
+                        Serial.printf("[Main] Chunk of %u records uploaded successfully.\n", (unsigned)batchCount);
+                        delay(50);
+                    } else {
+                        Serial.println(F("[Main] Backlog chunk upload failed; will retry remaining data on next cycle."));
+                        break;
                     }
                 }
             }

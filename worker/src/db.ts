@@ -243,10 +243,10 @@ export class Database {
               station_id, bssid, ssid, channel, rssi, quality, encryption, phy_mode, band, last_seen
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(station_id, bssid) DO UPDATE SET
-              ssid = excluded.ssid,
+              ssid = COALESCE(excluded.ssid, station_discovered_aps.ssid),
               channel = excluded.channel,
-              rssi = excluded.rssi,
-              quality = excluded.quality,
+              rssi = MAX(COALESCE(station_discovered_aps.rssi, -120), excluded.rssi),
+              quality = MAX(COALESCE(station_discovered_aps.quality, 0), excluded.quality),
               encryption = excluded.encryption,
               phy_mode = excluded.phy_mode,
               band = excluded.band,
@@ -973,6 +973,64 @@ export class Database {
         ORDER BY date ASC, interval_index ASC
       `).bind(stationId, cutoffTs).all();
       return res.results || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async upsertDaily30MinSummary(
+    stationId: string,
+    timestamp: number,
+    channelAirtimeJson: string | null,
+    bleMaxUnique: number,
+    classicMax: number,
+    batteryMv: number | null
+  ): Promise<void> {
+    const d = new Date(timestamp * 1000);
+    const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+    const secInDay = (d.getUTCHours() * 3600) + (d.getUTCMinutes() * 60) + d.getUTCSeconds();
+    const intervalIndex = Math.min(47, Math.max(0, Math.floor(secInDay / 1800)));
+    const startTs = Math.floor(timestamp / 1800) * 1800;
+
+    try {
+      await this.db.prepare(`
+        INSERT INTO daily_30min_summaries (
+          station_id, date, interval_index, start_timestamp, channel_max_airtime, ble_max_unique, classic_max, battery_mv
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(station_id, date, interval_index) DO UPDATE SET
+          start_timestamp = excluded.start_timestamp,
+          channel_max_airtime = COALESCE(excluded.channel_max_airtime, daily_30min_summaries.channel_max_airtime),
+          ble_max_unique = MAX(daily_30min_summaries.ble_max_unique, excluded.ble_max_unique),
+          classic_max = MAX(daily_30min_summaries.classic_max, excluded.classic_max),
+          battery_mv = COALESCE(excluded.battery_mv, daily_30min_summaries.battery_mv)
+      `).bind(
+        stationId,
+        dateStr,
+        intervalIndex,
+        startTs,
+        channelAirtimeJson || "[]",
+        bleMaxUnique,
+        classicMax,
+        batteryMv ?? null
+      ).run();
+    } catch (e) {
+      console.error("[DB upsertDaily30MinSummary error]:", e);
+    }
+  }
+
+  async getAllDiscoveredAps(stationId: string): Promise<InactiveSurveyRecord[]> {
+    try {
+      const result = await this.db
+        .prepare(`
+          SELECT ssid, UPPER(bssid) AS bssid, channel, phy_mode, encryption, band, rssi, quality, last_seen
+          FROM station_discovered_aps
+          WHERE station_id = ?
+          ORDER BY last_seen DESC
+          LIMIT 300
+        `)
+        .bind(stationId)
+        .all<InactiveSurveyRecord>();
+      return result.results || [];
     } catch {
       return [];
     }

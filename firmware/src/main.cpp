@@ -1,6 +1,6 @@
 // flynn0/T18 - ESP32 Wi-Fi Monitoring Node
 // PlatformIO Entry Point
-// Version: 1.1.5
+// Version: 1.1.7
 
 #include <Arduino.h>
 #include "app_main.h"

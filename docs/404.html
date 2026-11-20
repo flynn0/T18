@@ -985,7 +985,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.1.6</span>
+        <span class="brand-tag">v1.1.7</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1539,6 +1539,13 @@
           </div>
         </div>
         <div id="inactiveSurveyDrawer" style="display: none; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-size: 0.775rem; color: var(--text-muted);" id="inactiveSubtext">Showing discovered APs absent from latest cycle (last 24 hours)</div>
+            <div style="display: flex; gap: 0.35rem;">
+              <button id="btnInactive24h" class="timeframe-btn active" onclick="switchInactiveView('24h')">Last 24h Missing</button>
+              <button id="btnInactiveAll" class="timeframe-btn" onclick="switchInactiveView('all')">All Discovered APs (Archive)</button>
+            </div>
+          </div>
           <table>
             <thead>
               <tr>
@@ -1567,7 +1574,7 @@
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.1.6 Stable</span>
+          <span class="fw-badge">v1.1.7 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -2179,7 +2186,7 @@
 
         <div class="admin-input-group">
           <label for="editStationTargetInput">Pinned OTA Target Version <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Optional)</span></label>
-          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.6" />
+          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.7" />
           <div style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
             Force node to a specific release tag. Leave empty to automatically follow Stable or Canary.
           </div>
@@ -2206,7 +2213,7 @@
     <span>|</span>
     <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-weight: 600; color: var(--primary);">⚙️ Settings</a>
     <span>|</span>
-    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.6)</a>
+    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.7)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -3863,43 +3870,10 @@
         }
 
         // 3b. Render Previously Detected Networks (Inactive)
-        const inactiveSection = document.getElementById("inactiveSurveySection");
-        const inactiveBody = document.getElementById("inactiveSurveyBody");
-        if (inactiveBody) inactiveBody.innerHTML = "";
-        if (inactive.length > 0 && inactiveSection && inactiveBody) {
-          inactiveSection.style.display = "block";
-          document.getElementById("inactiveCountBadge").innerText = inactive.length + " Missing";
-          inactive.forEach(s => {
-            const tr = document.createElement("tr");
-            tr.style.opacity = "0.78";
-            const rssi = (s.rssi !== null && s.rssi !== undefined) ? s.rssi : null;
-            const q = (s.quality !== null && s.quality !== undefined) ? s.quality : (rssi !== null ? Math.min(100, Math.max(0, 2 * (rssi + 100))) : null);
-            const barColor = rssi !== null ? (rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444")) : "#9ca3af";
-
-            tr.innerHTML = `
-              <td style="font-weight: 500; color: var(--text-muted);">${s.ssid}</td>
-              <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${s.bssid || "N/A"}</td>
-              <td>
-                ${rssi !== null ? `
-                <div class="rssi-bar-wrap">
-                  <div class="rssi-bar"><div class="rssi-fill" style="width: ${q}%; background: ${barColor};"></div></div>
-                  <span title="Max signal recorded">${rssi} dBm</span>
-                </div>` : '<span style="color: var(--text-muted);">—</span>'}
-              </td>
-              <td>${q !== null ? q + '%' : '<span style="color: var(--text-muted);">—</span>'}</td>
-              <td>Ch ${s.channel || "?"}</td>
-              <td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${s.phy_mode || 'WIFI_4'}</span></td>
-              <td style="color: var(--text-muted);">${s.encryption || 'Open'}</td>
-              <td><span title="${s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : ''}" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">${formatLastSeen(s.last_seen)}</span></td>
-            `;
-            inactiveBody.appendChild(tr);
-          });
-        } else if (inactiveSection) {
-          inactiveSection.style.display = "none";
-        }
+        currentStationData = data;
+        renderInactiveTable();
 
         // 4. Update Network Selector & Trend Charts
-        currentStationData = data;
         const history = data.recent_history || [];
         const latest = data.latest_measurements || [];
         const netSet = new Set();
@@ -4474,6 +4448,73 @@
       const isHidden = (drawer.style.display === "none" || !drawer.style.display);
       drawer.style.display = isHidden ? "block" : "none";
       if (icon) icon.innerText = isHidden ? "▼" : "▶";
+    }
+
+    let currentInactiveView = "24h";
+
+    function switchInactiveView(view) {
+      currentInactiveView = view;
+      const b24 = document.getElementById("btnInactive24h");
+      const bAll = document.getElementById("btnInactiveAll");
+      if (b24) b24.classList.toggle("active", view === "24h");
+      if (bAll) bAll.classList.toggle("active", view === "all");
+      const sub = document.getElementById("inactiveSubtext");
+      if (sub) {
+        sub.innerText = (view === "24h")
+          ? "Showing discovered APs absent from latest cycle (last 24 hours)"
+          : "Showing complete catalog of all Wi-Fi networks ever discovered by this station";
+      }
+      renderInactiveTable();
+    }
+
+    function renderInactiveTable() {
+      if (!currentStationData) return;
+      const inactive = (currentInactiveView === "all")
+        ? (currentStationData.all_discovered_aps || [])
+        : (currentStationData.inactive_survey || []);
+      const inactiveSection = document.getElementById("inactiveSurveySection");
+      const inactiveBody = document.getElementById("inactiveSurveyBody");
+      const countBadge = document.getElementById("inactiveCountBadge");
+
+      if (inactiveBody) inactiveBody.innerHTML = "";
+      if (inactive.length > 0 && inactiveSection && inactiveBody) {
+        inactiveSection.style.display = "block";
+        if (countBadge) {
+          countBadge.innerText = (currentInactiveView === "all")
+            ? (inactive.length + " Discovered")
+            : (inactive.length + " Missing");
+        }
+        inactive.forEach(function(s) {
+          const tr = document.createElement("tr");
+          tr.style.opacity = "0.78";
+          const rssi = (s.rssi !== null && s.rssi !== undefined) ? s.rssi : null;
+          const q = (s.quality !== null && s.quality !== undefined) ? s.quality : (rssi !== null ? Math.min(100, Math.max(0, 2 * (rssi + 100))) : null);
+          const barColor = rssi !== null ? (rssi >= -65 ? "#10b981" : (rssi >= -80 ? "#f59e0b" : "#ef4444")) : "#9ca3af";
+
+          tr.innerHTML = 
+            '<td style="font-weight: 500; color: var(--text-muted);">' + escapeHtml(s.ssid || "<Hidden>") + '</td>' +
+            '<td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">' + escapeHtml(s.bssid || "N/A") + '</td>' +
+            '<td>' + (rssi !== null ? (
+              '<div class="rssi-bar-wrap">' +
+                '<div class="rssi-bar"><div class="rssi-fill" style="width: ' + q + '%; background: ' + barColor + ';"></div></div>' +
+                '<span title="Max signal recorded">' + rssi + ' dBm</span>' +
+              '</div>'
+            ) : '<span style="color: var(--text-muted);">—</span>') + '</td>' +
+            '<td>' + (q !== null ? (q + '%') : '<span style="color: var(--text-muted);">—</span>') + '</td>' +
+            '<td>Ch ' + (s.channel || "?") + '</td>' +
+            '<td><span style="background:var(--badge-bg); color: var(--text-muted); padding:2px 6px; border-radius:4px; font-size:0.75rem;">' + escapeHtml(s.phy_mode || 'WIFI_4') + '</span></td>' +
+            '<td style="color: var(--text-muted);">' + escapeHtml(s.encryption || 'Open') + '</td>' +
+            '<td><span title="' + (s.last_seen ? new Date(s.last_seen * 1000).toLocaleString() : '') + '" style="color: #f59e0b; font-size: 0.75rem; font-weight: 500;">' + formatLastSeen(s.last_seen) + '</span></td>';
+
+          inactiveBody.appendChild(tr);
+        });
+      } else if (inactiveSection) {
+        if (currentInactiveView === "all") {
+          inactiveBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1rem;">No historical networks stored in D1.</td></tr>';
+        } else {
+          inactiveSection.style.display = "none";
+        }
+      }
     }
 
     let selectedChannelTimeframe = 24; // 24, 48, or 168 (7d)

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.7] - 2026-11-20
+
+### Added & Enhanced
+- **Iterative Chunked Backlog Upload & Flash Drain Protection**:
+  - Replaced the single-batch 12-record spool upload in `app_main.h` with an iterative drain loop (`while (SpoolManager::hasPendingData())`) uploading in chunks of 12.
+  - Implemented transactional batch confirmation: `SpoolManager::confirmBatchUploaded()` advances `read_offset` only after the Cloudflare Worker backend confirms successful HTTP 200 ingestion.
+  - If network or server encounters an error mid-upload, unconfirmed records remain stored in flash and resume on subsequent wakeups.
+  - Automatic circular pointer reset to base address when all backlogged records are completely drained, preventing flash memory fragmentation and unnecessary write cycles.
+- **Streamlined 192 KB Circular Flash Ring Buffer**:
+  - Overhauled offline binary serialization in `spool_manager.h` (v2 header format): each record efficiently stores channel airtime congestion across 13 channels, monitored station connection & probe reliability (assoc, DHCP, gateway RTT, DNS, HTTP probes), BLE unique device counts, and newly detected APs with RF characteristics.
+  - Sizing & Retention: Allocates 176 KB (180,224 bytes) dedicated to the raw circular spool buffer, fitting ~880–900 complete telemetry records.
+  - Provides **~6.1 days (146+ hours)** of continuous offline storage on standard 10-minute battery intervals, or **~18.3 days (440+ hours)** on 30-minute intervals.
+  - Dedicated rolling 24-hour `ChannelHistory` (48 slots) stored in independent 12 KB flash sectors 1..3 with slot-distance UTC timestamp calibration immune to light-sleep timer drift.
+- **BLE Unique Devices in Channel History & Real-Time Aggregation**:
+  - Guaranteed `ble_unique_devices` is captured, recorded into `ChannelHistoryManager`, and transmitted within the `bluetooth` telemetry payload for all 30-minute intervals.
+  - Added real-time rollup processing (`upsertDaily30MinSummary()`) in backend `telemetry.ts` and `db.ts` so historical and live cycles immediately populate `daily_30min_summaries`.
+- **Peak RSSI & Quality Tracking in Historical Discovered APs**:
+  - Updated D1 database upsert logic to compute `MAX(rssi)` and `MAX(quality)` across scans, preserving the highest observed signal strength and signal quality for every network across all time.
+- **Dual-View Discovered AP Drawer (Last 24h Missing vs Complete Archive)**:
+  - Added interactive view toggle in the Previously Detected Networks drawer: switch seamlessly between "Last 24h Missing" and "All Discovered APs (Archive)" with live count badges.
+  - Cloudflare D1 retains the full historical catalog of all APs observed by the station.
+
+---
+
 ## [1.1.6] - 2026-11-20
 
 ### Added & Enhanced
