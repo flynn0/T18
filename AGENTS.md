@@ -137,6 +137,8 @@ npx wrangler deploy --keep-vars
 | `/api/admin/station/update` | `POST` | Bearer | Modifies station description, toggles Canary OTA track, or pins explicit target version |
 | `/api/admin/station/delete` | `POST` | Bearer | Removes station registration with optional cascade purge (`purge_data: boolean`) |
 | `/api/admin/data/delete` | `POST` | Bearer | Timeframe-based raw telemetry cleanup across `measurements`, `station_discovered_aps` (using `last_seen`), `station_bluetooth_summary`, `station_channel_utilization`, and `station_battery_history`. Preserves daily rollups. |
+| `/api/admin/outliers` | `GET` | Bearer | Scans database across 5 tables for hardware/RF metric outliers (`?station_id=ID`). |
+| `/api/admin/outliers/delete` | `POST` | Bearer | Deletes selected anomalous records (or batch purges all) and cleans up corresponding daily rollups and station caches. |
 
 ---
 

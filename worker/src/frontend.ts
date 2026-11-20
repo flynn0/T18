@@ -1878,6 +1878,7 @@ export function renderDashboardHtml(): string {
           <button id="tabBtnAdminHeatmap" class="modal-tab-btn" onclick="switchAdminTab('heatmap')">Collection &amp; Heatmap</button>
           <button id="tabBtnAdminDb" class="modal-tab-btn" onclick="switchAdminTab('db')">Database Size (D1)</button>
           <button id="tabBtnAdminCleanup" class="modal-tab-btn" onclick="switchAdminTab('cleanup')">Data Cleanup</button>
+          <button id="tabBtnAdminOutliers" class="modal-tab-btn" onclick="switchAdminTab('outliers')">🛡️ Outliers</button>
         </div>
 
         <div class="modal-body">
@@ -2056,6 +2057,74 @@ export function renderDashboardHtml(): string {
                 <button class="admin-btn danger" onclick="executeDataCleanup()">
                   <span>🗑️ Delete Selected Measurements</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtab 5: Outlier Detection -->
+          <div id="adminTabOutliers" style="display:none; flex-direction:column; gap:1.25rem;">
+            <div class="flash-guide-card">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
+                <div>
+                  <h4 style="margin:0 0 0.35rem 0; font-size:0.95rem; color:var(--text-main); display:flex; align-items:center; gap:0.4rem;">
+                    <span>🛡️ Telemetry Outlier &amp; Corruption Detection</span>
+                  </h4>
+                  <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.45; margin:0; max-width:640px;">
+                    Scan the database for impossible or anomalous records (e.g. impossible BLE device counts, uninitialized memory readings, out-of-bounds Wi-Fi airtime, invalid battery voltages, or extreme probe timeouts). Inspect and selectively delete occurrences to restore dataset integrity.
+                  </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                  <button class="admin-btn secondary" onclick="scanDatabaseOutliers()">
+                    <span>🔍 Rescan Outliers</span>
+                  </button>
+                  <button class="admin-btn danger" id="btnPurgeAllOutliers" style="display:none;" onclick="purgeAllOutliersAction()">
+                    <span>🗑️ Purge All Outliers</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem; margin-bottom:0.75rem;">
+                <div class="admin-input-group">
+                  <label for="outlierStationSelect">Filter Station</label>
+                  <select id="outlierStationSelect" onchange="scanDatabaseOutliers()">
+                    <option value="all">All Stations (Fleet-Wide)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="outliersStatusBanner" style="display:none; margin-top:0.5rem; padding:0.65rem 0.9rem; border-radius:0.4rem; font-size:0.8rem;"></div>
+            </div>
+
+            <div class="db-table-card">
+              <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--card-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                  <h4 style="margin:0; font-size:0.9rem; color:var(--text-main);">Detected Anomalies</h4>
+                  <div style="font-size:0.75rem; color:var(--text-muted);" id="outliersTableSubtitle">Scan results</div>
+                </div>
+                <div>
+                  <button class="admin-btn danger" id="btnDeleteSelectedOutliers" style="display:none; padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="deleteSelectedOutliers()">
+                    <span>🗑️ Delete Selected (<span id="selectedOutliersCount">0</span>)</span>
+                  </button>
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAllOutliers" onchange="toggleSelectAllOutliers(this.checked)" /></th>
+                      <th>Station</th>
+                      <th>Timestamp / Slot</th>
+                      <th>Table / Metric</th>
+                      <th>Observed Value</th>
+                      <th>Anomaly Reason</th>
+                      <th>Severity</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminOutliersTableBody">
+                    <tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.5rem;">Click 'Rescan Outliers' to analyze database records.</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -2586,14 +2655,17 @@ export function renderDashboardHtml(): string {
 
     function switchAdminTab(tab) {
       currentAdminTab = tab;
-      const tabs = ["stations", "heatmap", "db", "cleanup"];
+      const tabs = ["stations", "heatmap", "db", "cleanup", "outliers"];
       tabs.forEach(function(t) {
         const cap = t.charAt(0).toUpperCase() + t.slice(1);
         const el = document.getElementById("adminTab" + cap);
         const btn = document.getElementById("tabBtnAdmin" + cap);
-        if (el) el.style.display = (t === tab) ? ((t === "heatmap" || t === "db" || t === "cleanup") ? "flex" : "block") : "none";
+        if (el) el.style.display = (t === tab) ? ((t === "heatmap" || t === "db" || t === "cleanup" || t === "outliers") ? "flex" : "block") : "none";
         if (btn) btn.classList.toggle("active", t === tab);
       });
+      if (tab === "outliers") {
+        scanDatabaseOutliers();
+      }
     }
 
     async function loadAdminOverview(stationFilter) {
@@ -2669,6 +2741,24 @@ export function renderDashboardHtml(): string {
           clnSel.value = prevVal;
         } else {
           clnSel.value = "all";
+        }
+      }
+
+      // Outlier station select
+      const outSel = document.getElementById("outlierStationSelect");
+      if (outSel) {
+        const prevVal = outSel.value || "all";
+        outSel.innerHTML = '<option value="all">All Stations (Fleet-Wide)</option>';
+        (stations || []).forEach(function(st) {
+          const opt = document.createElement("option");
+          opt.value = st.station_id;
+          opt.innerText = st.station_id + (st.description ? " (" + st.description + ")" : "");
+          outSel.appendChild(opt);
+        });
+        if (prevVal && Array.from(outSel.options).some(function(o) { return o.value === prevVal; })) {
+          outSel.value = prevVal;
+        } else {
+          outSel.value = "all";
         }
       }
     }
@@ -3132,6 +3222,233 @@ export function renderDashboardHtml(): string {
           }
         } else {
           alert("Cleanup failed: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Failed to communicate with admin endpoint.");
+      }
+    }
+
+    let detectedOutliers = [];
+
+    async function scanDatabaseOutliers() {
+      const token = getAdminToken();
+      if (!token) return;
+
+      const stSel = document.getElementById("outlierStationSelect");
+      const stationId = stSel ? stSel.value : "all";
+      const tbody = document.getElementById("adminOutliersTableBody");
+      const banner = document.getElementById("outliersStatusBanner");
+      const purgeBtn = document.getElementById("btnPurgeAllOutliers");
+      const delSelBtn = document.getElementById("btnDeleteSelectedOutliers");
+      const subTitle = document.getElementById("outliersTableSubtitle");
+
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.5rem;">Scanning database tables for anomalies...</td></tr>';
+      }
+
+      try {
+        const res = await fetch(API_BASE + "/api/admin/outliers?station_id=" + encodeURIComponent(stationId), {
+          headers: getAdminAuthHeaders()
+        });
+        if (res.status === 401) {
+          clearAdminToken();
+          showAdminLoginView("Session expired. Please log in again.");
+          return;
+        }
+        const data = await res.json();
+        if (!data.success) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:1.5rem;">Scan failed: ' + escapeHtml(data.error || "Unknown error") + '</td></tr>';
+          return;
+        }
+
+        detectedOutliers = data.outliers || [];
+
+        if (subTitle) {
+          subTitle.innerText = "Found " + detectedOutliers.length + " anomaly record" + (detectedOutliers.length === 1 ? "" : "s");
+        }
+
+        if (banner) {
+          banner.style.display = "block";
+          if (detectedOutliers.length === 0) {
+            banner.style.background = "rgba(16, 185, 129, 0.1)";
+            banner.style.border = "1px solid rgba(16, 185, 129, 0.25)";
+            banner.style.color = "#6ee7b7";
+            banner.innerHTML = "✅ <strong>Clean Database:</strong> No outliers or corrupted telemetry records detected for " + (stationId === "all" ? "the entire fleet" : "station " + escapeHtml(stationId)) + ".";
+          } else {
+            banner.style.background = "rgba(239, 68, 68, 0.1)";
+            banner.style.border = "1px solid rgba(239, 68, 68, 0.25)";
+            banner.style.color = "#fca5a5";
+            banner.innerHTML = "⚠️ <strong>Anomalies Detected:</strong> Found <strong>" + detectedOutliers.length + "</strong> outlier records exceeding realistic hardware thresholds.";
+          }
+        }
+
+        if (purgeBtn) purgeBtn.style.display = detectedOutliers.length > 0 ? "inline-flex" : "none";
+        if (delSelBtn) delSelBtn.style.display = "none";
+        const selAll = document.getElementById("selectAllOutliers");
+        if (selAll) selAll.checked = false;
+
+        renderOutliersTable(detectedOutliers);
+      } catch (err) {
+        console.error("Scan outliers failed:", err);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:1.5rem;">Failed to connect to backend outlier scanner.</td></tr>';
+      }
+    }
+
+    function renderOutliersTable(outliers) {
+      const tbody = document.getElementById("adminOutliersTableBody");
+      if (!tbody) return;
+
+      if (!outliers || outliers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.5rem;">✅ No telemetry outliers found. Database records are healthy.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = "";
+      outliers.forEach(function(item, idx) {
+        const tr = document.createElement("tr");
+
+        const sevBadge = item.severity === "critical"
+          ? '<span class="status-badge" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4);">CRITICAL</span>'
+          : '<span class="status-badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4);">WARNING</span>';
+
+        tr.innerHTML = 
+          '<td style="text-align:center;"><input type="checkbox" class="outlier-row-chk" data-idx="' + idx + '" onchange="updateSelectedOutliersCount()" /></td>' +
+          '<td><strong style="color:var(--text-main);">' + escapeHtml(item.station_id) + '</strong></td>' +
+          '<td style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">' + escapeHtml(item.date_formatted) + '</td>' +
+          '<td><span style="font-size:0.775rem; color:var(--primary); font-family:monospace;">' + escapeHtml(item.metric) + '</span><div style="font-size:0.68rem; color:var(--text-muted);">' + escapeHtml(item.table) + '</div></td>' +
+          '<td><strong style="color:#ef4444; font-size:0.85rem;">' + escapeHtml(item.value) + '</strong></td>' +
+          '<td style="font-size:0.75rem; color:var(--text-muted); max-width:260px;">' + escapeHtml(item.reason) + '</td>' +
+          '<td>' + sevBadge + '</td>' +
+          '<td><button class="admin-btn danger" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="deleteSingleOutlier(' + idx + ')">Delete</button></td>';
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleSelectAllOutliers(checked) {
+      const chks = document.querySelectorAll(".outlier-row-chk");
+      chks.forEach(function(c) { c.checked = checked; });
+      updateSelectedOutliersCount();
+    }
+
+    function updateSelectedOutliersCount() {
+      const chks = document.querySelectorAll(".outlier-row-chk:checked");
+      const cnt = chks.length;
+      const countSpan = document.getElementById("selectedOutliersCount");
+      const delBtn = document.getElementById("btnDeleteSelectedOutliers");
+      if (countSpan) countSpan.innerText = cnt;
+      if (delBtn) delBtn.style.display = cnt > 0 ? "inline-flex" : "none";
+    }
+
+    async function deleteSingleOutlier(idx) {
+      const item = detectedOutliers[idx];
+      if (!item) return;
+
+      if (!confirm("Are you sure you want to permanently delete this outlier record for " + item.station_id + " (" + item.metric + ": " + item.value + ")?")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE + "/api/admin/outliers/delete", {
+          method: "POST",
+          headers: getAdminAuthHeaders(),
+          body: JSON.stringify({
+            items: [{
+              table: item.table,
+              id: item.id,
+              station_id: item.station_id,
+              timestamp: item.timestamp
+            }]
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Record deleted successfully.");
+          scanDatabaseOutliers();
+          loadAdminOverview();
+          if (currentStationId) {
+            loadStationDetails(currentStationId);
+          }
+        } else {
+          alert("Deletion failed: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Failed to communicate with admin endpoint.");
+      }
+    }
+
+    async function deleteSelectedOutliers() {
+      const chks = document.querySelectorAll(".outlier-row-chk:checked");
+      if (chks.length === 0) return;
+
+      const items = [];
+      chks.forEach(function(chk) {
+        const idx = parseInt(chk.getAttribute("data-idx"), 10);
+        if (!isNaN(idx) && detectedOutliers[idx]) {
+          const item = detectedOutliers[idx];
+          items.push({
+            table: item.table,
+            id: item.id,
+            station_id: item.station_id,
+            timestamp: item.timestamp
+          });
+        }
+      });
+
+      if (!confirm("Are you sure you want to permanently delete " + items.length + " selected outlier record(s)?")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE + "/api/admin/outliers/delete", {
+          method: "POST",
+          headers: getAdminAuthHeaders(),
+          body: JSON.stringify({ items: items })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || "Selected records deleted successfully.");
+          scanDatabaseOutliers();
+          loadAdminOverview();
+          if (currentStationId) {
+            loadStationDetails(currentStationId);
+          }
+        } else {
+          alert("Deletion failed: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Failed to communicate with admin endpoint.");
+      }
+    }
+
+    async function purgeAllOutliersAction() {
+      const stSel = document.getElementById("outlierStationSelect");
+      const stationId = stSel ? stSel.value : "all";
+      const targetStr = stationId === "all" ? "ALL stations fleet-wide" : "station " + stationId;
+
+      if (!confirm("Are you sure you want to purge ALL detected outlier records (" + detectedOutliers.length + ") for " + targetStr + "? This cannot be undone.")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE + "/api/admin/outliers/delete", {
+          method: "POST",
+          headers: getAdminAuthHeaders(),
+          body: JSON.stringify({
+            purge_all: true,
+            station_id: stationId
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || "All outlier records purged successfully.");
+          scanDatabaseOutliers();
+          loadAdminOverview();
+          if (currentStationId) {
+            loadStationDetails(currentStationId);
+          }
+        } else {
+          alert("Purge failed: " + (data.error || "Unknown error"));
         }
       } catch (err) {
         alert("Failed to communicate with admin endpoint.");
