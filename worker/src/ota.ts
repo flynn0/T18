@@ -77,12 +77,12 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
       targetVersion = env.CANARY_VERSION.trim();
       track = "canary";
     } else {
-      targetVersion = env.STABLE_VERSION || "1.1.8";
+      targetVersion = env.STABLE_VERSION || "1.1.11";
       track = "stable";
     }
   } else {
     // Non-canary station: always follow stable production release
-    targetVersion = env.STABLE_VERSION || "1.1.8";
+    targetVersion = env.STABLE_VERSION || "1.1.11";
     track = "stable";
   }
 
@@ -121,8 +121,12 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
   // Determine binary download URL:
   // Primary: Cloudflare R2 bucket proxy via Worker
   // Fallback: GitHub Releases direct link or Worker proxy
-  const isC3 = board.toLowerCase().includes("c3");
-  const filename = isC3 ? `firmware-esp32c3-v${targetVersion}.bin` : `firmware-esp32-v${targetVersion}.bin`;
+  let archPrefix = "esp32";
+  const bLow = board.toLowerCase();
+  if (bLow.includes("c3")) archPrefix = "esp32c3";
+  else if (bLow.includes("s3")) archPrefix = "esp32s3";
+  else if (bLow.includes("c5")) archPrefix = "esp32c5";
+  const filename = `firmware-${archPrefix}-v${targetVersion}.bin`;
   let downloadUrl = station?.ota_url?.trim();
 
   if (!downloadUrl) {
@@ -154,7 +158,7 @@ export async function handleOta(request: Request, env: Env): Promise<Response> {
 
 // Handles binary delivery with Cloudflare R2 as primary and GitHub Releases / Pages as backup
 export async function handleFirmwareDownload(filename: string, request: Request, env: Env): Promise<Response> {
-  const stableTag = `v${env.STABLE_VERSION || "1.1.8"}`;
+  const stableTag = `v${env.STABLE_VERSION || "1.1.11"}`;
 
   // 1. Try Cloudflare R2 Storage (Zero egress fees, high speed)
   if (env.OTA_BUCKET) {
@@ -180,7 +184,7 @@ export async function handleFirmwareDownload(filename: string, request: Request,
     }
   }
 
-  // 2. Resolve target tag and canonical GitHub release asset name (supports canary suffixes e.g. v1.1.4-canary.1)
+  // 2. Resolve target tag and canonical GitHub release asset name (supports canary suffixes e.g. v1.1.11-canary.1)
   const match = filename.match(/v(\d+\.\d+\.\d+(?:-[a-zA-Z0-9\.]+)?)/);
   const tag = match ? `v${match[1]}` : stableTag;
 
@@ -189,18 +193,34 @@ export async function handleFirmwareDownload(filename: string, request: Request,
     releaseFilename = `firmware-esp32-${tag}.bin`;
   } else if (filename === "firmware-c3.bin" || filename === "firmware-esp32c3.bin") {
     releaseFilename = `firmware-esp32c3-${tag}.bin`;
+  } else if (filename === "firmware-s3.bin" || filename === "firmware-esp32s3.bin") {
+    releaseFilename = `firmware-esp32s3-${tag}.bin`;
+  } else if (filename === "firmware-c5.bin" || filename === "firmware-esp32c5.bin") {
+    releaseFilename = `firmware-esp32c5-${tag}.bin`;
   } else if (filename === "partitions.bin") {
     releaseFilename = `partitions-esp32-${tag}.bin`;
   } else if (filename === "partitions-c3.bin" || filename === "partitions-esp32c3.bin") {
     releaseFilename = `partitions-esp32c3-${tag}.bin`;
+  } else if (filename === "partitions-s3.bin" || filename === "partitions-esp32s3.bin") {
+    releaseFilename = `partitions-esp32s3-${tag}.bin`;
+  } else if (filename === "partitions-c5.bin" || filename === "partitions-esp32c5.bin") {
+    releaseFilename = `partitions-esp32c5-${tag}.bin`;
   } else if (filename === "bootloader.bin") {
     releaseFilename = `bootloader-esp32-${tag}.bin`;
   } else if (filename === "bootloader-c3.bin" || filename === "bootloader-esp32c3.bin") {
     releaseFilename = `bootloader-esp32c3-${tag}.bin`;
+  } else if (filename === "bootloader-s3.bin" || filename === "bootloader-esp32s3.bin") {
+    releaseFilename = `bootloader-esp32s3-${tag}.bin`;
+  } else if (filename === "bootloader-c5.bin" || filename === "bootloader-esp32c5.bin") {
+    releaseFilename = `bootloader-esp32c5-${tag}.bin`;
   } else if (filename === "firmware-esp32-merged.bin") {
     releaseFilename = `firmware-esp32-merged-${tag}.bin`;
   } else if (filename === "firmware-esp32c3-merged.bin") {
     releaseFilename = `firmware-esp32c3-merged-${tag}.bin`;
+  } else if (filename === "firmware-esp32s3-merged.bin") {
+    releaseFilename = `firmware-esp32s3-merged-${tag}.bin`;
+  } else if (filename === "firmware-esp32c5-merged.bin") {
+    releaseFilename = `firmware-esp32c5-merged-${tag}.bin`;
   }
 
   const githubUrl = `https://github.com/flynn0/T18/releases/download/${tag}/${releaseFilename}`;
@@ -232,8 +252,35 @@ export async function handleFirmwareDownload(filename: string, request: Request,
     console.warn("[OTA] Error fetching from GitHub Releases, trying GitHub Pages static fallback:", fetchErr);
   }
 
-  // 3. GitHub Pages static fallback (e.g. for boot_app0.bin, partitions.bin, etc.)
-  const pagesUrl = `https://flynn0.github.io/T18/firmware/${filename}`;
+  // 3. GitHub Pages static fallback (serves docs/firmware/ mirror)
+  let pagesFilename = filename;
+  if (/^firmware-esp32(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "firmware.bin";
+  } else if (/^firmware-esp32c3(-v\d.*)?\.bin$/.test(filename) || /^firmware-c3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "firmware-c3.bin";
+  } else if (/^firmware-esp32s3(-v\d.*)?\.bin$/.test(filename) || /^firmware-s3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "firmware-s3.bin";
+  } else if (/^firmware-esp32c5(-v\d.*)?\.bin$/.test(filename) || /^firmware-c5(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "firmware-c5.bin";
+  } else if (/^partitions-esp32(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "partitions.bin";
+  } else if (/^partitions-esp32c3(-v\d.*)?\.bin$/.test(filename) || /^partitions-c3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "partitions-c3.bin";
+  } else if (/^partitions-esp32s3(-v\d.*)?\.bin$/.test(filename) || /^partitions-s3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "partitions-s3.bin";
+  } else if (/^partitions-esp32c5(-v\d.*)?\.bin$/.test(filename) || /^partitions-c5(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "partitions-c5.bin";
+  } else if (/^bootloader-esp32(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "bootloader.bin";
+  } else if (/^bootloader-esp32c3(-v\d.*)?\.bin$/.test(filename) || /^bootloader-c3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "bootloader-c3.bin";
+  } else if (/^bootloader-esp32s3(-v\d.*)?\.bin$/.test(filename) || /^bootloader-s3(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "bootloader-s3.bin";
+  } else if (/^bootloader-esp32c5(-v\d.*)?\.bin$/.test(filename) || /^bootloader-c5(-v\d.*)?\.bin$/.test(filename)) {
+    pagesFilename = "bootloader-c5.bin";
+  }
+
+  const pagesUrl = `https://flynn0.github.io/T18/firmware/${pagesFilename}`;
   try {
     const pagesResponse = await fetch(pagesUrl, {
       redirect: "follow",
@@ -241,6 +288,7 @@ export async function handleFirmwareDownload(filename: string, request: Request,
     });
 
     if (pagesResponse.ok && pagesResponse.body) {
+      console.log(`[OTA] Serving ${filename} via GitHub Pages mirror (${pagesFilename})`);
       const headers = new Headers();
       headers.set("Content-Type", "application/octet-stream");
       const len = pagesResponse.headers.get("Content-Length");
@@ -258,8 +306,11 @@ export async function handleFirmwareDownload(filename: string, request: Request,
     console.error("[OTA] GitHub Pages fallback also failed:", pagesErr);
   }
 
-  // Final fallback: redirect to GitHub release asset
-  return Response.redirect(githubUrl, 302);
+  // Final fallback: Return 404 without redirecting to prevent ESP32 HTTPUpdate TLS re-negotiation crash
+  return new Response(`Firmware binary '${filename}' not found on R2, GitHub Releases, or GitHub Pages.`, {
+    status: 404,
+    headers: { "Content-Type": "text/plain" }
+  });
 }
 
 // Admin / Canary API: Set or clear canary target version for a station

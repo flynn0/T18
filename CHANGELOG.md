@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.11] - 2026-11-26
+
+### Added & Enhanced (Web Dashboard & Historical Heatmaps)
+- **Historical Heatmaps Expanded by Default with 7d / 14d / 28d Timeframes (`frontend.ts`, `api.ts`)**:
+  - Historical Heatmaps drawer (`#weeklyHeatmapDrawer`) is now expanded (`display: block`) on initial page load instead of collapsed.
+  - Added interactive **7d / 14d / 28d** timeframe selector alongside **Max (Peak) / Average** aggregation mode toggle, both persisted in `localStorage`.
+  - Expanded backend `/api/station/:id` `daily_30min_summaries` query window from 7 days to **28 days**, enabling 14-day and 28-day Wi-Fi and Bluetooth matrices without heavy raw payload inflation.
+  - Fixed `daily_30min_summaries` Average mode calculations to average across all 13 channels (rather than only the peak channel), populate Bluetooth `sumUnique`, ignore unmeasured `[0,...,0]` placeholder rows, and match UTC `start_timestamp` against local day boundaries.
+  - Filtered unmeasured placeholder channel entries (`airtime_pct == 0 && data_frames == 0 && mgmt_frames == 0 && ctrl_frames == 0 && !scan_duration_ms`) across 24h and multi-day heatmap renderers.
+
+### Added & Enhanced (Multi-Architecture Firmware & Web Flasher)
+- **ESP32-S3 & ESP32-C5 Target Support (`platformio.ini`, `board_pins.h`, `channel_analyzer.h`, `captive_portal.h`, `index.ts`, `ota.ts`)**:
+  - Added PlatformIO environments (`esp32s3`, `esp32c5`), custom board definition (`firmware/boards/esp32-c5-devkitm-1.json`), hardware presets (`BOARD_ESP32S3`, `BOARD_ESP32C5`), ESP32-C5 802.11ax `rx_ctrl->rate` airtime handling, GPIO wakeup support, and Web Serial flasher manifests (`manifest-s3*.json`, `manifest-c5*.json`).
+  - Added `FAST_BLINK` / `SLOW_BLINK` modes and `setBlink()` helper to `LedController` (`led_controller.h`).
+  - Made ESP32-C5 CI release build non-blocking (`|| true`) in `.github/workflows/build-release.yml` and updated `scripts/generate-release-notes.py`.
+
+### Fixed & Enhanced (Channel History, Probing & OTA Streaming)
+- **Channel History Zero-Averaging & Empty-Cycle Fix (`channel_history.h`)**:
+  - Prevented battery-cadence intermediate cycles (where 13-channel promiscuous scans are skipped) from incrementing `sample_count` or staging dummy 0% airtime slots.
+  - Seeded new 30-minute slots directly on the first real channel measurement (`n == 0`) instead of averaging against zero.
+- **Isolated Probe Sockets, Redirects & Multi-Port Gateway RTT (`latency_prober.h`)**:
+  - Instantiated ephemeral `WiFiClient` per HTTP probe with explicit `client.stop()`, disabled redirect following (`HTTPC_DISABLE_FOLLOW_REDIRECTS`) so HTTP-to-HTTPS redirects record valid RTT, reset gateway RTT timer per port across `{ 80, 443, 53 }`, and added `WiFi.hostByName` fallback for DNS A queries.
+- **Zero-Redirect GitHub Pages OTA Fallback (`ota.ts`)**:
+  - Mapped versioned architecture firmware filenames to static `docs/firmware/` mirror files and replaced the final 302 redirect fallback with a 404 plain-text response to prevent ESP32 `HTTPUpdate` TLS re-negotiation crashes.
+
+---
+
 ## [1.1.8] - 2026-11-20
 
 ### Added & Enhanced

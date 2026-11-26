@@ -5,7 +5,9 @@
 enum class LedMode {
     OFF,
     SOLID_ON,
-    BLINKING
+    BLINKING,
+    FAST_BLINK,   // Soft-AP captive portal active
+    SLOW_BLINK    // Routine cycle running
 };
 
 class LedController {
@@ -50,6 +52,16 @@ public:
         setSolid(false);
     }
 
+    void setBlink(uint32_t intervalMs) {
+        _mode = (intervalMs <= 250) ? LedMode::FAST_BLINK : LedMode::SLOW_BLINK;
+        _blinkIntervalMs = intervalMs;
+        _lastToggle = millis();
+        _state = true;
+        if (_pin >= 0) {
+            digitalWrite(_pin, (_state ^ _activeLow) ? HIGH : LOW);
+        }
+    }
+
     void setBlinkRateHz(float hz) {
         _mode = LedMode::BLINKING;
         if (hz <= 0.0f) {
@@ -57,10 +69,16 @@ public:
         } else {
             _blinkIntervalMs = (uint32_t)(1000.0f / (hz * 2.0f));
         }
+        _lastToggle = millis();
+        _state = true;
+        if (_pin >= 0) {
+            digitalWrite(_pin, (_state ^ _activeLow) ? HIGH : LOW);
+        }
     }
 
     void update() {
-        if (_mode == LedMode::BLINKING && _pin >= 0) {
+        if (_pin < 0) return;
+        if (_mode == LedMode::BLINKING || _mode == LedMode::FAST_BLINK || _mode == LedMode::SLOW_BLINK) {
             uint32_t now = millis();
             if (now - _lastToggle >= _blinkIntervalMs) {
                 _lastToggle = now;

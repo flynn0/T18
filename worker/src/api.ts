@@ -120,7 +120,7 @@ export async function handleApiStationDetail(stationId: string, _request: Reques
   const latestBluetooth = await db.getLatestBluetooth(stationId);
   const bluetoothHistory = await db.getRecentBluetooth(stationId, 168); // 7-day Bluetooth history
   const recentBluetoothDevices = await db.getRecentBluetoothDevices(stationId, 24);
-  const daily30MinSummaries = await db.getDaily30MinSummaries(stationId, 7);
+  const daily30MinSummaries = await db.getDaily30MinSummaries(stationId, 28);
   const allDiscoveredAps = await db.getAllDiscoveredAps(stationId);
 
   const overviewPayload = JSON.stringify({

@@ -1,6 +1,6 @@
 {
   "name": "T18 Wi-Fi Monitor - ESP32-C3 (Update)",
-  "version": "1.1.8",
+  "version": "1.1.11",
   "funding_url": "https://github.com/flynn0/T18",
   "new_install_skip_erase": true,
   "builds": [

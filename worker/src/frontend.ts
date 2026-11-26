@@ -986,7 +986,7 @@ export function renderDashboardHtml(): string {
       <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9.44 2.02-12 5.29l1.41 1.42C3.59 7.02 7.55 5.17 12 5.17s8.41 1.85 10.59 4.54L24 8.29C21.44 5.02 16.97 3 12 3zm0 4.33c-3.69 0-7.01 1.5-9.02 3.91l1.42 1.41C6.07 10.97 8.87 9.67 12 9.67s5.93 1.3 7.6 3.01l1.42-1.41C19.01 8.83 15.69 7.33 12 7.33zm0 4.34c-2.4 0-4.57.97-6.04 2.54l1.42 1.42C8.42 14.54 10.09 13.67 12 13.67s3.58.87 4.62 1.96l1.42-1.42C16.57 12.64 14.4 11.67 12 11.67zM12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       <div>
         <span class="brand-title">T18 Monitor</span>
-        <span class="brand-tag">v1.1.8</span>
+        <span class="brand-tag">v1.1.11</span>
       </div>
     </a>
     <div class="header-controls">
@@ -1249,31 +1249,42 @@ export function renderDashboardHtml(): string {
         </div>
       </div>
 
-      <!-- 7-Day Historical Heatmaps Drawer -->
+      <!-- Historical Heatmaps Drawer (7d / 14d / 28d) -->
       <div style="margin-top: 0.85rem; border-top: 1px solid var(--card-border); padding-top: 0.85rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleWeeklyHeatmap()">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 0.5rem;" onclick="toggleWeeklyHeatmap()">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">7-Day Historical Heatmaps (Wi-Fi Bands &amp; Bluetooth)</span>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">(Last 7 Days &times; 48 Timeslots from 0:00 to 24:00 &bull; Wi-Fi Bands &amp; Bluetooth)</span>
+            <span id="weeklyHeatmapMainTitle" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">7-Day Historical Heatmaps (Wi-Fi Bands &amp; Bluetooth)</span>
+            <span id="weeklyHeatmapMainSub" style="font-size: 0.72rem; color: var(--text-muted);">(Last 7 Days &times; 48 Timeslots from 0:00 to 24:00 &bull; Wi-Fi Bands &amp; Bluetooth)</span>
           </div>
-          <span id="weeklyHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▶</span>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="display: inline-flex; border: 1px solid var(--card-border); border-radius: 0.375rem; overflow: hidden; background: var(--input-bg);" onclick="event.stopPropagation()">
+              <button id="btnWeeklyDays7" class="timeframe-btn active" onclick="setWeeklyHeatmapDays(7)">7d</button>
+              <button id="btnWeeklyDays14" class="timeframe-btn" onclick="setWeeklyHeatmapDays(14)">14d</button>
+              <button id="btnWeeklyDays28" class="timeframe-btn" onclick="setWeeklyHeatmapDays(28)">28d</button>
+            </div>
+            <div style="display: inline-flex; border: 1px solid var(--card-border); border-radius: 0.375rem; overflow: hidden; background: var(--input-bg);" onclick="event.stopPropagation()">
+              <button id="btnWeeklyModeMax" class="timeframe-btn active" onclick="setWeeklyHeatmapMode('max')">Max (Peak)</button>
+              <button id="btnWeeklyModeAvg" class="timeframe-btn" onclick="setWeeklyHeatmapMode('avg')">Average</button>
+            </div>
+            <span id="weeklyHeatmapExpandIcon" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+          </div>
         </div>
-        <div id="weeklyHeatmapDrawer" style="display: none; margin-top: 0.85rem; overflow-x: auto; overflow-y: hidden;">
-          <!-- 1. All 2.4 GHz Wi-Fi Bands 7-Day Matrix -->
+        <div id="weeklyHeatmapDrawer" style="display: block; margin-top: 0.85rem; overflow-x: auto; overflow-y: hidden;">
+          <!-- 1. All 2.4 GHz Wi-Fi Bands Historical Matrix -->
           <div style="margin-bottom: 1.25rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--text-main); text-transform:uppercase; letter-spacing:0.5px;">All 2.4 GHz Wi-Fi Bands (Peak Airtime %)</span>
-              <span style="font-size:0.72rem; color:var(--text-muted);">7-Day peak channel airtime per 30-min window</span>
+              <span id="weeklyWifiTitle" style="font-size:0.78rem; font-weight:700; color:var(--text-main); text-transform:uppercase; letter-spacing:0.5px;">All 2.4 GHz Wi-Fi Bands (Peak Airtime %)</span>
+              <span id="weeklyWifiSub" style="font-size:0.72rem; color:var(--text-muted);">7-Day peak channel airtime per 30-min window</span>
             </div>
             <div id="weeklyWifiHoverInfo" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-height: 1.4rem; line-height: 1.4; margin-bottom: 0.4rem;">Hover over a cell to inspect Wi-Fi metrics</div>
             <div id="weeklyWifiHeatmapContainer" style="min-width: 760px; padding: 4px 12px 10px 4px;"></div>
           </div>
 
-          <!-- 2. Bluetooth 7-Day Matrix -->
+          <!-- 2. Bluetooth Historical Matrix -->
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
               <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                <span style="font-size:0.78rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Bluetooth Device Activity (Unique BLE &amp; Classic Devices)</span>
+                <span id="weeklyBtTitle" style="font-size:0.78rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Bluetooth Device Activity (Unique BLE &amp; Classic Devices)</span>
                 <span id="weeklyBtLegendBadge" style="font-size:0.72rem; color:var(--text-muted);">(Dynamic 7-Day Scale)</span>
               </div>
               <div id="weeklyBtLegendWrap" style="display:inline-flex; align-items:center; gap:3px; font-size:0.72rem;"></div>
@@ -1575,7 +1586,7 @@ export function renderDashboardHtml(): string {
       <div class="modal-header">
         <div class="modal-title">
           <span>⚡ ESP32 Web Firmware Installer</span>
-          <span class="fw-badge">v1.1.8 Stable</span>
+          <span class="fw-badge">v1.1.11 Stable</span>
         </div>
         <button class="modal-close-btn" onclick="closeFlashModal()" title="Close dialog">✕</button>
       </div>
@@ -1623,6 +1634,24 @@ export function renderDashboardHtml(): string {
                   <div style="font-weight:600;font-size:0.9rem;color:var(--text);">ESP32-C3 Super Mini (RISC-V Single-Core)</div>
                   <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">
                     For <strong>ESP32-C3 Super Mini</strong>, C3 DevKit, and compact RISC-V nodes. GPIO 8 active-low status LED, lightweight build without Classic Bluetooth.
+                  </div>
+                </div>
+              </label>
+              <label id="targetS3Label" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:1px solid var(--border);border-radius:0.5rem;background:transparent;cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashTargetRadio" value="s3" onchange="window.setFlashTarget('s3')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">ESP32-S3 (Xtensa Dual-Core)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">
+                    For <strong>ESP32-S3 DevKit</strong>, LILYGO T-Display S3, and high-performance S3 nodes. Native USB CDC, BLE (Classic BT omitted).
+                  </div>
+                </div>
+              </label>
+              <label id="targetC5Label" style="flex:1;min-width:250px;padding:0.75rem 1rem;border:1px solid var(--border);border-radius:0.5rem;background:transparent;cursor:pointer;display:flex;align-items:flex-start;gap:0.75rem;">
+                <input type="radio" name="flashTargetRadio" value="c5" onchange="window.setFlashTarget('c5')" style="margin-top:0.25rem;">
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--text);">ESP32-C5 (Wi-Fi 6 / 2.4 &amp; 5 GHz RISC-V)</div>
+                  <div style="font-size:0.775rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.4;">
+                    For <strong>ESP32-C5</strong> dual-band nodes. 2.4 GHz + 5 GHz spectrum analyzer, 802.11ax Wi-Fi 6, RISC-V single-core.
                   </div>
                 </div>
               </label>
@@ -1787,6 +1816,72 @@ export function renderDashboardHtml(): string {
             <a id="dlC3MergedBin" href="firmware/firmware-esp32c3-merged.bin" download="firmware-esp32c3-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32c3-merged.bin</a>
           </div>
 
+          <div style="font-weight:600;font-size:0.9rem;margin-top:1rem;color:var(--text);">Target Architecture: ESP32-S3 (Xtensa Dual-Core)</div>
+          <div class="bin-download-grid">
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">S3 Application Firmware</span>
+                <span class="bin-meta">Offset: 0x10000 (app0)</span>
+              </div>
+              <a id="dlS3FirmwareBin" href="firmware/firmware-s3.bin" download="firmware-s3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ firmware-s3.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">S3 Partition Table</span>
+                <span class="bin-meta">Offset: 0x8000 (partitions)</span>
+              </div>
+              <a id="dlS3PartitionsBin" href="firmware/partitions-s3.bin" download="partitions-s3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ partitions-s3.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">S3 Bootloader</span>
+                <span class="bin-meta">Offset: 0x0 (bootloader)</span>
+              </div>
+              <a id="dlS3BootloaderBin" href="firmware/bootloader-s3.bin" download="bootloader-s3.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ bootloader-s3.bin</a>
+            </div>
+          </div>
+
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+            <div class="bin-info">
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (ESP32-S3 Full Flash)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file flash)</span>
+            </div>
+            <a id="dlS3MergedBin" href="firmware/firmware-esp32s3-merged.bin" download="firmware-esp32s3-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32s3-merged.bin</a>
+          </div>
+
+          <div style="font-weight:600;font-size:0.9rem;margin-top:1rem;color:var(--text);">Target Architecture: ESP32-C5 (Wi-Fi 6 / Dual-Band 2.4 &amp; 5 GHz)</div>
+          <div class="bin-download-grid">
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C5 Application Firmware</span>
+                <span class="bin-meta">Offset: 0x10000 (app0)</span>
+              </div>
+              <a id="dlC5FirmwareBin" href="firmware/firmware-c5.bin" download="firmware-c5.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ firmware-c5.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C5 Partition Table</span>
+                <span class="bin-meta">Offset: 0x8000 (partitions)</span>
+              </div>
+              <a id="dlC5PartitionsBin" href="firmware/partitions-c5.bin" download="partitions-c5.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ partitions-c5.bin</a>
+            </div>
+            <div class="bin-card">
+              <div class="bin-info">
+                <span class="bin-name">C5 Bootloader</span>
+                <span class="bin-meta">Offset: 0x0 (bootloader)</span>
+              </div>
+              <a id="dlC5BootloaderBin" href="firmware/bootloader-c5.bin" download="bootloader-c5.bin" class="nav-link" style="padding:0.35rem 0.65rem;font-size:0.8rem;">⬇️ bootloader-c5.bin</a>
+            </div>
+          </div>
+
+          <div class="bin-card" style="border-color:var(--primary);background:var(--primary-dim);">
+            <div class="bin-info">
+              <span class="bin-name" style="color:var(--primary);">Unified Merged Binary (ESP32-C5 Full Flash)</span>
+              <span class="bin-meta">Offset: 0x0 (Single-file flash)</span>
+            </div>
+            <a id="dlC5MergedBin" href="firmware/firmware-esp32c5-merged.bin" download="firmware-esp32c5-merged.bin" class="primary-btn" style="padding:0.4rem 0.85rem;font-size:0.85rem;text-decoration:none;">⬇️ firmware-esp32c5-merged.bin</a>
+          </div>
+
           <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.75rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <span style="font-size:0.85rem;font-weight:600;">Flash ESP32 with esptool.py (Merged):</span>
@@ -1806,6 +1901,26 @@ export function renderDashboardHtml(): string {
               <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32c3 --baud 921600 write_flash 0x0 firmware-esp32c3-merged.bin', this)">Copy</button>
             </div>
           </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash ESP32-S3 with esptool.py (Merged):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32s3 --baud 921600 write_flash 0x0 firmware-esp32s3-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32s3 --baud 921600 write_flash 0x0 firmware-esp32s3-merged.bin', this)">Copy</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.85rem;font-weight:600;">Flash ESP32-C5 with esptool.py (Merged):</span>
+            </div>
+            <div class="code-block">
+              <code>esptool.py --chip esp32c5 --baud 921600 write_flash 0x0 firmware-esp32c5-merged.bin</code>
+              <button class="copy-code-btn" onclick="copySnippet('esptool.py --chip esp32c5 --baud 921600 write_flash 0x0 firmware-esp32c5-merged.bin', this)">Copy</button>
+            </div>
+          </div>
         </div>
 
         <!-- Tab 3: First-Boot Setup Guide -->
@@ -1823,7 +1938,7 @@ export function renderDashboardHtml(): string {
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">3</span>
-                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, <strong>ESP32-C3 Super Mini</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
+                <div><strong>Select Board Profile:</strong> Choose your hardware profile (<strong>LILYGO T18</strong>, <strong>LILYGO T8</strong>, <strong>ESP32 DevKit V1</strong>, <strong>ESP32-C3 Super Mini</strong>, <strong>ESP32-S3</strong>, <strong>ESP32-C5</strong>, or <strong>Custom</strong>) to configure status LED and battery ADC pins.</div>
               </li>
               <li class="flash-step-item">
                 <span class="flash-step-num">4</span>
@@ -2187,7 +2302,7 @@ export function renderDashboardHtml(): string {
 
         <div class="admin-input-group">
           <label for="editStationTargetInput">Pinned OTA Target Version <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Optional)</span></label>
-          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.8" />
+          <input type="text" id="editStationTargetInput" placeholder="Leave blank for channel default, or enter e.g. 1.1.11" />
           <div style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
             Force node to a specific release tag. Leave empty to automatically follow Stable or Canary.
           </div>
@@ -2214,7 +2329,7 @@ export function renderDashboardHtml(): string {
     <span>|</span>
     <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-weight: 600; color: var(--primary);">⚙️ Settings</a>
     <span>|</span>
-    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.8)</a>
+    <a href="https://github.com/flynn0/T18" target="_blank">Repository (flynn0/T18 v1.1.11)</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -2381,34 +2496,32 @@ export function renderDashboardHtml(): string {
       const activateBtn = document.getElementById("espActivateBtn");
       const lblTargetEsp32 = document.getElementById("targetEsp32Label");
       const lblTargetC3 = document.getElementById("targetC3Label");
+      const lblTargetS3 = document.getElementById("targetS3Label");
+      const lblTargetC5 = document.getElementById("targetC5Label");
       const lblModeUpdate = document.getElementById("modeUpdateLabel");
       const lblModeClean = document.getElementById("modeCleanLabel");
       const summaryTarget = document.getElementById("summaryTargetName");
       const summaryMode = document.getElementById("summaryModeName");
       const summaryManifest = document.getElementById("summaryManifestName");
 
-      const isC3 = (currentFlashTarget === "c3");
       const isClean = (currentFlashMode === "clean");
 
-      // Update styling for Step 1 (Target Architecture)
-      if (isC3) {
-        if (lblTargetC3) {
-          lblTargetC3.style.border = "2px solid var(--accent)";
-          lblTargetC3.style.background = "rgba(56,189,248,0.08)";
+      // Reset all target labels styling
+      [lblTargetEsp32, lblTargetC3, lblTargetS3, lblTargetC5].forEach(function(lbl) {
+        if (lbl) {
+          lbl.style.border = "1px solid var(--border)";
+          lbl.style.background = "transparent";
         }
-        if (lblTargetEsp32) {
-          lblTargetEsp32.style.border = "1px solid var(--border)";
-          lblTargetEsp32.style.background = "transparent";
-        }
-      } else {
-        if (lblTargetEsp32) {
-          lblTargetEsp32.style.border = "2px solid var(--accent)";
-          lblTargetEsp32.style.background = "rgba(56,189,248,0.08)";
-        }
-        if (lblTargetC3) {
-          lblTargetC3.style.border = "1px solid var(--border)";
-          lblTargetC3.style.background = "transparent";
-        }
+      });
+
+      // Highlight active target label
+      let activeTargetLbl = lblTargetEsp32;
+      if (currentFlashTarget === "c3") activeTargetLbl = lblTargetC3;
+      else if (currentFlashTarget === "s3") activeTargetLbl = lblTargetS3;
+      else if (currentFlashTarget === "c5") activeTargetLbl = lblTargetC5;
+      if (activeTargetLbl) {
+        activeTargetLbl.style.border = "2px solid var(--accent)";
+        activeTargetLbl.style.background = "rgba(56,189,248,0.08)";
       }
 
       // Update styling for Step 2 (Flashing Mode)
@@ -2434,8 +2547,10 @@ export function renderDashboardHtml(): string {
 
       let manifestFile = "";
       let buttonHtml = "";
+      let targetName = "Standard ESP32 (Xtensa)";
 
-      if (isC3) {
+      if (currentFlashTarget === "c3") {
+        targetName = "ESP32-C3 Super Mini (RISC-V)";
         if (isClean) {
           manifestFile = "manifest-c3.json";
           buttonHtml = "🧹 Connect ESP32-C3 &amp; Clean Install";
@@ -2443,7 +2558,26 @@ export function renderDashboardHtml(): string {
           manifestFile = "manifest-c3-update.json";
           buttonHtml = "⚡ Connect ESP32-C3 &amp; Update Firmware (Keep Settings)";
         }
+      } else if (currentFlashTarget === "s3") {
+        targetName = "ESP32-S3 (Xtensa Dual-Core)";
+        if (isClean) {
+          manifestFile = "manifest-s3.json";
+          buttonHtml = "🧹 Connect ESP32-S3 &amp; Clean Install";
+        } else {
+          manifestFile = "manifest-s3-update.json";
+          buttonHtml = "⚡ Connect ESP32-S3 &amp; Update Firmware (Keep Settings)";
+        }
+      } else if (currentFlashTarget === "c5") {
+        targetName = "ESP32-C5 (Wi-Fi 6 / 2.4 &amp; 5 GHz)";
+        if (isClean) {
+          manifestFile = "manifest-c5.json";
+          buttonHtml = "🧹 Connect ESP32-C5 &amp; Clean Install";
+        } else {
+          manifestFile = "manifest-c5-update.json";
+          buttonHtml = "⚡ Connect ESP32-C5 &amp; Update Firmware (Keep Settings)";
+        }
       } else {
+        targetName = "Standard ESP32 (Xtensa)";
         if (isClean) {
           manifestFile = "manifest-esp32.json";
           buttonHtml = "🧹 Connect ESP32 &amp; Clean Install";
@@ -2453,7 +2587,7 @@ export function renderDashboardHtml(): string {
         }
       }
 
-      if (summaryTarget) summaryTarget.innerText = isC3 ? "ESP32-C3 Super Mini (RISC-V)" : "Standard ESP32 (Xtensa)";
+      if (summaryTarget) summaryTarget.innerText = targetName;
       if (summaryMode) summaryMode.innerText = isClean ? "Clean Install (Full Flash)" : "Update Firmware (Keep Settings)";
       if (summaryManifest) summaryManifest.innerText = manifestFile;
 
@@ -2479,7 +2613,15 @@ export function renderDashboardHtml(): string {
         { id: "dlC3FirmwareBin", file: "firmware-c3.bin" },
         { id: "dlC3PartitionsBin", file: "partitions-c3.bin" },
         { id: "dlC3BootloaderBin", file: "bootloader-c3.bin" },
-        { id: "dlC3MergedBin", file: "firmware-esp32c3-merged.bin" }
+        { id: "dlC3MergedBin", file: "firmware-esp32c3-merged.bin" },
+        { id: "dlS3FirmwareBin", file: "firmware-s3.bin" },
+        { id: "dlS3PartitionsBin", file: "partitions-s3.bin" },
+        { id: "dlS3BootloaderBin", file: "bootloader-s3.bin" },
+        { id: "dlS3MergedBin", file: "firmware-esp32s3-merged.bin" },
+        { id: "dlC5FirmwareBin", file: "firmware-c5.bin" },
+        { id: "dlC5PartitionsBin", file: "partitions-c5.bin" },
+        { id: "dlC5BootloaderBin", file: "bootloader-c5.bin" },
+        { id: "dlC5MergedBin", file: "firmware-esp32c5-merged.bin" }
       ];
       links.forEach(function(l) {
         const el = document.getElementById(l.id);
@@ -4672,6 +4814,35 @@ export function renderDashboardHtml(): string {
       }
     }
 
+    let currentWeeklyHeatmapMode = localStorage.getItem("t18_weekly_heatmap_mode") || localStorage.getItem("wifi_weekly_heatmap_mode") || "max";
+    let currentWeeklyHeatmapDays = parseInt(localStorage.getItem("t18_weekly_heatmap_days") || "7", 10);
+    if (![7, 14, 28].includes(currentWeeklyHeatmapDays)) currentWeeklyHeatmapDays = 7;
+
+    function ensureWeeklyDrawerExpanded() {
+      const drawer = document.getElementById("weeklyHeatmapDrawer");
+      const icon = document.getElementById("weeklyHeatmapExpandIcon");
+      if (drawer && drawer.style.display === "none") {
+        drawer.style.display = "block";
+        if (icon) icon.innerText = "▼";
+      }
+    }
+
+    function setWeeklyHeatmapMode(mode) {
+      currentWeeklyHeatmapMode = (mode === "avg") ? "avg" : "max";
+      localStorage.setItem("t18_weekly_heatmap_mode", currentWeeklyHeatmapMode);
+      localStorage.setItem("wifi_weekly_heatmap_mode", currentWeeklyHeatmapMode);
+      ensureWeeklyDrawerExpanded();
+      renderWeeklyHeatmaps();
+    }
+
+    function setWeeklyHeatmapDays(days) {
+      const d = parseInt(days, 10);
+      currentWeeklyHeatmapDays = [7, 14, 28].includes(d) ? d : 7;
+      localStorage.setItem("t18_weekly_heatmap_days", String(currentWeeklyHeatmapDays));
+      ensureWeeklyDrawerExpanded();
+      renderWeeklyHeatmaps();
+    }
+
     function renderChannelHeatmap() {
       const pSel = document.getElementById("heatmapPaletteSelect");
       if (pSel && pSel.value !== currentHeatmapPalette) pSel.value = currentHeatmapPalette;
@@ -4679,7 +4850,9 @@ export function renderDashboardHtml(): string {
       const container = document.getElementById("channelHeatmapContainer");
       if (!container || !currentStationData) return;
 
-      const utilHistory = currentStationData.channel_utilization || [];
+      const utilHistory = (currentStationData.channel_utilization || []).filter(u =>
+        !(u.airtime_pct === 0 && (u.data_frames || 0) === 0 && (u.mgmt_frames || 0) === 0 && (u.ctrl_frames || 0) === 0 && !u.scan_duration_ms)
+      );
       container.innerHTML = "";
 
       if (utilHistory.length === 0) {
@@ -4947,7 +5120,9 @@ export function renderDashboardHtml(): string {
     function renderChannelUtilizationSection() {
       if (!currentStationData) return;
 
-      const rawUtil = currentStationData.channel_utilization || [];
+      const rawUtil = (currentStationData.channel_utilization || []).filter(u =>
+        !(u.airtime_pct === 0 && (u.data_frames || 0) === 0 && (u.mgmt_frames || 0) === 0 && (u.ctrl_frames || 0) === 0 && !u.scan_duration_ms)
+      );
       const nowSec = Math.floor(Date.now() / 1000);
       const cutoffSec = nowSec - (selectedChannelTimeframe * 3600);
       const utilHistory = rawUtil.filter(u => u.timestamp >= cutoffSec);
@@ -5306,20 +5481,59 @@ export function renderDashboardHtml(): string {
       wifiContainer.innerHTML = "";
       btContainer.innerHTML = "";
 
-      const rawUtil = currentStationData.channel_utilization || [];
+      const numDays = [7, 14, 28].includes(currentWeeklyHeatmapDays) ? currentWeeklyHeatmapDays : 7;
+
+      // Sync header buttons & labels
+      [7, 14, 28].forEach(dVal => {
+        const b = document.getElementById("btnWeeklyDays" + dVal);
+        if (b) b.className = (numDays === dVal) ? "timeframe-btn active" : "timeframe-btn";
+      });
+      const btnMax = document.getElementById("btnWeeklyModeMax");
+      const btnAvg = document.getElementById("btnWeeklyModeAvg");
+      if (btnMax) btnMax.className = (currentWeeklyHeatmapMode === "max") ? "timeframe-btn active" : "timeframe-btn";
+      if (btnAvg) btnAvg.className = (currentWeeklyHeatmapMode === "avg") ? "timeframe-btn active" : "timeframe-btn";
+
+      const mainTitleEl = document.getElementById("weeklyHeatmapMainTitle");
+      const mainSubEl = document.getElementById("weeklyHeatmapMainSub");
+      if (mainTitleEl) mainTitleEl.innerText = numDays + "-Day Historical Heatmaps (Wi-Fi Bands & Bluetooth)";
+      if (mainSubEl) mainSubEl.innerText = "(Last " + numDays + " Days × 48 Timeslots from 0:00 to 24:00 • Wi-Fi Bands & Bluetooth)";
+
+      const wifiTitleEl = document.getElementById("weeklyWifiTitle");
+      const wifiSubEl = document.getElementById("weeklyWifiSub");
+      if (wifiTitleEl) {
+        wifiTitleEl.innerText = (currentWeeklyHeatmapMode === "avg")
+          ? "All 2.4 GHz Wi-Fi Bands (Average Airtime %)"
+          : "All 2.4 GHz Wi-Fi Bands (Peak Airtime %)";
+      }
+      if (wifiSubEl) {
+        wifiSubEl.innerText = (currentWeeklyHeatmapMode === "avg")
+          ? (numDays + "-Day average channel airtime per 30-min window")
+          : (numDays + "-Day peak channel airtime per 30-min window");
+      }
+
+      const btTitleEl = document.getElementById("weeklyBtTitle");
+      if (btTitleEl) {
+        btTitleEl.innerText = (currentWeeklyHeatmapMode === "avg")
+          ? "Bluetooth Device Activity (Average Unique BLE & Classic Devices)"
+          : "Bluetooth Device Activity (Peak Unique BLE & Classic Devices)";
+      }
+
+      const rawUtil = (currentStationData.channel_utilization || []).filter(u =>
+        !(u.airtime_pct === 0 && (u.data_frames || 0) === 0 && (u.mgmt_frames || 0) === 0 && (u.ctrl_frames || 0) === 0 && !u.scan_duration_ms)
+      );
       const rawBt = currentStationData.bluetooth_history || [];
       const daily30 = currentStationData.daily_30min_summaries || [];
 
-      // Generate 7 days chronologically: 6 days ago -> Today
+      // Generate numDays chronologically: (numDays - 1) days ago -> Today
       const days = [];
       const now = new Date();
-      for (let i = 6; i >= 0; i--) {
+      for (let i = numDays - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
         const dayLabel = (i === 0) ? "Today" : d.toLocaleDateString([], { weekday: 'short' });
         const dateStr = d.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
         const ymd = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
         days.push({
-          index: 6 - i,
+          index: (numDays - 1) - i,
           dayLabel: dayLabel + " " + dateStr,
           shortName: dayLabel,
           ymd: ymd,
@@ -5328,8 +5542,8 @@ export function renderDashboardHtml(): string {
         });
       }
 
-      // Matrix: 7 rows x 48 slots
-      const wifiMatrix = Array.from({ length: 7 }, () => 
+      // Matrix: numDays rows x 48 slots
+      const wifiMatrix = Array.from({ length: numDays }, () => 
         Array.from({ length: 48 }, () => ({
           count: 0,
           peakAirtime: 0,
@@ -5343,7 +5557,7 @@ export function renderDashboardHtml(): string {
         }))
       );
 
-      const btMatrix = Array.from({ length: 7 }, () => 
+      const btMatrix = Array.from({ length: numDays }, () => 
         Array.from({ length: 48 }, () => ({
           count: 0,
           maxUnique: 0,
@@ -5358,7 +5572,7 @@ export function renderDashboardHtml(): string {
       // Populate Wi-Fi from channel_utilization
       rawUtil.forEach(u => {
         if (!u.timestamp) return;
-        for (let dIdx = 0; dIdx < 7; dIdx++) {
+        for (let dIdx = 0; dIdx < numDays; dIdx++) {
           const d = days[dIdx];
           if (u.timestamp >= d.startTs && u.timestamp < d.endTs) {
             const secInDay = u.timestamp - d.startTs;
@@ -5384,7 +5598,7 @@ export function renderDashboardHtml(): string {
       // Populate Bluetooth from bluetooth_history
       rawBt.forEach(b => {
         if (!b.timestamp) return;
-        for (let dIdx = 0; dIdx < 7; dIdx++) {
+        for (let dIdx = 0; dIdx < numDays; dIdx++) {
           const d = days[dIdx];
           if (b.timestamp >= d.startTs && b.timestamp < d.endTs) {
             const secInDay = b.timestamp - d.startTs;
@@ -5408,15 +5622,17 @@ export function renderDashboardHtml(): string {
       // Fill in latest_bluetooth for today
       if (currentStationData.latest_bluetooth && currentStationData.latest_bluetooth.timestamp) {
         const lb = currentStationData.latest_bluetooth;
-        const today = days[6];
+        const today = days[numDays - 1];
         if (lb.timestamp >= today.startTs && lb.timestamp < today.endTs) {
           const slotIdx = Math.min(47, Math.max(0, Math.floor((lb.timestamp - today.startTs) / 1800)));
-          const cell = btMatrix[6][slotIdx];
+          const cell = btMatrix[numDays - 1][slotIdx];
           if (cell.count === 0) {
             cell.count = 1;
             const uq = lb.ble_unique_devices || 0;
             const classic = lb.classic_total || 0;
-            cell.maxUnique = uq + classic;
+            const total = uq + classic;
+            cell.maxUnique = total;
+            cell.sumUnique = total;
             cell.classicTotal = classic;
             cell.totalMacs = lb.ble_total_macs || 0;
             cell.randomMacs = lb.ble_random_macs || 0;
@@ -5425,15 +5641,17 @@ export function renderDashboardHtml(): string {
         }
       }
 
-      // Fill from daily_30min_summaries
+      // Fill from daily_30min_summaries (covers days 8..28 and any gaps in raw data)
       daily30.forEach(s => {
-        for (let dIdx = 0; dIdx < 7; dIdx++) {
+        const startTs = Number(s.start_timestamp) || 0;
+        for (let dIdx = 0; dIdx < numDays; dIdx++) {
           const d = days[dIdx];
-          const isDateMatch = (s.date === d.ymd);
-          const isTsMatch = (s.start_timestamp && s.start_timestamp >= d.startTs && s.start_timestamp < d.endTs);
-          if (isDateMatch || isTsMatch) {
-            const slotIdx = (s.start_timestamp && s.start_timestamp >= d.startTs && s.start_timestamp < d.endTs)
-              ? Math.min(47, Math.max(0, Math.floor((s.start_timestamp - d.startTs) / 1800)))
+          const isMatch = startTs > 0
+            ? (startTs >= d.startTs && startTs < d.endTs)
+            : (s.date === d.ymd);
+          if (isMatch) {
+            const slotIdx = startTs > 0
+              ? Math.min(47, Math.max(0, Math.floor((startTs - d.startTs) / 1800)))
               : (s.interval_index >= 0 && s.interval_index < 48 ? s.interval_index : -1);
             if (slotIdx >= 0) {
               const wCell = wifiMatrix[dIdx][slotIdx];
@@ -5443,24 +5661,31 @@ export function renderDashboardHtml(): string {
                   if (Array.isArray(arr) && arr.length > 0) {
                     let maxA = 0;
                     let maxCh = 1;
+                    let sumA = 0;
                     arr.forEach((val, idx) => {
                       const num = Number(val) || 0;
+                      sumA += num;
+                      if (num > 0) wCell.activeChannels.add(idx + 1);
                       if (num > maxA) {
                         maxA = num;
                         maxCh = idx + 1;
                       }
                     });
-                    wCell.count = 1;
-                    wCell.peakAirtime = maxA;
-                    wCell.peakChannel = maxCh;
-                    wCell.sumAirtime = maxA;
+                    if (maxA > 0) {
+                      wCell.count = arr.length;
+                      wCell.peakAirtime = maxA;
+                      wCell.peakChannel = maxCh;
+                      wCell.sumAirtime = sumA;
+                    }
                   }
                 } catch(e) {}
               }
               const bCell = btMatrix[dIdx][slotIdx];
               if (bCell.count === 0 && (s.ble_max_unique || s.classic_max)) {
+                const total = (s.ble_max_unique || 0) + (s.classic_max || 0);
                 bCell.count = 1;
-                bCell.maxUnique = (s.ble_max_unique || 0) + (s.classic_max || 0);
+                bCell.maxUnique = total;
+                bCell.sumUnique = total;
                 bCell.classicTotal = s.classic_max || 0;
               }
             }
@@ -5501,7 +5726,7 @@ export function renderDashboardHtml(): string {
       wifiContainer.appendChild(createTimeHeaderRow());
       const wifiHover = document.getElementById("weeklyWifiHoverInfo");
 
-      for (let dIdx = 0; dIdx < 7; dIdx++) {
+      for (let dIdx = 0; dIdx < numDays; dIdx++) {
         const d = days[dIdx];
         const row = document.createElement("div");
         row.className = "heatmap-row";
@@ -5510,8 +5735,8 @@ export function renderDashboardHtml(): string {
         label.className = "heatmap-row-label";
         label.style.width = "78px";
         label.style.fontSize = "0.68rem";
-        label.style.fontWeight = (dIdx === 6) ? "700" : "500";
-        label.style.color = (dIdx === 6) ? "var(--primary)" : "var(--text-muted)";
+        label.style.fontWeight = (dIdx === numDays - 1) ? "700" : "500";
+        label.style.color = (dIdx === numDays - 1) ? "var(--primary)" : "var(--text-muted)";
         label.innerText = d.dayLabel;
         row.appendChild(label);
 
@@ -5530,14 +5755,23 @@ export function renderDashboardHtml(): string {
           const timeRange = startH + ':' + startM + ' – ' + endH + ':' + endM;
 
           if (cellData.count > 0) {
-            const color = getAirtimeHeatmapColor(cellData.peakAirtime, currentHeatmapPalette);
-            cell.style.background = color;
             const avgAir = cellData.sumAirtime / cellData.count;
-            cell.title = d.dayLabel + ' (' + timeRange + '): ' + cellData.peakAirtime.toFixed(1) + '% peak (Ch ' + (cellData.peakChannel || 'all') + '), ' + avgAir.toFixed(1) + '% avg';
+            const metricVal = (currentWeeklyHeatmapMode === "avg") ? avgAir : cellData.peakAirtime;
+            const color = getAirtimeHeatmapColor(metricVal, currentHeatmapPalette);
+            cell.style.background = color;
+            if (currentWeeklyHeatmapMode === "avg") {
+              cell.title = d.dayLabel + ' (' + timeRange + '): ' + avgAir.toFixed(1) + '% avg, ' + cellData.peakAirtime.toFixed(1) + '% peak (Ch ' + (cellData.peakChannel || 'all') + ')';
+            } else {
+              cell.title = d.dayLabel + ' (' + timeRange + '): ' + cellData.peakAirtime.toFixed(1) + '% peak (Ch ' + (cellData.peakChannel || 'all') + '), ' + avgAir.toFixed(1) + '% avg';
+            }
 
             cell.addEventListener("mouseenter", function() {
               if (wifiHover) {
-                wifiHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:var(--primary);">' + timeRange + '</span> &bull; Peak: <span style="color:' + color + '; font-weight:700;">' + cellData.peakAirtime.toFixed(1) + '% (Ch ' + (cellData.peakChannel || 'all') + ')</span> | Avg: ' + avgAir.toFixed(1) + '% | Active Ch: ' + cellData.activeChannels.size + ' | Tx: ' + cellData.transmitters;
+                if (currentWeeklyHeatmapMode === "avg") {
+                  wifiHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:var(--primary);">' + timeRange + '</span> &bull; Avg: <span style="color:' + color + '; font-weight:700;">' + avgAir.toFixed(1) + '%</span> | Peak: ' + cellData.peakAirtime.toFixed(1) + '% (Ch ' + (cellData.peakChannel || 'all') + ') | Active Ch: ' + cellData.activeChannels.size + ' | Tx: ' + cellData.transmitters;
+                } else {
+                  wifiHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:var(--primary);">' + timeRange + '</span> &bull; Peak: <span style="color:' + color + '; font-weight:700;">' + cellData.peakAirtime.toFixed(1) + '% (Ch ' + (cellData.peakChannel || 'all') + ')</span> | Avg: ' + avgAir.toFixed(1) + '% | Active Ch: ' + cellData.activeChannels.size + ' | Tx: ' + cellData.transmitters;
+                }
               }
             });
           } else {
@@ -5561,28 +5795,32 @@ export function renderDashboardHtml(): string {
       }
 
       // --- 2. Bluetooth Activity Heatmap ---
-      let max7dBle = 0;
-      for (let dIdx = 0; dIdx < 7; dIdx++) {
+      let maxPeriodBle = 0;
+      for (let dIdx = 0; dIdx < numDays; dIdx++) {
         for (let slot = 0; slot < 48; slot++) {
           const cell = btMatrix[dIdx][slot];
-          if (cell && cell.maxUnique > max7dBle) {
-            max7dBle = cell.maxUnique;
+          if (cell && cell.count > 0) {
+            const val = (currentWeeklyHeatmapMode === "avg") ? Math.round(cell.sumUnique / cell.count) : cell.maxUnique;
+            if (val > maxPeriodBle) {
+              maxPeriodBle = val;
+            }
           }
         }
       }
-      const dynamicBleMax7d = Math.max(10, Math.ceil(max7dBle / 5) * 5);
+      const dynamicBleMaxPeriod = Math.max(10, Math.ceil(maxPeriodBle / 5) * 5);
 
       const btBadge = document.getElementById("weeklyBtLegendBadge");
       if (btBadge) {
-        btBadge.innerHTML = '<span style="color:#38bdf8; font-weight:600;">(Dynamic Scale: Peak ' + max7dBle + ' &bull; Scale 0–' + dynamicBleMax7d + ' devices)</span>';
+        const modeLabel = (currentWeeklyHeatmapMode === "avg") ? "Peak Avg " : "Peak ";
+        btBadge.innerHTML = '<span style="color:#38bdf8; font-weight:600;">(Dynamic ' + numDays + '-Day Scale: ' + modeLabel + maxPeriodBle + ' &bull; Scale 0–' + dynamicBleMaxPeriod + ' devices)</span>';
       }
       const btLegendWrap = document.getElementById("weeklyBtLegendWrap");
       if (btLegendWrap) {
         const pal = (HEATMAP_PALETTES[currentHeatmapPalette] || HEATMAP_PALETTES.spectrum).ble;
-        const t1 = Math.max(1, Math.round(dynamicBleMax7d * 0.15));
-        const t2 = Math.max(t1 + 1, Math.round(dynamicBleMax7d * 0.35));
-        const t3 = Math.max(t2 + 1, Math.round(dynamicBleMax7d * 0.60));
-        const t4 = Math.max(t3 + 1, Math.round(dynamicBleMax7d * 0.85));
+        const t1 = Math.max(1, Math.round(dynamicBleMaxPeriod * 0.15));
+        const t2 = Math.max(t1 + 1, Math.round(dynamicBleMaxPeriod * 0.35));
+        const t3 = Math.max(t2 + 1, Math.round(dynamicBleMaxPeriod * 0.60));
+        const t4 = Math.max(t3 + 1, Math.round(dynamicBleMaxPeriod * 0.85));
         btLegendWrap.innerHTML =
           '<span style="color:var(--text-muted); margin-right:2px;">Scale:</span>' +
           '<span style="display:inline-block; width:12px; height:10px; background:' + pal[0] + '; border-radius:2px;" title="0 devices"></span>' +
@@ -5591,14 +5829,14 @@ export function renderDashboardHtml(): string {
           '<span style="display:inline-block; width:12px; height:10px; background:' + pal[2] + '; border-radius:2px;" title="' + (t1+1) + ' – ' + t2 + ' devices"></span>' +
           '<span style="display:inline-block; width:12px; height:10px; background:' + pal[3] + '; border-radius:2px;" title="' + (t2+1) + ' – ' + t3 + ' devices"></span>' +
           '<span style="display:inline-block; width:12px; height:10px; background:' + pal[4] + '; border-radius:2px;" title="' + (t3+1) + ' – ' + t4 + ' devices"></span>' +
-          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[5] + '; border-radius:2px;" title="≥ ' + (t4+1) + ' devices (Peak ' + max7dBle + ')"></span>' +
+          '<span style="display:inline-block; width:12px; height:10px; background:' + pal[5] + '; border-radius:2px;" title="≥ ' + (t4+1) + ' devices (Peak ' + maxPeriodBle + ')"></span>' +
           '<span style="color:#38bdf8; font-weight:600; margin-left:2px;">≥' + (t4+1) + '</span>';
       }
 
       btContainer.appendChild(createTimeHeaderRow());
       const btHover = document.getElementById("weeklyBtHoverInfo");
 
-      for (let dIdx = 0; dIdx < 7; dIdx++) {
+      for (let dIdx = 0; dIdx < numDays; dIdx++) {
         const d = days[dIdx];
         const row = document.createElement("div");
         row.className = "heatmap-row";
@@ -5607,8 +5845,8 @@ export function renderDashboardHtml(): string {
         label.className = "heatmap-row-label";
         label.style.width = "78px";
         label.style.fontSize = "0.68rem";
-        label.style.fontWeight = (dIdx === 6) ? "700" : "500";
-        label.style.color = (dIdx === 6) ? "#38bdf8" : "var(--text-muted)";
+        label.style.fontWeight = (dIdx === numDays - 1) ? "700" : "500";
+        label.style.color = (dIdx === numDays - 1) ? "#38bdf8" : "var(--text-muted)";
         label.innerText = d.dayLabel;
         row.appendChild(label);
 
@@ -5626,14 +5864,25 @@ export function renderDashboardHtml(): string {
           const endM = ((slot + 1) % 2 === 0) ? '00' : '30';
           const timeRange = startH + ':' + startM + ' – ' + endH + ':' + endM;
 
-          if (cellData.count > 0 && cellData.maxUnique > 0) {
-            const color = getBleHeatmapColor(cellData.maxUnique, currentHeatmapPalette, dynamicBleMax7d);
+          const avgDev = cellData.count > 0 ? Math.round(cellData.sumUnique / cellData.count) : 0;
+          const devVal = (currentWeeklyHeatmapMode === "avg") ? avgDev : cellData.maxUnique;
+
+          if (cellData.count > 0 && devVal > 0) {
+            const color = getBleHeatmapColor(devVal, currentHeatmapPalette, dynamicBleMaxPeriod);
             cell.style.background = color;
-            cell.title = d.dayLabel + ' (' + timeRange + '): ' + cellData.maxUnique + ' unique devices (' + cellData.classicTotal + ' Classic)';
+            if (currentWeeklyHeatmapMode === "avg") {
+              cell.title = d.dayLabel + ' (' + timeRange + '): ' + avgDev + ' avg unique devices (' + cellData.maxUnique + ' peak, ' + cellData.classicTotal + ' Classic)';
+            } else {
+              cell.title = d.dayLabel + ' (' + timeRange + '): ' + cellData.maxUnique + ' unique devices (' + cellData.classicTotal + ' Classic)';
+            }
 
             cell.addEventListener("mouseenter", function() {
               if (btHover) {
-                btHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:#38bdf8;">' + timeRange + '</span> &bull; Devices: <span style="color:' + color + '; font-weight:700;">' + cellData.maxUnique + '</span> | Classic: ' + cellData.classicTotal + ' | MACs: ' + cellData.totalMacs;
+                if (currentWeeklyHeatmapMode === "avg") {
+                  btHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:#38bdf8;">' + timeRange + '</span> &bull; Avg Devices: <span style="color:' + color + '; font-weight:700;">' + devVal + '</span> | Peak: ' + cellData.maxUnique + ' | Classic: ' + cellData.classicTotal + ' | MACs: ' + cellData.totalMacs;
+                } else {
+                  btHover.innerHTML = '<span style="color:#fff; font-weight:600;">' + d.dayLabel + '</span> &bull; <span style="color:#38bdf8;">' + timeRange + '</span> &bull; Devices: <span style="color:' + color + '; font-weight:700;">' + devVal + '</span> | Classic: ' + cellData.classicTotal + ' | MACs: ' + cellData.totalMacs;
+                }
               }
             });
           } else {

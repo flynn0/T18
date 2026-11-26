@@ -157,7 +157,7 @@ export async function handleAdminApi(subPath: string, request: Request, env: Env
   if (subPath === "overview" && request.method === "GET") {
     try {
       const url = new URL(request.url);
-      const currentYear = new Date().getFullYear();
+      const currentYear = new Date().getUTCFullYear();
       const year = parseInt(url.searchParams.get("year") || `${currentYear}`, 10) || currentYear;
       const stationId = url.searchParams.get("station_id") || "all";
 
@@ -324,7 +324,12 @@ export async function handleAdminApi(subPath: string, request: Request, env: Env
       }
 
       const count = await db.deleteOutlierItems(items);
-      invalidateMemoryCache();
+      const affectedStations = new Set(items.map((i: any) => i.station_id).filter(Boolean));
+      if (affectedStations.size === 1) {
+        invalidateMemoryCache(Array.from(affectedStations)[0] as string);
+      } else {
+        invalidateMemoryCache();
+      }
       return jsonResponse({
         success: true,
         deleted_count: count,
